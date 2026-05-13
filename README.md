@@ -8,8 +8,8 @@ OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
 backtesting, experiment tracking, drift monitoring, report generation,
-scheduled daily jobs, ML training dataset generation, Telegram alerts, and a
-Streamlit dashboard.
+scheduled daily jobs, ML training dataset generation, a first explainable ML
+probability baseline, Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -30,6 +30,7 @@ Streamlit dashboard.
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - Leakage-aware ML training dataset generation for probability models
+- Explainable ML probability baseline without heavyweight dependencies
 - CSV-based experiment tracking for backtest and operations runs
 - Data drift and performance drift monitoring
 - Markdown reports for single-stock and universe screening
@@ -60,6 +61,7 @@ select named universe
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> build leakage-aware ML training dataset
+-> train first probability baseline
 -> log experiment metrics
 -> detect data/performance drift
 -> generate Markdown reports
@@ -110,6 +112,8 @@ flowchart LR
     N --> V["walk-forward validation"]
     F --> ML["ML training dataset"]
     D --> ML
+    ML --> PB["probability baseline"]
+    PB --> EXP
     N --> EXP["experiment log"]
     EXP --> PD["performance drift monitor"]
     F --> DD["data drift monitor"]
@@ -226,6 +230,7 @@ Leakage-aware ML dataset for future probability models:
 
 ```powershell
 python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+python main.py train-ml-baseline --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
 ```
 
 Dashboard:
@@ -293,7 +298,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 77 passed
+pytest: 82 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -317,6 +322,8 @@ data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
+data/signals/ml_predictions/
+data/signals/ml_metrics/
 data/signals/drift/
 data/backtest/trades/
 data/backtest/metrics/
@@ -327,6 +334,7 @@ reports/daily/
 reports/regime/
 reports/universe/
 reports/backtest/
+reports/modeling/
 reports/monitoring/
 ```
 
@@ -338,6 +346,7 @@ reports/monitoring/
 - [DART Data Card](docs/data_cards/dart_data_v0.md)
 - [Investor Flow Data Card](docs/data_cards/investor_flow_data_v0.md)
 - [ML Dataset Card](docs/model_cards/ml_training_dataset_v0.md)
+- [ML Baseline Model Card](docs/model_cards/scorecard_probability_baseline_v0.md)
 - [Scoring and Risk](docs/scoring-and-risk.md)
 - [Result Example](docs/results-example.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -357,7 +366,7 @@ only committed environment file.
 - Add short-selling features
 - Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with portfolio-level constraints
-- Add ML baselines with walk-forward validation
+- Upgrade ML baseline to walk-forward model validation
 - Add MLflow experiment tracking on top of the CSV experiment log
 - Add richer drift thresholds and scheduled Telegram warning policies
 - Add APScheduler long-running daemon mode

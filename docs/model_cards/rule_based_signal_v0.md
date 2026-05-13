@@ -33,7 +33,7 @@ It is not a price prediction model.
 - Investor flow data is demo-capable and can be blended into scoring
 - Market regime blocks `bear` and `high_volatility` final signals
 - Single-stock and walk-forward backtest validation are available
-- No machine learning model yet
+- A separate ML probability baseline now exists for research comparison
 
 ## Prohibited Use
 

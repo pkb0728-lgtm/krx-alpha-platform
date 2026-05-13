@@ -10,8 +10,10 @@ from krx_alpha.experiments.tracker import (
     ExperimentRecord,
     ExperimentTracker,
     build_backtest_experiment_record,
+    build_ml_baseline_experiment_record,
     build_walk_forward_experiment_record,
 )
+from krx_alpha.models.probability_baseline import MLProbabilityBaselineConfig
 
 
 def test_experiment_tracker_appends_records(tmp_path: Path) -> None:
@@ -105,3 +107,39 @@ def test_build_walk_forward_experiment_record_extracts_metrics(tmp_path: Path) -
     assert params["train_size"] == 20
     assert logged_metrics["fold_count"] == 3
     assert logged_metrics["positive_fold_ratio"] == 0.6667
+
+
+def test_build_ml_baseline_experiment_record_extracts_test_metrics(tmp_path: Path) -> None:
+    metrics = pd.DataFrame(
+        {
+            "split": ["train", "test"],
+            "row_count": [30, 12],
+            "positive_label_rate": [0.6, 0.5],
+            "predicted_positive_rate": [0.7, 0.4],
+            "accuracy": [0.8, 0.75],
+            "precision": [0.81, 0.8],
+            "recall": [0.82, 0.6],
+            "f1_score": [0.815, 0.6857],
+            "roc_auc": [0.9, 0.77],
+            "brier_score": [0.12, 0.19],
+            "average_probability": [0.64, 0.52],
+        }
+    )
+
+    record = build_ml_baseline_experiment_record(
+        metrics=metrics,
+        config=MLProbabilityBaselineConfig(train_fraction=0.7),
+        ticker="005930",
+        start_date="2024-01-01",
+        end_date="2024-03-31",
+        artifact_path=tmp_path / "ml_report.md",
+        run_id="fixed",
+    )
+
+    params = json.loads(record.params_json)
+    logged_metrics = json.loads(record.metrics_json)
+    assert record.experiment_name == "ml_probability_baseline"
+    assert record.run_type == "ml_baseline"
+    assert record.model_name == "scorecard_probability_baseline"
+    assert params["train_fraction"] == 0.7
+    assert logged_metrics["roc_auc"] == 0.77

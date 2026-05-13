@@ -177,6 +177,7 @@ Example command:
 
 ```powershell
 python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+python main.py train-ml-baseline --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
 ```
 
 Example output:
@@ -190,8 +191,21 @@ Positive label rate: 55.36%
 Output: data/features/ml_training/005380_20240101_20240331_h5.parquet
 ```
 
+Example ML baseline output:
+
+```text
+ML probability baseline trained.
+Ticker: 005380
+Test rows: 17
+Test ROC-AUC: 0.652
+Test F1-score: 0.522
+Report: reports/modeling/probability_baseline_005380_20240101_20240331_h5.md
+```
+
 This dataset is for later probability modeling. The model input features are
-dated by `as_of_date`; future-return labels are kept separately for audit.
+dated by `as_of_date`; future-return labels are kept separately for audit. The
+baseline model is intentionally simple and explainable so it can establish the
+training/evaluation workflow before heavier models are added.
 
 ## Drift Monitoring
 

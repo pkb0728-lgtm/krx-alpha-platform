@@ -122,6 +122,55 @@ def ml_training_dataset_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}_h{holding_days}.parquet"
 
 
+def ml_prediction_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    holding_days: int,
+) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "ml_predictions")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}_h{holding_days}.parquet"
+
+
+def ml_metrics_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    holding_days: int,
+) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "ml_metrics")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}_h{holding_days}.parquet"
+
+
+def ml_model_artifact_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    holding_days: int,
+) -> Path:
+    path = project_root / "models" / "probability_baseline"
+    path.mkdir(parents=True, exist_ok=True)
+    return path / f"{ticker}_{start_date}_{end_date}_h{holding_days}.json"
+
+
+def ml_model_report_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    holding_days: int,
+) -> Path:
+    return (
+        project_root
+        / "reports"
+        / "modeling"
+        / f"probability_baseline_{ticker}_{start_date}_{end_date}_h{holding_days}.md"
+    )
+
+
 def investor_flow_feature_file_path(
     project_root: Path,
     ticker: str,

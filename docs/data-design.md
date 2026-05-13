@@ -450,3 +450,62 @@ data-leakage prevention.
 ML training datasets additionally store `label_end_date` and
 `label_created_at` so reviewers can verify that the feature date and future
 label horizon are separated.
+
+### ML Probability Baseline Outputs
+
+Prediction path:
+
+```text
+data/signals/ml_predictions/{ticker}_{start}_{end}_h{holding_days}.parquet
+```
+
+Metric path:
+
+```text
+data/signals/ml_metrics/{ticker}_{start}_{end}_h{holding_days}.parquet
+```
+
+Model artifact path:
+
+```text
+models/probability_baseline/{ticker}_{start}_{end}_h{holding_days}.json
+```
+
+Report path:
+
+```text
+reports/modeling/probability_baseline_{ticker}_{start}_{end}_h{holding_days}.md
+```
+
+Important prediction columns:
+
+```text
+date
+as_of_date
+ticker
+split
+probability_positive_forward_return
+predicted_label
+target_positive_forward_return
+forward_return
+label_end_date
+top_feature_reason
+model_name
+model_version
+```
+
+Important metric columns:
+
+```text
+split
+row_count
+positive_label_rate
+predicted_positive_rate
+accuracy
+precision
+recall
+f1_score
+roc_auc
+brier_score
+average_probability
+```

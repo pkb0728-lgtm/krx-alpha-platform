@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -43,6 +44,10 @@ from krx_alpha.database.storage import (
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    ml_metrics_file_path,
+    ml_model_artifact_file_path,
+    ml_model_report_file_path,
+    ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     price_feature_file_path,
@@ -64,12 +69,17 @@ from krx_alpha.database.storage import (
 from krx_alpha.experiments.tracker import (
     ExperimentTracker,
     build_backtest_experiment_record,
+    build_ml_baseline_experiment_record,
     build_walk_forward_experiment_record,
 )
 from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
+from krx_alpha.models.probability_baseline import (
+    MLProbabilityBaselineConfig,
+    MLProbabilityBaselineTrainer,
+)
 from krx_alpha.models.training_dataset import MLTrainingDatasetBuilder, MLTrainingDatasetConfig
 from krx_alpha.monitoring.drift import (
     DataDriftConfig,
@@ -85,6 +95,7 @@ from krx_alpha.processors.price_processor import PriceProcessor
 from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
 from krx_alpha.reports.backtest_report import BacktestReportGenerator, WalkForwardReportGenerator
 from krx_alpha.reports.daily_report import DailyReportGenerator
+from krx_alpha.reports.ml_report import MLProbabilityBaselineReportGenerator
 from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scheduler.daily_job import DailyJobConfig, DailyJobRunner
@@ -706,6 +717,121 @@ def build_ml_dataset(
     console.print(f"Feature input: {feature_path}")
     console.print(f"Price input: {price_path}")
     console.print(f"Output: {output_path}")
+
+
+@app.command("train-ml-baseline")
+def train_ml_baseline(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    holding_days: Annotated[
+        int,
+        typer.Option("--holding-days", help="Training label horizon used by build-ml-dataset."),
+    ] = 5,
+    train_fraction: Annotated[
+        float,
+        typer.Option("--train-fraction", help="Time-ordered fraction used for training."),
+    ] = 0.7,
+    probability_threshold: Annotated[
+        float,
+        typer.Option("--probability-threshold", help="Probability cutoff for positive labels."),
+    ] = 0.55,
+    min_train_rows: Annotated[
+        int,
+        typer.Option("--min-train-rows", help="Minimum rows required in the training window."),
+    ] = 20,
+) -> None:
+    """Train and evaluate the first explainable ML probability baseline."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+    dataset_path = ml_training_dataset_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    if not dataset_path.exists():
+        raise typer.BadParameter(
+            f"ML training dataset does not exist. Run build-ml-dataset first: {dataset_path}"
+        )
+
+    config = MLProbabilityBaselineConfig(
+        train_fraction=train_fraction,
+        probability_threshold=probability_threshold,
+        min_train_rows=min_train_rows,
+    )
+    result = MLProbabilityBaselineTrainer(config).train_evaluate(read_parquet(dataset_path))
+
+    predictions_path = ml_prediction_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    metrics_path = ml_metrics_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    artifact_path = ml_model_artifact_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    report_path = ml_model_report_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    write_parquet(result.predictions, predictions_path)
+    write_parquet(result.metrics, metrics_path)
+    write_text(json.dumps(result.artifact, ensure_ascii=False, indent=2), artifact_path)
+    write_text(
+        MLProbabilityBaselineReportGenerator().generate(
+            result.metrics,
+            result.feature_importance,
+        ),
+        report_path,
+    )
+    experiment_log_path = ExperimentTracker(settings.project_root).log(
+        build_ml_baseline_experiment_record(
+            metrics=result.metrics,
+            config=config,
+            ticker=request.ticker,
+            start_date=start,
+            end_date=end,
+            artifact_path=report_path,
+        )
+    )
+
+    test_metric = result.metrics[result.metrics["split"] == "test"].iloc[0]
+    console.print("[bold green]ML probability baseline trained.[/bold green]")
+    console.print(f"Ticker: {request.ticker}")
+    console.print(f"Test rows: {int(test_metric['row_count'])}")
+    console.print(f"Test ROC-AUC: {float(test_metric['roc_auc']):.3f}")
+    console.print(f"Test F1-score: {float(test_metric['f1_score']):.3f}")
+    console.print(f"Predictions: {predictions_path}")
+    console.print(f"Metrics: {metrics_path}")
+    console.print(f"Model artifact: {artifact_path}")
+    console.print(f"Report: {report_path}")
+    console.print(f"Experiment log: {experiment_log_path}")
 
 
 @app.command("build-investor-flow-features")

@@ -13,6 +13,10 @@ from krx_alpha.database.storage import (
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    ml_metrics_file_path,
+    ml_model_artifact_file_path,
+    ml_model_report_file_path,
+    ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     raw_investor_flow_file_path,
@@ -141,4 +145,27 @@ def test_ml_training_dataset_path(tmp_path: Path) -> None:
         ml_training_dataset_file_path(tmp_path, "005930", "20240101", "20240131", 5)
         .as_posix()
         .endswith("data/features/ml_training/005930_20240101_20240131_h5.parquet")
+    )
+
+
+def test_ml_probability_baseline_paths(tmp_path: Path) -> None:
+    assert (
+        ml_prediction_file_path(tmp_path, "005930", "20240101", "20240131", 5)
+        .as_posix()
+        .endswith("data/signals/ml_predictions/005930_20240101_20240131_h5.parquet")
+    )
+    assert (
+        ml_metrics_file_path(tmp_path, "005930", "20240101", "20240131", 5)
+        .as_posix()
+        .endswith("data/signals/ml_metrics/005930_20240101_20240131_h5.parquet")
+    )
+    assert (
+        ml_model_artifact_file_path(tmp_path, "005930", "20240101", "20240131", 5)
+        .as_posix()
+        .endswith("models/probability_baseline/005930_20240101_20240131_h5.json")
+    )
+    assert (
+        ml_model_report_file_path(tmp_path, "005930", "20240101", "20240131", 5)
+        .as_posix()
+        .endswith("reports/modeling/probability_baseline_005930_20240101_20240131_h5.md")
     )

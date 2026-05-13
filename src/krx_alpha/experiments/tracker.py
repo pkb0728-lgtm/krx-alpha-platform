@@ -11,6 +11,11 @@ import pandas as pd
 from krx_alpha.backtest.simple_backtester import BacktestConfig
 from krx_alpha.backtest.walk_forward import WalkForwardConfig
 from krx_alpha.database.storage import experiment_log_file_path
+from krx_alpha.models.probability_baseline import (
+    ML_PROBABILITY_BASELINE_MODEL_NAME,
+    ML_PROBABILITY_BASELINE_MODEL_VERSION,
+    MLProbabilityBaselineConfig,
+)
 
 EXPERIMENT_COLUMNS = [
     "run_id",
@@ -200,6 +205,46 @@ def build_daily_job_experiment_record(
     )
 
 
+def build_ml_baseline_experiment_record(
+    metrics: Any,
+    config: MLProbabilityBaselineConfig,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    artifact_path: Path,
+    created_at: datetime | None = None,
+    run_id: str | None = None,
+) -> ExperimentRecord:
+    test_metric = metrics[metrics["split"] == "test"].iloc[0]
+    params = asdict(config)
+    metric_values = {
+        "row_count": int(test_metric["row_count"]),
+        "positive_label_rate": float(test_metric["positive_label_rate"]),
+        "predicted_positive_rate": float(test_metric["predicted_positive_rate"]),
+        "accuracy": float(test_metric["accuracy"]),
+        "precision": float(test_metric["precision"]),
+        "recall": float(test_metric["recall"]),
+        "f1_score": float(test_metric["f1_score"]),
+        "roc_auc": float(test_metric["roc_auc"]),
+        "brier_score": float(test_metric["brier_score"]),
+    }
+    return _build_record(
+        experiment_name="ml_probability_baseline",
+        run_type="ml_baseline",
+        ticker=ticker,
+        universe="",
+        start_date=start_date,
+        end_date=end_date,
+        params=params,
+        metrics=metric_values,
+        artifact_path=artifact_path,
+        created_at=created_at,
+        run_id=run_id,
+        model_name=ML_PROBABILITY_BASELINE_MODEL_NAME,
+        model_version=ML_PROBABILITY_BASELINE_MODEL_VERSION,
+    )
+
+
 def _build_record(
     experiment_name: str,
     run_type: str,
@@ -212,6 +257,8 @@ def _build_record(
     artifact_path: Path,
     created_at: datetime | None,
     run_id: str | None,
+    model_name: str = DEFAULT_MODEL_NAME,
+    model_version: str = DEFAULT_MODEL_VERSION,
 ) -> ExperimentRecord:
     timestamp = created_at or datetime.now(UTC)
     return ExperimentRecord(
@@ -223,8 +270,8 @@ def _build_record(
         universe=universe,
         start_date=start_date,
         end_date=end_date,
-        model_name=DEFAULT_MODEL_NAME,
-        model_version=DEFAULT_MODEL_VERSION,
+        model_name=model_name,
+        model_version=model_version,
         params_json=_to_json(params),
         metrics_json=_to_json(metrics),
         artifact_path=str(artifact_path),
