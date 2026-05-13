@@ -1,5 +1,7 @@
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import date
+from io import StringIO
 from typing import Any, Protocol
 
 import pandas as pd
@@ -88,19 +90,21 @@ class PykrxPriceCollector:
 
     def _load_default_provider(self) -> PriceProvider:
         try:
-            from pykrx import stock
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                from pykrx import stock
         except ImportError as exc:
             raise RuntimeError(
                 "pykrx is not installed. Run: python -m pip install -e .[data]"
             ) from exc
 
         def provider(start_date: str, end_date: str, ticker: str, adjusted: bool) -> Any:
-            return stock.get_market_ohlcv_by_date(
-                start_date,
-                end_date,
-                ticker,
-                adjusted=adjusted,
-            )
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                return stock.get_market_ohlcv_by_date(
+                    start_date,
+                    end_date,
+                    ticker,
+                    adjusted=adjusted,
+                )
 
         return provider
 

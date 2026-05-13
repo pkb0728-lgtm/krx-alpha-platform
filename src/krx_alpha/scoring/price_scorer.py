@@ -75,9 +75,10 @@ def _attach_financial_scores(frame: Any, financial_feature_frame: Any | None) ->
     financials["ticker"] = financials["ticker"].astype(str).str.zfill(6)
     financials["bsns_year"] = financials["bsns_year"].astype(str)
     financials["reprt_code"] = financials["reprt_code"].astype(str)
+    financials["fs_priority"] = financials["fs_div"].astype(str).map({"OFS": 0, "CFS": 1}).fillna(0)
 
     latest_financials = (
-        financials.sort_values(["ticker", "bsns_year", "reprt_code"])
+        financials.sort_values(["ticker", "bsns_year", "reprt_code", "fs_priority"])
         .groupby("ticker", as_index=False)
         .tail(1)
     )

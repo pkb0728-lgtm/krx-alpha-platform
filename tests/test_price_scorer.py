@@ -99,6 +99,60 @@ def test_price_scorer_blends_financial_score() -> None:
     assert score_frame.loc[0, "total_score"] > 50.0
 
 
+def test_price_scorer_prefers_consolidated_financial_score() -> None:
+    feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "close": [72700],
+            "volume": [1200],
+            "trading_value": [87240000],
+            "return_1d": [-0.02],
+            "ma_5": [73780],
+            "ma_20": [74070],
+            "close_to_ma_5": [-0.015],
+            "close_to_ma_20": [-0.018],
+            "volume_change_5d": [0.1],
+            "trading_value_change_5d": [0.05],
+            "range_pct": [0.03],
+            "volatility_5d": [0.02],
+            "volatility_20d": [0.018],
+            "rsi_14": [48],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+    financial_feature_frame = pd.DataFrame(
+        {
+            "corp_code": ["00126380", "00126380"],
+            "ticker": ["005930", "005930"],
+            "bsns_year": ["2023", "2023"],
+            "reprt_code": ["11011", "11011"],
+            "fs_div": ["CFS", "OFS"],
+            "revenue": [1200.0, 1100.0],
+            "operating_income": [240.0, -10.0],
+            "net_income": [180.0, 120.0],
+            "total_assets": [3000.0, 2800.0],
+            "total_liabilities": [900.0, 1000.0],
+            "total_equity": [2100.0, 1800.0],
+            "revenue_growth": [0.2, -0.1],
+            "operating_margin": [0.2, -0.01],
+            "net_margin": [0.15, 0.11],
+            "debt_ratio": [0.43, 0.55],
+            "roe": [0.086, 0.067],
+            "financial_score": [95.0, 55.0],
+            "financial_reason": ["consolidated", "separate"],
+            "source": ["opendart"] * 2,
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")] * 2,
+        }
+    )
+
+    score_frame = PriceScorer().score(feature_frame, financial_feature_frame)
+
+    assert score_frame.loc[0, "financial_score"] == 95.0
+    assert score_frame.loc[0, "financial_reason"] == "consolidated"
+
+
 def test_price_scorer_blends_disclosure_event_score() -> None:
     feature_frame = pd.DataFrame(
         {
