@@ -92,6 +92,8 @@ The Streamlit dashboard displays:
 - action distribution chart
 - latest backtest metrics
 - latest backtest trades
+- latest walk-forward summary
+- fold-level walk-forward validation table
 - selected stock Markdown report
 
 Run:

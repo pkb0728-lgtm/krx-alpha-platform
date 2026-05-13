@@ -22,6 +22,15 @@ def find_latest_backtest_metrics(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_walk_forward_summary(project_root: Path) -> Path | None:
+    summary_dir = project_root / "data" / "backtest" / "walk_forward_summary"
+    if not summary_dir.exists():
+        return None
+
+    files = sorted(summary_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def load_universe_summary(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty:
@@ -50,6 +59,29 @@ def load_backtest_trades(metrics_path: Path) -> Any:
         return pd.DataFrame()
 
     return pd.read_parquet(trades_path)
+
+
+def load_walk_forward_summary(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values(
+        ["compounded_return", "positive_fold_ratio", "average_sharpe_ratio"],
+        ascending=[False, False, False],
+    ).reset_index(drop=True)
+
+
+def load_walk_forward_folds(summary_path: Path) -> Any:
+    folds_path = summary_path.parents[1] / "walk_forward_folds" / summary_path.name
+    if not folds_path.exists():
+        return pd.DataFrame()
+
+    frame = pd.read_parquet(folds_path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values("fold").reset_index(drop=True)
 
 
 def load_markdown(path: Path) -> str:

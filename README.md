@@ -28,7 +28,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - Markdown reports for single-stock and universe screening
-- Streamlit dashboard for universe, report, and backtest review
+- Streamlit dashboard for universe, report, backtest, and walk-forward review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -92,7 +92,9 @@ flowchart LR
     L --> M["Streamlit dashboard"]
     J --> N["backtest engine"]
     D --> N
+    N --> V["walk-forward validation"]
     N --> O["backtest report"]
+    V --> M
     P["universe registry"] --> A
     P --> L
     R --> Q["regime report"]
@@ -216,7 +218,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 52 passed
+pytest: 53 passed
 ruff: all checks passed
 mypy: no issues found
 ```

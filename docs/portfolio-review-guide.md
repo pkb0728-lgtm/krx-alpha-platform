@@ -84,7 +84,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard with universe and backtest review
+- Streamlit dashboard with universe, backtest, and walk-forward review
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
 - walk-forward validation with fold-level metrics

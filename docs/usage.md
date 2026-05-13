@@ -202,4 +202,5 @@ http://localhost:8501
 ```
 
 The dashboard shows the latest universe summary, action distribution, latest
-backtest metrics, backtest trades, and selected Markdown report.
+backtest metrics, backtest trades, walk-forward summary, fold-level validation
+results, and selected Markdown report.

@@ -8,10 +8,13 @@ from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
     find_latest_universe_summary,
+    find_latest_walk_forward_summary,
     load_backtest_metrics,
     load_backtest_trades,
     load_markdown,
     load_universe_summary,
+    load_walk_forward_folds,
+    load_walk_forward_summary,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -138,6 +141,71 @@ def main() -> None:
                 ]
                 st.dataframe(
                     trades_frame[display_trade_columns],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
+    st.subheader("Walk-Forward Validation")
+    walk_forward_path = find_latest_walk_forward_summary(PROJECT_ROOT)
+    if walk_forward_path is None:
+        st.info("No walk-forward summary found.")
+    else:
+        walk_forward_summary = load_walk_forward_summary(walk_forward_path)
+        if walk_forward_summary.empty:
+            st.info("Walk-forward summary is empty.")
+        else:
+            walk_forward_metric = walk_forward_summary.iloc[0]
+            walk_forward_cols = st.columns(6)
+            walk_forward_cols[0].metric("Ticker", str(walk_forward_metric["ticker"]))
+            walk_forward_cols[1].metric("Folds", int(walk_forward_metric["fold_count"]))
+            walk_forward_cols[2].metric(
+                "Trades",
+                int(walk_forward_metric["total_trade_count"]),
+            )
+            walk_forward_cols[3].metric(
+                "Compounded return",
+                _format_percent(walk_forward_metric["compounded_return"]),
+            )
+            walk_forward_cols[4].metric(
+                "Worst MDD",
+                _format_percent(walk_forward_metric["worst_max_drawdown"]),
+            )
+            walk_forward_cols[5].metric(
+                "Positive folds",
+                _format_percent(walk_forward_metric["positive_fold_ratio"]),
+            )
+
+            st.caption(f"Latest walk-forward file: {walk_forward_path.name}")
+            st.dataframe(
+                walk_forward_summary,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            folds_frame = load_walk_forward_folds(walk_forward_path)
+            if not folds_frame.empty:
+                st.subheader("Walk-Forward Folds")
+                display_fold_columns = [
+                    "ticker",
+                    "fold",
+                    "train_start",
+                    "train_end",
+                    "test_start",
+                    "test_end",
+                    "signal_count",
+                    "trade_count",
+                    "win_rate",
+                    "cumulative_return",
+                    "max_drawdown",
+                    "sharpe_ratio",
+                ]
+                display_fold_columns = [
+                    column for column in display_fold_columns if column in folds_frame.columns
+                ]
+                st.dataframe(
+                    folds_frame[display_fold_columns],
                     hide_index=True,
                     use_container_width=True,
                 )
