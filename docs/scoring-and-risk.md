@@ -53,12 +53,14 @@ Current risk filters include:
 - wide daily range
 - high short-term volatility
 - weak risk score
+- unfavorable market regime, currently `bear` and `high_volatility`
 
 ## Market Regime
 
-The MVP also generates a separate market regime context with labels such as
-`bull`, `bear`, `sideways`, `high_volatility`, and `rebound`. This currently
-supports human review and is not yet an automatic scoring input.
+The MVP generates a market regime context with labels such as `bull`, `bear`,
+`sideways`, `high_volatility`, and `rebound`. The Signal Engine now carries
+regime columns into final signals and blocks buy candidates during `bear` or
+`high_volatility` regimes.
 
 ## Position Size
 

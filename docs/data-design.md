@@ -106,8 +106,8 @@ volatility_20d
 close_to_ma_60
 ```
 
-The regime output is currently used as a human review context. It is not yet
-automatically applied to scoring or risk filters.
+The regime output is used both as human review context and as an input to the
+final risk filter.
 
 ### Backtest Outputs
 

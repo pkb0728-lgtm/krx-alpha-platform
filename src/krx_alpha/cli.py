@@ -387,7 +387,14 @@ def generate_signal(
 
     score_frame = read_parquet(score_path)
     feature_frame = read_parquet(feature_path)
-    signal_frame = SignalEngine().generate(score_frame, feature_frame)
+    regime_path = market_regime_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    regime_frame = read_parquet(regime_path) if regime_path.exists() else None
+    signal_frame = SignalEngine().generate(score_frame, feature_frame, regime_frame)
     output_path = final_signal_file_path(
         settings.project_root,
         request.ticker,
@@ -429,11 +436,13 @@ def run_pipeline(
     console.print(f"Raw: {result.raw_path}")
     console.print(f"Processed: {result.processed_path}")
     console.print(f"Features: {result.feature_path}")
+    console.print(f"Regime: {result.regime_path}")
     console.print(f"Scores: {result.score_path}")
     console.print(f"Signals: {result.signal_path}")
     console.print(f"Report: {result.report_path}")
     console.print(f"Latest action: {result.latest_action}")
     console.print(f"Confidence: {result.latest_confidence_score:.2f}")
+    console.print(f"Market regime: {result.latest_market_regime}")
 
 
 @app.command("list-universe")
@@ -530,7 +539,17 @@ def run_universe(
     console.print(f"Failed: {result.failed_count}")
     console.print(f"Summary: {result.summary_path}")
     console.print(f"CSV: {result.summary_csv_path}")
-    console.print(summary_frame[["ticker", "status", "latest_action", "latest_confidence_score"]])
+    console.print(
+        summary_frame[
+            [
+                "ticker",
+                "status",
+                "latest_action",
+                "latest_confidence_score",
+                "latest_market_regime",
+            ]
+        ]
+    )
 
 
 def _parse_tickers(tickers: str) -> list[str]:

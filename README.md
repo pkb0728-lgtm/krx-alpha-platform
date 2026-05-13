@@ -17,7 +17,7 @@ scoring, risk filtering, backtesting, report generation, and a Streamlit dashboa
 - Data contracts and validation checks
 - Named universe management for repeatable screening
 - Technical feature engineering
-- Market regime analysis before signal review
+- Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
@@ -173,7 +173,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 28 passed
+pytest: 29 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -219,7 +219,7 @@ only committed environment file.
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
 - Add OpenDART financial/disclosure features
 - Add investor flow and short-selling features
-- Apply market regime as a scoring and risk filter
+- Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with walk-forward validation and portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking

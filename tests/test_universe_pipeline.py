@@ -21,11 +21,14 @@ class FakeDailyPipeline:
             raw_path=path,
             processed_path=path,
             feature_path=path,
+            regime_path=path,
+            regime_report_path=report_path,
             score_path=path,
             signal_path=path,
             report_path=report_path,
             latest_action="watch",
             latest_confidence_score=60.0,
+            latest_market_regime="neutral",
         )
 
 

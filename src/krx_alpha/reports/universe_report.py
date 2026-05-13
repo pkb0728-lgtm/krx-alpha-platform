@@ -72,16 +72,37 @@ def _format_success_table(frame: pd.DataFrame) -> str:
     if frame.empty:
         return "No successful ticker results."
 
-    rows = ["| Rank | Ticker | Action | Confidence | Report |", "| --- | --- | --- | ---: | --- |"]
+    has_regime = "latest_market_regime" in frame.columns
+    if has_regime:
+        rows = [
+            "| Rank | Ticker | Action | Confidence | Regime | Report |",
+            "| --- | --- | --- | ---: | --- | --- |",
+        ]
+    else:
+        rows = [
+            "| Rank | Ticker | Action | Confidence | Report |",
+            "| --- | --- | --- | ---: | --- |",
+        ]
     for rank, (_, row) in enumerate(frame.iterrows(), start=1):
-        rows.append(
-            "| "
-            f"{rank} | "
-            f"{row['ticker']} | "
-            f"{row['latest_action']} | "
-            f"{float(row['latest_confidence_score']):.2f} | "
-            f"{row['report_path']} |"
-        )
+        if has_regime:
+            rows.append(
+                "| "
+                f"{rank} | "
+                f"{row['ticker']} | "
+                f"{row['latest_action']} | "
+                f"{float(row['latest_confidence_score']):.2f} | "
+                f"{row['latest_market_regime']} | "
+                f"{row['report_path']} |"
+            )
+        else:
+            rows.append(
+                "| "
+                f"{rank} | "
+                f"{row['ticker']} | "
+                f"{row['latest_action']} | "
+                f"{float(row['latest_confidence_score']):.2f} | "
+                f"{row['report_path']} |"
+            )
     return "\n".join(rows)
 
 

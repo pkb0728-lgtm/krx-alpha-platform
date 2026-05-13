@@ -8,6 +8,8 @@ from krx_alpha.database.storage import (
     daily_report_file_path,
     daily_score_file_path,
     final_signal_file_path,
+    market_regime_file_path,
+    market_regime_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_price_file_path,
@@ -17,7 +19,9 @@ from krx_alpha.database.storage import (
 )
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.processors.price_processor import PriceProcessor
+from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
 from krx_alpha.reports.daily_report import DailyReportGenerator
+from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.scoring.price_scorer import PriceScorer
 from krx_alpha.signals.signal_engine import SignalEngine
 
@@ -27,11 +31,14 @@ class DailyPipelineResult:
     raw_path: Path
     processed_path: Path
     feature_path: Path
+    regime_path: Path
+    regime_report_path: Path
     score_path: Path
     signal_path: Path
     report_path: Path
     latest_action: str
     latest_confidence_score: float
+    latest_market_regime: str
 
 
 class DailyPipeline:
@@ -68,6 +75,22 @@ class DailyPipeline:
         )
         write_parquet(feature_frame, feature_path)
 
+        regime_frame = MarketRegimeAnalyzer().analyze(feature_frame)
+        regime_path = market_regime_file_path(
+            self.project_root,
+            request.ticker,
+            request.pykrx_start_date,
+            request.pykrx_end_date,
+        )
+        write_parquet(regime_frame, regime_path)
+        regime_report_path = market_regime_report_file_path(
+            self.project_root,
+            request.ticker,
+            request.pykrx_start_date,
+            request.pykrx_end_date,
+        )
+        write_text(MarketRegimeReportGenerator().generate(regime_frame), regime_report_path)
+
         score_frame = PriceScorer().score(feature_frame)
         score_path = daily_score_file_path(
             self.project_root,
@@ -77,7 +100,7 @@ class DailyPipeline:
         )
         write_parquet(score_frame, score_path)
 
-        signal_frame = SignalEngine().generate(score_frame, feature_frame)
+        signal_frame = SignalEngine().generate(score_frame, feature_frame, regime_frame)
         signal_path = final_signal_file_path(
             self.project_root,
             request.ticker,
@@ -96,13 +119,17 @@ class DailyPipeline:
         write_text(report, report_path)
 
         latest_signal = read_parquet(signal_path).sort_values("date").iloc[-1]
+        latest_regime = regime_frame.sort_values("date").iloc[-1]
         return DailyPipelineResult(
             raw_path=raw_path,
             processed_path=processed_path,
             feature_path=feature_path,
+            regime_path=regime_path,
+            regime_report_path=regime_report_path,
             score_path=score_path,
             signal_path=signal_path,
             report_path=report_path,
             latest_action=str(latest_signal["final_action"]),
             latest_confidence_score=float(latest_signal["confidence_score"]),
+            latest_market_regime=str(latest_regime["regime"]),
         )

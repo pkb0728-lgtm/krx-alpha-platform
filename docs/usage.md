@@ -39,9 +39,11 @@ This creates:
 data/raw/prices_daily/
 data/processed/prices_daily/
 data/features/prices_daily/
+data/signals/market_regime_daily/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 reports/daily/
+reports/regime/
 ```
 
 ## 4. List A Named Universe
@@ -88,7 +90,8 @@ reports/universe/universe_20240101_20240131.md
 
 ## 6. Analyze Market Regime
 
-Run this after `run-pipeline` has created price features:
+`run-pipeline` creates regime outputs automatically. You can also refresh the
+regime analysis separately:
 
 ```powershell
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
@@ -102,7 +105,8 @@ reports/regime/005380_20240101_20240331.md
 ```
 
 The MVP regime analyzer classifies conditions such as `bull`, `bear`,
-`sideways`, `high_volatility`, `rebound`, and `neutral`.
+`sideways`, `high_volatility`, `rebound`, and `neutral`. `bear` and
+`high_volatility` regimes are connected to the final risk filter.
 
 ## 7. Backtest A Stock Signal
 

@@ -37,7 +37,18 @@ def test_daily_pipeline_runs_with_mock_collector(tmp_path, monkeypatch) -> None:
     assert result.raw_path.exists()
     assert result.processed_path.exists()
     assert result.feature_path.exists()
+    assert result.regime_path.exists()
+    assert result.regime_report_path.exists()
     assert result.score_path.exists()
     assert result.signal_path.exists()
     assert result.report_path.exists()
     assert result.latest_action in {"buy_candidate", "watch", "hold", "avoid", "blocked"}
+    assert result.latest_market_regime in {
+        "bull",
+        "bear",
+        "sideways",
+        "high_volatility",
+        "rebound",
+        "neutral",
+        "insufficient_data",
+    }

@@ -26,7 +26,7 @@ It is not a price prediction model.
 
 - No financial statement data yet
 - No investor flow data yet
-- Market regime is generated separately but not yet applied as an automatic filter
+- Market regime blocks `bear` and `high_volatility` final signals
 - Only simple single-stock backtest validation so far
 - No machine learning model yet
 

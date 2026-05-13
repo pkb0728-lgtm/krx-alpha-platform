@@ -34,3 +34,9 @@ def validate_final_signal_frame(frame: Any) -> None:
 
     if frame["suggested_position_pct"].dropna().between(0, 100).all() is False:
         raise ValueError("suggested_position_pct values must be between 0 and 100.")
+
+    if (
+        "market_regime_score" in frame.columns
+        and frame["market_regime_score"].dropna().between(0, 100).all() is False
+    ):
+        raise ValueError("market_regime_score values must be between 0 and 100.")

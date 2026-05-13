@@ -10,6 +10,7 @@ class RiskFilterConfig:
     max_range_pct: float = 0.07
     max_volatility_5d: float = 0.04
     min_risk_score: float = 40.0
+    blocked_market_regimes: tuple[str, ...] = ("bear", "high_volatility")
 
 
 class RiskFilter:
@@ -39,5 +40,9 @@ class RiskFilter:
         risk_score = row.get("risk_score")
         if pd.notna(risk_score) and float(risk_score) < self.config.min_risk_score:
             flags.append("weak_risk_score")
+
+        market_regime = str(row.get("market_regime", "")).lower()
+        if market_regime in self.config.blocked_market_regimes:
+            flags.append(f"market_regime_{market_regime}")
 
         return flags

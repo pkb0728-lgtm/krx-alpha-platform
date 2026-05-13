@@ -45,7 +45,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - Each data layer is persisted.
 - Named universes make screening repeatable.
 - Features are reusable.
-- Market regime is analyzed before reviewing signals.
+- Market regime can block signals before they become buy candidates.
 - Signals are explainable.
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
@@ -67,7 +67,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 ## Next Portfolio Improvements
 
 - Walk-forward backtesting and portfolio-level constraints
-- Apply market regime to scoring and risk filters
+- Calibrate market regime thresholds with longer validation windows
 - OpenDART disclosure features
 - Investor flow features
 - ML baseline with walk-forward validation

@@ -36,7 +36,7 @@ def main() -> None:
     failed_count = int((summary_frame["status"] == "failed").sum())
     top_row = summary_frame.iloc[0] if not summary_frame.empty else None
 
-    metric_cols = st.columns(4)
+    metric_cols = st.columns(5)
     metric_cols[0].metric("Tickers", len(summary_frame))
     metric_cols[1].metric("Success", success_count)
     metric_cols[2].metric("Failed", failed_count)
@@ -45,6 +45,12 @@ def main() -> None:
         str(top_row["ticker"]) if top_row is not None else "N/A",
         str(top_row["latest_action"]) if top_row is not None else None,
     )
+    top_regime = (
+        str(top_row["latest_market_regime"])
+        if top_row is not None and "latest_market_regime" in summary_frame.columns
+        else "N/A"
+    )
+    metric_cols[4].metric("Top regime", top_regime)
 
     st.divider()
 
@@ -56,8 +62,10 @@ def main() -> None:
             "status",
             "latest_action",
             "latest_confidence_score",
+            "latest_market_regime",
             "error",
         ]
+        display_columns = [column for column in display_columns if column in summary_frame.columns]
         st.dataframe(
             summary_frame[display_columns],
             hide_index=True,

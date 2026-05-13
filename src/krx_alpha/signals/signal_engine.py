@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from krx_alpha.contracts.feature_contract import validate_price_feature_frame
+from krx_alpha.contracts.regime_contract import validate_market_regime_frame
 from krx_alpha.contracts.score_contract import validate_daily_score_frame
 from krx_alpha.contracts.signal_contract import validate_final_signal_frame
 from krx_alpha.risk.risk_filters import RiskFilter
@@ -13,6 +14,9 @@ FINAL_SIGNAL_COLUMNS = [
     "as_of_date",
     "ticker",
     "source_signal_label",
+    "market_regime",
+    "market_regime_score",
+    "market_regime_risk_level",
     "final_action",
     "confidence_score",
     "risk_blocked",
@@ -29,7 +33,12 @@ class SignalEngine:
     def __init__(self, risk_filter: RiskFilter | None = None) -> None:
         self.risk_filter = risk_filter or RiskFilter()
 
-    def generate(self, score_frame: Any, feature_frame: Any) -> Any:
+    def generate(
+        self,
+        score_frame: Any,
+        feature_frame: Any,
+        regime_frame: Any | None = None,
+    ) -> Any:
         validate_daily_score_frame(score_frame)
         validate_price_feature_frame(feature_frame)
 
@@ -49,6 +58,7 @@ class SignalEngine:
             "volatility_5d",
         ]
         frame = scores.merge(features[feature_columns], on=["date", "ticker"], how="left")
+        frame = _merge_regime(frame, regime_frame)
 
         frame["risk_flags"] = frame.apply(lambda row: self.risk_filter.evaluate(row), axis=1)
         frame["risk_blocked"] = frame["risk_flags"].apply(bool)
@@ -63,6 +73,31 @@ class SignalEngine:
         signal_frame = frame[FINAL_SIGNAL_COLUMNS]
         validate_final_signal_frame(signal_frame)
         return signal_frame
+
+
+def _merge_regime(frame: Any, regime_frame: Any | None) -> Any:
+    if regime_frame is None:
+        frame["market_regime"] = "unknown"
+        frame["market_regime_score"] = 50.0
+        frame["market_regime_risk_level"] = "medium"
+        return frame
+
+    validate_market_regime_frame(regime_frame)
+    regimes = regime_frame.copy()
+    regimes["date"] = pd.to_datetime(regimes["date"]).dt.date
+    regimes["ticker"] = regimes["ticker"].astype(str).str.zfill(6)
+    regime_columns = [
+        "date",
+        "ticker",
+        "regime",
+        "regime_score",
+        "risk_level",
+    ]
+    merged = frame.merge(regimes[regime_columns], on=["date", "ticker"], how="left")
+    merged["market_regime"] = merged["regime"].fillna("unknown")
+    merged["market_regime_score"] = merged["regime_score"].fillna(50.0)
+    merged["market_regime_risk_level"] = merged["risk_level"].fillna("medium")
+    return merged
 
 
 def _final_action(row: pd.Series) -> str:
