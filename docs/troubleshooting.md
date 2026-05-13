@@ -52,3 +52,24 @@ streamlit run src/krx_alpha/dashboard/app.py
 When a new required column is added to a data contract, update both production
 code and test fixtures. This is expected because contracts protect the pipeline
 from silent schema drift.
+
+## Telegram Token Or Chat ID Missing
+
+Preview mode does not need Telegram credentials:
+
+```powershell
+python main.py send-telegram-daily --dry-run
+```
+
+To actually send a message, add these values to `.env`:
+
+```text
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Then run:
+
+```powershell
+python main.py send-telegram-daily --send
+```

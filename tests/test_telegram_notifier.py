@@ -1,0 +1,106 @@
+from datetime import datetime
+from typing import Any
+from urllib import request
+
+import pandas as pd
+import pytest
+
+from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
+
+
+class FakeTelegramResponse:
+    status = 200
+
+    def __enter__(self) -> "FakeTelegramResponse":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return b'{"ok": true}'
+
+
+def test_build_daily_telegram_message_includes_core_sections() -> None:
+    summary = pd.DataFrame(
+        {
+            "ticker": ["005930", "005380"],
+            "status": ["success", "success"],
+            "latest_action": ["watch", "buy_candidate"],
+            "latest_confidence_score": [63.78, 72.83],
+            "latest_financial_score": [50.0, 80.0],
+            "latest_event_score": [50.0, 55.0],
+            "latest_flow_score": [85.0, 70.0],
+            "latest_market_regime": ["neutral", "bull"],
+        }
+    )
+    backtest = pd.DataFrame(
+        {
+            "ticker": ["005380"],
+            "trade_count": [7],
+            "win_rate": [0.5714],
+            "cumulative_return": [0.7867],
+            "max_drawdown": [-0.1035],
+            "sharpe_ratio": [4.33],
+        }
+    )
+    walk_forward = pd.DataFrame(
+        {
+            "ticker": ["005380"],
+            "fold_count": [3],
+            "total_trade_count": [2],
+            "compounded_return": [0.0364],
+            "worst_max_drawdown": [-0.052],
+            "positive_fold_ratio": [0.6667],
+        }
+    )
+
+    message = build_daily_telegram_message(
+        summary,
+        backtest_metrics=backtest,
+        walk_forward_summary=walk_forward,
+        generated_at=datetime(2026, 5, 13, 9, 0),
+        top_n=1,
+    )
+
+    assert "KRX Alpha Daily Brief" in message
+    assert "1. 005380 | buy_candidate" in message
+    assert "Backtest" in message
+    assert "Walk-forward" in message
+    assert "Screening aid only" in message
+
+
+def test_telegram_notifier_dry_run_does_not_require_credentials() -> None:
+    result = TelegramNotifier(bot_token=None, chat_id=None).send_message("hello", dry_run=True)
+
+    assert result.sent is False
+    assert result.dry_run is True
+    assert result.message == "hello"
+
+
+def test_telegram_notifier_uses_transport() -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_transport(telegram_request: request.Request, timeout: float) -> FakeTelegramResponse:
+        captured["url"] = telegram_request.full_url
+        captured["data"] = telegram_request.data
+        captured["timeout"] = timeout
+        return FakeTelegramResponse()
+
+    result = TelegramNotifier(
+        bot_token="token",
+        chat_id="123",
+        timeout_seconds=3.0,
+        transport=fake_transport,
+    ).send_message("hello")
+
+    assert result.sent is True
+    assert result.status_code == 200
+    assert "bottoken/sendMessage" in captured["url"]
+    assert b"chat_id=123" in captured["data"]
+    assert captured["timeout"] == 3.0
+
+
+def test_telegram_notifier_requires_credentials_when_sending() -> None:
+    with pytest.raises(ValueError, match="TELEGRAM_BOT_TOKEN"):
+        TelegramNotifier(bot_token=None, chat_id=None).send_message("hello")

@@ -7,7 +7,7 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
-backtesting, report generation, and a Streamlit dashboard.
+backtesting, report generation, Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -28,6 +28,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - Markdown reports for single-stock and universe screening
+- Telegram daily brief preview and send command
 - Streamlit dashboard for universe, report, backtest, and walk-forward review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
@@ -53,6 +54,7 @@ select named universe
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> generate Markdown reports
+-> send or preview Telegram daily brief
 -> view results in Streamlit
 ```
 
@@ -207,6 +209,18 @@ Open:
 http://localhost:8501
 ```
 
+Telegram daily brief preview:
+
+```powershell
+python main.py send-telegram-daily --dry-run
+```
+
+After setting `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`, send it:
+
+```powershell
+python main.py send-telegram-daily --send
+```
+
 ## Quality Checks
 
 ```powershell
@@ -218,7 +232,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 53 passed
+pytest: 57 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -279,5 +293,5 @@ only committed environment file.
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking
-- Add Telegram daily notifications
+- Add scheduled Telegram daily notifications
 - Add Docker Compose dashboard profile

@@ -20,6 +20,11 @@ from krx_alpha.collectors.investor_flow_collector import (
 )
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 from krx_alpha.configs.settings import settings
+from krx_alpha.dashboard.data_loader import (
+    find_latest_backtest_metrics,
+    find_latest_universe_summary,
+    find_latest_walk_forward_summary,
+)
 from krx_alpha.database.storage import (
     backtest_metrics_file_path,
     backtest_report_file_path,
@@ -66,6 +71,7 @@ from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scoring.price_scorer import PriceScorer
 from krx_alpha.signals.signal_engine import SignalEngine
+from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
 from krx_alpha.universe.static_universe import UniverseRegistry
 from krx_alpha.utils.logger import configure_logger
 
@@ -1322,3 +1328,80 @@ def walk_forward_backtest(
     console.print(f"Worst max drawdown: {float(metric['worst_max_drawdown']) * 100:.2f}%")
     console.print(f"Positive fold ratio: {float(metric['positive_fold_ratio']) * 100:.2f}%")
     console.print(f"Report: {report_path}")
+
+
+@app.command("send-telegram-daily")
+def send_telegram_daily(
+    summary_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--summary-path", help="Universe summary parquet path. Uses latest if omitted."
+        ),
+    ] = None,
+    include_backtest: Annotated[
+        bool,
+        typer.Option(
+            "--include-backtest/--no-backtest",
+            help="Include latest simple backtest metrics when available.",
+        ),
+    ] = True,
+    include_walk_forward: Annotated[
+        bool,
+        typer.Option(
+            "--include-walk-forward/--no-walk-forward",
+            help="Include latest walk-forward validation summary when available.",
+        ),
+    ] = True,
+    top_n: Annotated[
+        int,
+        typer.Option("--top-n", help="Number of ranked candidates to include."),
+    ] = 5,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run/--send", help="Preview message locally or send to Telegram."),
+    ] = True,
+) -> None:
+    """Send or preview a compact Telegram daily operations brief."""
+    configure_logger(settings.log_level)
+
+    resolved_summary_path = summary_path or find_latest_universe_summary(settings.project_root)
+    if resolved_summary_path is None or not resolved_summary_path.exists():
+        raise typer.BadParameter(
+            "Universe summary file does not exist. Run run-universe first or pass --summary-path."
+        )
+
+    universe_summary = read_parquet(resolved_summary_path)
+    backtest_metrics = None
+    if include_backtest:
+        metrics_path = find_latest_backtest_metrics(settings.project_root)
+        backtest_metrics = read_parquet(metrics_path) if metrics_path is not None else None
+
+    walk_forward_summary = None
+    if include_walk_forward:
+        walk_forward_path = find_latest_walk_forward_summary(settings.project_root)
+        walk_forward_summary = (
+            read_parquet(walk_forward_path) if walk_forward_path is not None else None
+        )
+
+    message = build_daily_telegram_message(
+        universe_summary=universe_summary,
+        backtest_metrics=backtest_metrics,
+        walk_forward_summary=walk_forward_summary,
+        top_n=top_n,
+    )
+    notifier = TelegramNotifier(
+        bot_token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
+    )
+    try:
+        result = notifier.send_message(message, dry_run=dry_run)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    if result.dry_run:
+        console.print("[bold yellow]Telegram dry run. Message was not sent.[/bold yellow]")
+        console.print(result.message)
+        return
+
+    console.print("[bold green]Telegram daily brief sent.[/bold green]")
+    console.print(f"Status code: {result.status_code}")

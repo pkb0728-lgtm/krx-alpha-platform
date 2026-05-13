@@ -102,6 +102,35 @@ Run:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
+## Telegram Brief
+
+Example command:
+
+```powershell
+python main.py send-telegram-daily --dry-run
+```
+
+Example output:
+
+```text
+KRX Alpha Daily Brief
+Generated: 2026-05-13 09:00
+
+Universe
+- Tickers: 3
+- Success: 3
+- Failed: 0
+
+Top candidates
+1. 005380 | buy_candidate | score 72.83 | regime bull | F 80.00 / E 55.00 / Flow 70.00
+
+Backtest
+- 005380 | trades 7 | win 57.14% | return 78.67% | MDD -10.35% | Sharpe 4.33
+
+Walk-forward
+- 005380 | folds 3 | trades 2 | compounded 3.64% | worst MDD -5.20% | positive folds 66.67%
+```
+
 ## Backtest
 
 Example command:

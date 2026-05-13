@@ -49,3 +49,10 @@ GitHub Secrets, not in source files.
 
 Live OpenDART collection uses `DART_API_KEY`. The default examples use `--demo`
 so that no secret is required for local portfolio review.
+
+## Telegram
+
+Telegram alerts use `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. The default
+command mode is `--dry-run`, which prints the message locally without sending
+anything. Use `--send` only after checking that `.env` contains the correct
+bot token and chat ID.

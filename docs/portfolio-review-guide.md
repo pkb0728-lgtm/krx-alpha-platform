@@ -52,7 +52,13 @@ python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 -
 python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
 ```
 
-6. Explain why this is not just price prediction:
+6. Preview the Telegram operations brief:
+
+```powershell
+python main.py send-telegram-daily --dry-run
+```
+
+7. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
@@ -68,6 +74,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
 - Walk-forward validation checks signal stability across rolling test windows.
+- Telegram brief turns the pipeline output into an operations-ready alert.
 - Reports support human-in-the-loop review.
 
 ## Engineering Points
@@ -85,6 +92,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - testable modules
 - CI-ready quality checks
 - Streamlit dashboard with universe, backtest, and walk-forward review
+- Telegram daily brief with dry-run safety
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
 - walk-forward validation with fold-level metrics

@@ -33,6 +33,7 @@ flowchart TD
     J --> K["Reports"]
     J --> L["Universe summary"]
     L --> M["Streamlit dashboard"]
+    L --> T["Telegram brief"]
     J --> N["Backtest engine"]
     E --> N
     N --> Q["Walk-forward validation"]
@@ -58,6 +59,7 @@ flowchart TD
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display universe, backtest, and walk-forward validation results through Streamlit. |
+| `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
 
 ## Why This Architecture

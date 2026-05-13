@@ -204,3 +204,30 @@ http://localhost:8501
 The dashboard shows the latest universe summary, action distribution, latest
 backtest metrics, backtest trades, walk-forward summary, fold-level validation
 results, and selected Markdown report.
+
+## 10. Preview Or Send Telegram Brief
+
+Preview the daily brief without sending anything:
+
+```powershell
+python main.py send-telegram-daily --dry-run
+```
+
+The command uses the latest universe summary and, when available, the latest
+backtest and walk-forward validation results.
+
+To send the message, set these values in `.env`:
+
+```text
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Then run:
+
+```powershell
+python main.py send-telegram-daily --send
+```
+
+The default mode is `--dry-run` so beginners can verify the message safely
+before sending it to Telegram.
