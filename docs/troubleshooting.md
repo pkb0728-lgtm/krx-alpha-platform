@@ -68,3 +68,32 @@ Then run:
 ```powershell
 python main.py send-telegram-daily --send
 ```
+
+## Telegram SSL Certificate Verification Failed
+
+If `--send` fails with:
+
+```text
+CERTIFICATE_VERIFY_FAILED
+self-signed certificate in certificate chain
+```
+
+the Telegram token may still be correct. This usually means Python cannot
+verify the HTTPS certificate chain on the current network.
+
+Common causes:
+
+- antivirus HTTPS inspection
+- company/school proxy certificate
+- missing or outdated local certificate trust settings
+
+Recommended checks:
+
+```powershell
+python -m pip install --upgrade certifi
+python main.py send-telegram-daily --send
+```
+
+If it still fails, try another trusted network or disable HTTPS inspection for
+`api.telegram.org` in your antivirus/proxy settings. Do not disable SSL
+verification in code.

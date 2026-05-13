@@ -1649,6 +1649,16 @@ def send_telegram_daily(
         result = notifier.send_message(message, dry_run=dry_run)
     except (KeyError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
+    except RuntimeError as exc:
+        console.print("[bold red]Telegram send failed.[/bold red]")
+        console.print(str(exc))
+        if _contains_certificate_error(exc):
+            console.print(
+                "[yellow]SSL certificate verification failed. "
+                "Check antivirus HTTPS inspection, proxy certificates, or Windows/Python "
+                "certificate trust settings. The message was not sent.[/yellow]"
+            )
+        raise typer.Exit(code=1) from exc
 
     if result.dry_run:
         console.print("[bold yellow]Telegram dry run. Message was not sent.[/bold yellow]")
@@ -1889,3 +1899,12 @@ def _safe_report_name(value: str) -> str:
     return "".join(
         character if character.isalnum() or character in "_-" else "_" for character in value
     )
+
+
+def _contains_certificate_error(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    while current is not None:
+        if "CERTIFICATE_VERIFY_FAILED" in str(current):
+            return True
+        current = current.__cause__ or current.__context__
+    return False

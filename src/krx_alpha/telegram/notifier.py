@@ -1,6 +1,8 @@
+import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from time import sleep
 from typing import Any
 from urllib import parse, request
@@ -255,7 +257,20 @@ def _format_drift_lines(result: Any | None) -> list[str]:
 
 
 def _default_transport(telegram_request: request.Request, timeout: float) -> Any:
-    return request.urlopen(telegram_request, timeout=timeout)
+    context = _default_ssl_context()
+    if context is None:
+        return request.urlopen(telegram_request, timeout=timeout)
+    return request.urlopen(telegram_request, timeout=timeout, context=context)
+
+
+@lru_cache(maxsize=1)
+def _default_ssl_context() -> ssl.SSLContext | None:
+    try:
+        import certifi
+    except ImportError:
+        return None
+
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def _telegram_send_message_url(bot_token: str) -> str:
