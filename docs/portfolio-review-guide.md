@@ -43,6 +43,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 
 - The system uses data contracts.
 - Each data layer is persisted.
+- OpenDART collectors work in demo mode without exposing API keys.
 - Named universes make screening repeatable.
 - Features are reusable.
 - Market regime can block signals before they become buy candidates.
@@ -57,6 +58,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - CLI with Typer
 - Parquet data storage
 - named universe registry
+- OpenDART raw data collectors
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
@@ -68,7 +70,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 
 - Walk-forward backtesting and portfolio-level constraints
 - Calibrate market regime thresholds with longer validation windows
-- OpenDART disclosure features
+- OpenDART disclosure and financial scoring features
 - Investor flow features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking

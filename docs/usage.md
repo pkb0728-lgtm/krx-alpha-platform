@@ -67,7 +67,28 @@ data/processed/universe/demo.parquet
 data/processed/universe/demo.csv
 ```
 
-## 5. Run A Universe Pipeline
+## 5. Collect OpenDART Demo Data
+
+These commands work without an API key because they use built-in demo data:
+
+```powershell
+python main.py collect-dart-company --ticker 005930 --demo
+python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
+python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+```
+
+Output examples:
+
+```text
+data/raw/dart_company/00126380.parquet
+data/raw/dart_financials/00126380_2023_11011.parquet
+data/raw/dart_disclosures/00126380_20240101_20240131.parquet
+```
+
+To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
+`--demo` with `--live`.
+
+## 6. Run A Universe Pipeline
 
 ```powershell
 python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
@@ -88,7 +109,7 @@ data/signals/universe_summary_daily/universe_20240101_20240131.csv
 reports/universe/universe_20240101_20240131.md
 ```
 
-## 6. Analyze Market Regime
+## 7. Analyze Market Regime
 
 `run-pipeline` creates regime outputs automatically. You can also refresh the
 regime analysis separately:
@@ -108,7 +129,7 @@ The MVP regime analyzer classifies conditions such as `bull`, `bear`,
 `sideways`, `high_volatility`, `rebound`, and `neutral`. `bear` and
 `high_volatility` regimes are connected to the final risk filter.
 
-## 7. Backtest A Stock Signal
+## 8. Backtest A Stock Signal
 
 Run this after `run-pipeline` has created processed prices and final signals:
 
@@ -130,7 +151,7 @@ The MVP backtest enters on the next trading day's open after a
 `buy_candidate` signal, exits after the configured holding period, and applies
 simple transaction cost and slippage assumptions.
 
-## 8. Open The Dashboard
+## 9. Open The Dashboard
 
 Install dashboard dependencies if needed:
 

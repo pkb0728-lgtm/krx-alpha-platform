@@ -4,7 +4,7 @@
 
 | Layer | Purpose |
 | --- | --- |
-| `data/raw` | Source-shaped data with minimal changes. |
+| `data/raw` | Source-shaped price and OpenDART data with minimal changes. |
 | `data/processed` | Cleaned prices and named universe snapshots. |
 | `data/features` | Reusable model/scoring features. |
 | `data/signals` | Scores, regimes, final signals, and universe summaries. |
@@ -56,6 +56,74 @@ trading_value
 trading_value_is_estimated
 source
 collected_at
+```
+
+### Raw OpenDART Company Overview
+
+Path:
+
+```text
+data/raw/dart_company/{corp_code}.parquet
+```
+
+Important columns:
+
+```text
+corp_code
+stock_code
+stock_name
+corp_name
+corp_cls
+ceo_nm
+induty_code
+est_dt
+acc_mt
+```
+
+### Raw OpenDART Financial Statements
+
+Path:
+
+```text
+data/raw/dart_financials/{corp_code}_{year}_{report_code}.parquet
+```
+
+Important columns:
+
+```text
+corp_code
+ticker
+bsns_year
+reprt_code
+fs_div
+sj_div
+account_nm
+thstrm_amount
+thstrm_amount_value
+frmtrm_amount
+frmtrm_amount_value
+currency
+```
+
+### Raw OpenDART Disclosures
+
+Path:
+
+```text
+data/raw/dart_disclosures/{corp_code}_{start}_{end}.parquet
+```
+
+Important columns:
+
+```text
+corp_code
+corp_name
+stock_code
+report_nm
+rcept_no
+rcept_dt
+flr_nm
+rm
 ```
 
 ### Processed Daily Prices
@@ -147,6 +215,7 @@ The current contracts check:
 - invalid `high < low`
 - score ranges between 0 and 100
 - RSI range between 0 and 100
+- OpenDART corp_code and ticker formats
 
 ## Point-In-Time Principle
 

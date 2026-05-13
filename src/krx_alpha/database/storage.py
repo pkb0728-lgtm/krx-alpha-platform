@@ -46,6 +46,31 @@ def raw_price_file_path(project_root: Path, ticker: str, start_date: str, end_da
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def dart_company_file_path(project_root: Path, corp_code: str) -> Path:
+    dataset_dir = raw_dataset_dir(project_root, "dart_company")
+    return dataset_dir / f"{corp_code}.parquet"
+
+
+def dart_financial_file_path(
+    project_root: Path,
+    corp_code: str,
+    bsns_year: str,
+    reprt_code: str,
+) -> Path:
+    dataset_dir = raw_dataset_dir(project_root, "dart_financials")
+    return dataset_dir / f"{corp_code}_{bsns_year}_{reprt_code}.parquet"
+
+
+def dart_disclosure_file_path(
+    project_root: Path,
+    corp_code: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = raw_dataset_dir(project_root, "dart_disclosures")
+    return dataset_dir / f"{corp_code}_{start_date}_{end_date}.parquet"
+
+
 def processed_price_file_path(
     project_root: Path,
     ticker: str,

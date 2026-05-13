@@ -45,3 +45,7 @@ or Telegram.
 When CI/CD or scheduled runs are added, production secrets should be stored in
 GitHub Secrets, not in source files.
 
+## OpenDART
+
+Live OpenDART collection uses `DART_API_KEY`. The default examples use `--demo`
+so that no secret is required for local portfolio review.

@@ -6,6 +6,13 @@ import typer
 from rich.console import Console
 
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
+from krx_alpha.collectors.dart_collector import (
+    DartCompanyRequest,
+    DartDisclosureSearchRequest,
+    DartFinancialStatementRequest,
+    OpenDartCollector,
+    resolve_corp_code,
+)
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 from krx_alpha.configs.settings import settings
 from krx_alpha.database.storage import (
@@ -14,6 +21,9 @@ from krx_alpha.database.storage import (
     backtest_trades_file_path,
     daily_report_file_path,
     daily_score_file_path,
+    dart_company_file_path,
+    dart_disclosure_file_path,
+    dart_financial_file_path,
     ensure_project_dirs,
     final_signal_file_path,
     market_regime_file_path,
@@ -107,6 +117,155 @@ def collect_price(
 
     console.print(f"[green]Saved {len(frame)} rows[/green]")
     console.print(f"Ticker: {request.ticker}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-dart-company")
+def collect_dart_company(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    corp_code: Annotated[
+        str | None,
+        typer.Option("--corp-code", help="OpenDART corporation code. Example: 00126380"),
+    ] = None,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo data instead of live OpenDART."),
+    ] = True,
+) -> None:
+    """Collect OpenDART company overview data."""
+    configure_logger(settings.log_level)
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    request = DartCompanyRequest(
+        corp_code=resolved_corp_code,
+        ticker=normalized_ticker,
+        demo=demo,
+    )
+    frame = OpenDartCollector(api_key=settings.dart_api_key).collect_company(request)
+    output_path = dart_company_file_path(settings.project_root, resolved_corp_code)
+    write_parquet(frame, output_path)
+
+    latest = frame.iloc[0]
+    console.print("[bold green]Collected DART company overview.[/bold green]")
+    console.print(f"Ticker: {latest['stock_code']}")
+    console.print(f"Corp code: {latest['corp_code']}")
+    console.print(f"Company: {latest['corp_name']}")
+    console.print(f"Source: {latest['source']}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-dart-financials")
+def collect_dart_financials(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    corp_code: Annotated[
+        str | None,
+        typer.Option("--corp-code", help="OpenDART corporation code. Example: 00126380"),
+    ] = None,
+    year: Annotated[
+        str,
+        typer.Option("--year", help="Business year. Example: 2023"),
+    ] = "2023",
+    report_code: Annotated[
+        str,
+        typer.Option("--report-code", help="OpenDART report code. 11011 is annual report."),
+    ] = "11011",
+    fs_div: Annotated[
+        str,
+        typer.Option("--fs-div", help="Financial statement division. CFS or OFS."),
+    ] = "CFS",
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo data instead of live OpenDART."),
+    ] = True,
+) -> None:
+    """Collect OpenDART single-company financial statement accounts."""
+    configure_logger(settings.log_level)
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    request = DartFinancialStatementRequest(
+        corp_code=resolved_corp_code,
+        ticker=normalized_ticker,
+        bsns_year=year,
+        reprt_code=report_code,
+        fs_div=fs_div,
+        demo=demo,
+    )
+    frame = OpenDartCollector(api_key=settings.dart_api_key).collect_financial_statement(request)
+    output_path = dart_financial_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        year,
+        report_code,
+    )
+    write_parquet(frame, output_path)
+
+    console.print("[bold green]Collected DART financial statements.[/bold green]")
+    console.print(f"Ticker: {normalized_ticker}")
+    console.print(f"Corp code: {resolved_corp_code}")
+    console.print(f"Rows: {len(frame)}")
+    console.print(f"Source: {frame.iloc[0]['source']}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-dart-disclosures")
+def collect_dart_disclosures(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    corp_code: Annotated[
+        str | None,
+        typer.Option("--corp-code", help="OpenDART corporation code. Example: 00126380"),
+    ] = None,
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    page_count: Annotated[
+        int,
+        typer.Option("--page-count", help="OpenDART disclosure page count."),
+    ] = 20,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo data instead of live OpenDART."),
+    ] = True,
+) -> None:
+    """Collect OpenDART disclosure list data."""
+    configure_logger(settings.log_level)
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    request = DartDisclosureSearchRequest(
+        corp_code=resolved_corp_code,
+        ticker=normalized_ticker,
+        start_date=start,
+        end_date=end,
+        page_count=page_count,
+        demo=demo,
+    )
+    frame = OpenDartCollector(api_key=settings.dart_api_key).collect_disclosures(request)
+    output_path = dart_disclosure_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        request.start_compact,
+        request.end_compact,
+    )
+    write_parquet(frame, output_path)
+
+    console.print("[bold green]Collected DART disclosures.[/bold green]")
+    console.print(f"Ticker: {normalized_ticker}")
+    console.print(f"Corp code: {resolved_corp_code}")
+    console.print(f"Rows: {len(frame)}")
+    console.print(f"Source: {frame.iloc[0]['source']}")
     console.print(f"Output: {output_path}")
 
 

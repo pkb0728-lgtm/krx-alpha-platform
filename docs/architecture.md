@@ -12,7 +12,9 @@ control, and human review over direct price prediction.
 flowchart TD
     U["Universe registry"] --> A
     A["Collector: pykrx"] --> B["Raw data layer"]
+    X["Collector: OpenDART"] --> Y["Raw DART data layer"]
     B --> C["Data contract checks"]
+    Y --> C
     C --> D["Processor"]
     D --> E["Processed data layer"]
     E --> F["Feature builder"]
@@ -34,7 +36,7 @@ flowchart TD
 
 | Module | Responsibility |
 | --- | --- |
-| `collectors` | Collect raw source data from APIs or libraries. |
+| `collectors` | Collect raw price, OpenDART, and other source data from APIs or libraries. |
 | `processors` | Clean raw data and create processed datasets. |
 | `features` | Build reusable features for scoring and models. |
 | `regime` | Classify market context before reviewing signals. |

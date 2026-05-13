@@ -28,6 +28,24 @@ Ticker  Status   Action         Confidence
 The output does not mean "buy this stock." It means the stock passed the current
 rule-based screening and risk-filter logic for the selected date range.
 
+## OpenDART Demo Collection
+
+Example command:
+
+```powershell
+python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
+```
+
+Example output:
+
+```text
+Collected DART financial statements.
+Ticker: 005930
+Corp code: 00126380
+Rows: 6
+Source: opendart_demo
+```
+
 | Action | Meaning |
 | --- | --- |
 | `buy_candidate` | Candidate passed score and risk filters. |
