@@ -40,6 +40,15 @@ def find_latest_drift_result(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_ml_metrics(project_root: Path) -> Path | None:
+    metrics_dir = project_root / "data" / "signals" / "ml_metrics"
+    if not metrics_dir.exists():
+        return None
+
+    files = sorted(metrics_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def load_universe_summary(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty:
@@ -99,6 +108,39 @@ def load_drift_result(path: Path) -> Any:
         return frame
 
     return frame.sort_values("drift_detected", ascending=False).reset_index(drop=True)
+
+
+def load_ml_metrics(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "split" not in frame.columns:
+        return frame
+
+    split_order = {"test": 0, "train": 1}
+    frame = frame.copy()
+    frame["_split_order"] = frame["split"].map(split_order).fillna(2)
+    return frame.sort_values("_split_order").drop(columns=["_split_order"]).reset_index(drop=True)
+
+
+def load_ml_predictions(metrics_path: Path) -> Any:
+    predictions_path = metrics_path.parents[1] / "ml_predictions" / metrics_path.name
+    if not predictions_path.exists():
+        return pd.DataFrame()
+
+    frame = pd.read_parquet(predictions_path)
+    if frame.empty or "probability_positive_forward_return" not in frame.columns:
+        return frame
+
+    split_order = {"test": 0, "train": 1}
+    frame = frame.copy()
+    frame["_split_order"] = frame["split"].map(split_order).fillna(2)
+    return (
+        frame.sort_values(
+            ["_split_order", "probability_positive_forward_return"],
+            ascending=[True, False],
+        )
+        .drop(columns=["_split_order"])
+        .reset_index(drop=True)
+    )
 
 
 def load_markdown(path: Path) -> str:

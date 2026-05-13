@@ -94,6 +94,8 @@ The Streamlit dashboard displays:
 - latest backtest trades
 - latest walk-forward summary
 - fold-level walk-forward validation table
+- latest ML probability baseline metrics
+- latest ML prediction table
 - latest drift monitoring result
 - selected stock Markdown report
 

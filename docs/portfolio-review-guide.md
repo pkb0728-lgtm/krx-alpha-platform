@@ -117,7 +117,7 @@ python main.py send-telegram-daily --dry-run
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard with universe, backtest, walk-forward, and drift review
+- Streamlit dashboard with universe, backtest, walk-forward, ML, and drift review
 - scheduler-ready daily job runner
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration

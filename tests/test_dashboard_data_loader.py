@@ -6,12 +6,15 @@ from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_ml_metrics,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
     load_markdown,
+    load_ml_metrics,
+    load_ml_predictions,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -167,3 +170,51 @@ def test_dashboard_data_loader_reads_latest_drift_result(tmp_path: Path) -> None
     frame = load_drift_result(drift_path)
     assert bool(frame.loc[0, "drift_detected"]) is True
     assert frame.loc[0, "feature"] == "rsi_14"
+
+
+def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:
+    metrics_dir = tmp_path / "data" / "signals" / "ml_metrics"
+    predictions_dir = tmp_path / "data" / "signals" / "ml_predictions"
+    metrics_dir.mkdir(parents=True)
+    predictions_dir.mkdir(parents=True)
+    metrics_path = metrics_dir / "005380_20240101_20240331_h5.parquet"
+    predictions_path = predictions_dir / "005380_20240101_20240331_h5.parquet"
+
+    pd.DataFrame(
+        {
+            "split": ["train", "test"],
+            "row_count": [39, 17],
+            "positive_label_rate": [0.58, 0.52],
+            "predicted_positive_rate": [0.61, 0.47],
+            "accuracy": [0.7, 0.64],
+            "precision": [0.71, 0.6],
+            "recall": [0.72, 0.5],
+            "f1_score": [0.715, 0.522],
+            "roc_auc": [0.81, 0.652],
+            "brier_score": [0.2, 0.24],
+            "average_probability": [0.57, 0.53],
+        }
+    ).to_parquet(metrics_path, index=False)
+    pd.DataFrame(
+        {
+            "date": ["2024-03-20", "2024-03-21"],
+            "ticker": ["005380", "005380"],
+            "split": ["test", "test"],
+            "probability_positive_forward_return": [0.62, 0.78],
+            "predicted_label": [1, 1],
+            "target_positive_forward_return": [0, 1],
+            "forward_return": [-0.01, 0.03],
+            "label_end_date": ["2024-03-27", "2024-03-28"],
+            "top_feature_reason": ["rsi_14_supports_positive_probability", "baseline"],
+        }
+    ).to_parquet(predictions_path, index=False)
+
+    latest_path = find_latest_ml_metrics(tmp_path)
+    assert latest_path == metrics_path
+
+    metrics = load_ml_metrics(metrics_path)
+    predictions = load_ml_predictions(metrics_path)
+
+    assert metrics.loc[0, "split"] == "test"
+    assert metrics.loc[0, "roc_auc"] == 0.652
+    assert predictions.loc[0, "probability_positive_forward_return"] == 0.78

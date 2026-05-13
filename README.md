@@ -36,7 +36,7 @@ probability baseline, Telegram alerts, and a Streamlit dashboard.
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief with drift status preview, send command, and retry settings
-- Streamlit dashboard for universe, report, backtest, walk-forward, and drift review
+- Streamlit dashboard for universe, report, backtest, walk-forward, ML, and drift review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -298,7 +298,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 82 passed
+pytest: 83 passed
 ruff: all checks passed
 mypy: no issues found
 ```

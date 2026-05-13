@@ -8,12 +8,15 @@ from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_ml_metrics,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
     load_markdown,
+    load_ml_metrics,
+    load_ml_predictions,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -214,6 +217,42 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("ML Probability Baseline")
+    ml_metrics_path = find_latest_ml_metrics(PROJECT_ROOT)
+    if ml_metrics_path is None:
+        st.info("No ML baseline metrics found.")
+    else:
+        ml_metrics_frame = load_ml_metrics(ml_metrics_path)
+        if ml_metrics_frame.empty:
+            st.info("ML baseline metrics are empty.")
+        else:
+            ml_metric = _select_ml_metric(ml_metrics_frame)
+            ml_cols = st.columns(6)
+            ml_cols[0].metric("Split", str(ml_metric["split"]))
+            ml_cols[1].metric("Rows", int(ml_metric["row_count"]))
+            ml_cols[2].metric("ROC-AUC", f"{float(ml_metric['roc_auc']):.3f}")
+            ml_cols[3].metric("F1-score", f"{float(ml_metric['f1_score']):.3f}")
+            ml_cols[4].metric("Precision", _format_percent(ml_metric["precision"]))
+            ml_cols[5].metric("Recall", _format_percent(ml_metric["recall"]))
+
+            st.caption(f"Latest ML metrics file: {ml_metrics_path.name}")
+            st.dataframe(
+                ml_metrics_frame,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            ml_predictions_frame = load_ml_predictions(ml_metrics_path)
+            if not ml_predictions_frame.empty:
+                st.subheader("ML Predictions")
+                st.dataframe(
+                    ml_predictions_frame[_ml_prediction_display_columns(ml_predictions_frame)],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
     st.subheader("Drift Monitoring")
     drift_path = find_latest_drift_result(PROJECT_ROOT)
     if drift_path is None:
@@ -266,6 +305,28 @@ def _drift_display_columns(frame: Any) -> list[str]:
         "missing_rate_delta",
         "drift_detected",
         "drift_reason",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _select_ml_metric(frame: Any) -> Any:
+    test_rows = frame[frame["split"] == "test"]
+    if not test_rows.empty:
+        return test_rows.iloc[0]
+    return frame.iloc[0]
+
+
+def _ml_prediction_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "date",
+        "ticker",
+        "split",
+        "probability_positive_forward_return",
+        "predicted_label",
+        "target_positive_forward_return",
+        "forward_return",
+        "label_end_date",
+        "top_feature_reason",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

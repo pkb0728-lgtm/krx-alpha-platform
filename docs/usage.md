@@ -230,7 +230,8 @@ http://localhost:8501
 
 The dashboard shows the latest universe summary, action distribution, latest
 backtest metrics, backtest trades, walk-forward summary, fold-level validation
-results, latest drift monitoring result, and selected Markdown report.
+results, ML probability baseline metrics and predictions, latest drift
+monitoring result, and selected Markdown report.
 
 ## 10. Preview Or Send Telegram Brief
 
