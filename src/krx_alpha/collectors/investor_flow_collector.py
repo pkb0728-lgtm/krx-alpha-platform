@@ -5,6 +5,7 @@ from typing import Any, Protocol
 import pandas as pd
 
 from krx_alpha.contracts.investor_flow_contract import validate_investor_flow_frame
+from krx_alpha.utils.external_output import suppress_external_output
 
 STANDARD_INVESTOR_FLOW_COLUMNS = [
     "date",
@@ -89,15 +90,17 @@ class PykrxInvestorFlowCollector:
 
     def _load_default_provider(self) -> InvestorFlowProvider:
         try:
-            from pykrx import stock
+            with suppress_external_output():
+                from pykrx import stock
         except ImportError as exc:
             raise RuntimeError(
                 "pykrx is not installed. Run: python -m pip install -e .[data]"
             ) from exc
 
         def provider(start_date: str, end_date: str, ticker: str) -> tuple[Any, Any]:
-            value_frame = stock.get_market_trading_value_by_date(start_date, end_date, ticker)
-            volume_frame = stock.get_market_trading_volume_by_date(start_date, end_date, ticker)
+            with suppress_external_output():
+                value_frame = stock.get_market_trading_value_by_date(start_date, end_date, ticker)
+                volume_frame = stock.get_market_trading_volume_by_date(start_date, end_date, ticker)
             return value_frame, volume_frame
 
         return provider
@@ -136,7 +139,10 @@ def _normalize_investor_flow(
 
 def _prepare_pykrx_frame(raw_frame: Any) -> pd.DataFrame:
     if raw_frame is None or raw_frame.empty:
-        raise ValueError("Investor flow provider returned an empty frame.")
+        raise ValueError(
+            "Investor flow provider returned no rows. "
+            "Try a different date range or use --demo when KRX data is unavailable."
+        )
 
     frame = raw_frame.copy()
     if "date" not in frame.columns:

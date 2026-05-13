@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -45,7 +47,7 @@ def test_validate_universe_frame_rejects_invalid_ticker() -> None:
         validate_universe_frame(frame)
 
 
-def test_universe_storage_paths(tmp_path) -> None:
+def test_universe_storage_paths(tmp_path: Path) -> None:
     assert (
         universe_file_path(tmp_path, "demo")
         .as_posix()

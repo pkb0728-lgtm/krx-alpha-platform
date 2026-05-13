@@ -35,7 +35,7 @@ class FakeDailyPipeline:
         )
 
 
-def test_universe_pipeline_saves_summary(tmp_path) -> None:
+def test_universe_pipeline_saves_summary(tmp_path: Path) -> None:
     pipeline = UniversePipeline(
         project_root=tmp_path,
         daily_pipeline=FakeDailyPipeline(tmp_path),  # type: ignore[arg-type]

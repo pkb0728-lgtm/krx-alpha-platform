@@ -233,7 +233,10 @@ def collect_price(
         adjusted=adjusted,
     )
 
-    frame = PykrxPriceCollector().collect(request)
+    try:
+        frame = PykrxPriceCollector().collect(request)
+    except (RuntimeError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
     output_path = raw_price_file_path(
         settings.project_root,
         request.ticker,
@@ -275,7 +278,10 @@ def collect_investor_flow(
         demo=demo,
     )
 
-    frame = PykrxInvestorFlowCollector().collect(request)
+    try:
+        frame = PykrxInvestorFlowCollector().collect(request)
+    except (RuntimeError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
     output_path = raw_investor_flow_file_path(
         settings.project_root,
         request.ticker,

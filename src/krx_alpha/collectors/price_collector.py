@@ -1,12 +1,11 @@
-from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import date
-from io import StringIO
 from typing import Any, Protocol
 
 import pandas as pd
 
 from krx_alpha.contracts.price_contract import validate_price_frame
+from krx_alpha.utils.external_output import suppress_external_output
 
 KOREAN_PRICE_COLUMNS = {
     "날짜": "date",
@@ -90,7 +89,7 @@ class PykrxPriceCollector:
 
     def _load_default_provider(self) -> PriceProvider:
         try:
-            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            with suppress_external_output():
                 from pykrx import stock
         except ImportError as exc:
             raise RuntimeError(
@@ -98,7 +97,7 @@ class PykrxPriceCollector:
             ) from exc
 
         def provider(start_date: str, end_date: str, ticker: str, adjusted: bool) -> Any:
-            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            with suppress_external_output():
                 return stock.get_market_ohlcv_by_date(
                     start_date,
                     end_date,

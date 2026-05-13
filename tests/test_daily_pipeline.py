@@ -1,13 +1,18 @@
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from krx_alpha.collectors.price_collector import PriceRequest
 from krx_alpha.pipelines import daily_pipeline
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 
 
-def test_daily_pipeline_runs_with_mock_collector(tmp_path, monkeypatch) -> None:
+def test_daily_pipeline_runs_with_mock_collector(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     raw_frame = pd.DataFrame(
         {
             "date": pd.date_range("2024-01-02", periods=25, freq="D").date,
