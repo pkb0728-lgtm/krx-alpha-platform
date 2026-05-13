@@ -22,6 +22,7 @@ from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollect
 from krx_alpha.configs.settings import settings
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
+    find_latest_drift_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
 )
@@ -1415,11 +1416,14 @@ def send_telegram_daily(
         walk_forward_summary = (
             read_parquet(walk_forward_path) if walk_forward_path is not None else None
         )
+    drift_path = find_latest_drift_result(settings.project_root)
+    drift_result = read_parquet(drift_path) if drift_path is not None else None
 
     message = build_daily_telegram_message(
         universe_summary=universe_summary,
         backtest_metrics=backtest_metrics,
         walk_forward_summary=walk_forward_summary,
+        drift_result=drift_result,
         top_n=top_n,
     )
     notifier = TelegramNotifier(

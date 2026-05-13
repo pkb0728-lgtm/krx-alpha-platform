@@ -32,8 +32,8 @@ scheduled daily jobs, Telegram alerts, and a Streamlit dashboard.
 - Data drift and performance drift monitoring
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
-- Telegram daily brief preview and send command
-- Streamlit dashboard for universe, report, backtest, and walk-forward review
+- Telegram daily brief with drift status preview and send command
+- Streamlit dashboard for universe, report, backtest, walk-forward, and drift review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -255,11 +255,12 @@ Recent experiment log:
 python main.py show-experiments --limit 10
 ```
 
-Drift monitoring:
+Drift monitoring and review:
 
 ```powershell
 python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
 python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
+python main.py send-telegram-daily --dry-run
 ```
 
 ## Quality Checks
@@ -273,7 +274,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 69 passed
+pytest: 70 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -337,6 +338,6 @@ only committed environment file.
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking on top of the CSV experiment log
-- Add richer drift dashboards and Telegram warnings
+- Add richer drift thresholds and scheduled Telegram warnings
 - Add APScheduler long-running daemon mode
 - Add Docker Compose dashboard profile

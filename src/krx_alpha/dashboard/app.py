@@ -7,10 +7,12 @@ import streamlit as st
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
+    find_latest_drift_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
     load_backtest_trades,
+    load_drift_result,
     load_markdown,
     load_universe_summary,
     load_walk_forward_folds,
@@ -212,6 +214,30 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("Drift Monitoring")
+    drift_path = find_latest_drift_result(PROJECT_ROOT)
+    if drift_path is None:
+        st.info("No drift result found.")
+    else:
+        drift_frame = load_drift_result(drift_path)
+        if drift_frame.empty:
+            st.info("Drift result is empty.")
+        else:
+            drift_count = int(drift_frame["drift_detected"].sum())
+            drift_cols = st.columns(4)
+            drift_cols[0].metric("Latest file", drift_path.stem)
+            drift_cols[1].metric("Rows", len(drift_frame))
+            drift_cols[2].metric("Drifted", drift_count)
+            drift_cols[3].metric("Status", "alert" if drift_count else "stable")
+            st.caption(f"Latest drift file: {drift_path.name}")
+            st.dataframe(
+                drift_frame[_drift_display_columns(drift_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
+
+    st.divider()
+
     st.subheader("Report Viewer")
     successful = summary_frame[summary_frame["status"] == "success"]
     if successful.empty:
@@ -226,6 +252,22 @@ def main() -> None:
 
 def _format_percent(value: Any) -> str:
     return f"{float(value) * 100:.2f}%"
+
+
+def _drift_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "feature",
+        "run_type",
+        "metric",
+        "baseline_mean",
+        "recent_mean",
+        "mean_shift_score",
+        "std_ratio",
+        "missing_rate_delta",
+        "drift_detected",
+        "drift_reason",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
 
 
 if __name__ == "__main__":

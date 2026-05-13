@@ -54,11 +54,19 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "positive_fold_ratio": [0.6667],
         }
     )
+    drift = pd.DataFrame(
+        {
+            "feature": ["rsi_14", "volatility_5d"],
+            "drift_detected": [True, False],
+            "drift_reason": ["mean_shift", "stable"],
+        }
+    )
 
     message = build_daily_telegram_message(
         summary,
         backtest_metrics=backtest,
         walk_forward_summary=walk_forward,
+        drift_result=drift,
         generated_at=datetime(2026, 5, 13, 9, 0),
         top_n=1,
     )
@@ -67,6 +75,8 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "1. 005380 | buy_candidate" in message
     assert "Backtest" in message
     assert "Walk-forward" in message
+    assert "Data drift: 1/2 features flagged" in message
+    assert "rsi_14: mean_shift" in message
     assert "Screening aid only" in message
 
 

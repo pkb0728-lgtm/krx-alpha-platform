@@ -5,10 +5,12 @@ import pandas as pd
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
+    find_latest_drift_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
     load_backtest_trades,
+    load_drift_result,
     load_markdown,
     load_universe_summary,
     load_walk_forward_folds,
@@ -141,3 +143,27 @@ def test_dashboard_data_loader_reads_latest_walk_forward(tmp_path: Path) -> None
     assert summary.loc[0, "ticker"] == "005380"
     assert summary.loc[0, "fold_count"] == 3
     assert folds["fold"].tolist() == [1, 2]
+
+
+def test_dashboard_data_loader_reads_latest_drift_result(tmp_path: Path) -> None:
+    drift_dir = tmp_path / "data" / "signals" / "drift"
+    drift_dir.mkdir(parents=True)
+    drift_path = drift_dir / "data_drift_demo.parquet"
+
+    pd.DataFrame(
+        {
+            "feature": ["rsi_14", "volatility_5d"],
+            "mean_shift_score": [3.0, 0.2],
+            "std_ratio": [1.1, 1.0],
+            "missing_rate_delta": [0.0, 0.0],
+            "drift_detected": [True, False],
+            "drift_reason": ["mean_shift", "stable"],
+        }
+    ).to_parquet(drift_path, index=False)
+
+    latest_path = find_latest_drift_result(tmp_path)
+    assert latest_path == drift_path
+
+    frame = load_drift_result(drift_path)
+    assert bool(frame.loc[0, "drift_detected"]) is True
+    assert frame.loc[0, "feature"] == "rsi_14"

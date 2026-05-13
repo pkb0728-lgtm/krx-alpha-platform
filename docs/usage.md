@@ -204,7 +204,7 @@ http://localhost:8501
 
 The dashboard shows the latest universe summary, action distribution, latest
 backtest metrics, backtest trades, walk-forward summary, fold-level validation
-results, and selected Markdown report.
+results, latest drift monitoring result, and selected Markdown report.
 
 ## 10. Preview Or Send Telegram Brief
 
@@ -215,7 +215,7 @@ python main.py send-telegram-daily --dry-run
 ```
 
 The command uses the latest universe summary and, when available, the latest
-backtest and walk-forward validation results.
+backtest, walk-forward validation, and drift monitoring results.
 
 To send the message, set these values in `.env`:
 
@@ -311,3 +311,6 @@ reports/monitoring/
 
 The MVP uses simple thresholds so the result is easy to explain in an interview.
 It is an operations warning, not an automatic trading rule.
+
+After drift detection has created a result, the Streamlit dashboard and
+Telegram daily brief automatically include the latest drift status.

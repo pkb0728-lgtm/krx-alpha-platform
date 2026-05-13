@@ -5,6 +5,7 @@ from typing import Protocol
 
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
+    find_latest_drift_result,
     find_latest_walk_forward_summary,
 )
 from krx_alpha.database.storage import (
@@ -124,6 +125,7 @@ class DailyJobRunner:
             universe_summary=summary_frame,
             backtest_metrics=_load_latest_backtest_metrics(self.project_root),
             walk_forward_summary=_load_latest_walk_forward_summary(self.project_root),
+            drift_result=_load_latest_drift_result(self.project_root),
             top_n=config.telegram_top_n,
         )
 
@@ -162,6 +164,11 @@ def _load_latest_backtest_metrics(project_root: Path) -> object | None:
 def _load_latest_walk_forward_summary(project_root: Path) -> object | None:
     summary_path = find_latest_walk_forward_summary(project_root)
     return read_parquet(summary_path) if summary_path is not None else None
+
+
+def _load_latest_drift_result(project_root: Path) -> object | None:
+    drift_path = find_latest_drift_result(project_root)
+    return read_parquet(drift_path) if drift_path is not None else None
 
 
 def _build_result(

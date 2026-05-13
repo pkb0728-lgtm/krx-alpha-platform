@@ -194,6 +194,10 @@ Drifted features: 1
 Report: reports/monitoring/data_drift_005930_vs_005380.md
 ```
 
+The dashboard displays the latest drift result in the `Drift Monitoring`
+section. The Telegram daily brief also includes a compact `Drift` section after
+the walk-forward summary.
+
 ## Backtest
 
 Example command:

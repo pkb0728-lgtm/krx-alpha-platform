@@ -85,6 +85,7 @@ def build_daily_telegram_message(
     universe_summary: Any,
     backtest_metrics: Any | None = None,
     walk_forward_summary: Any | None = None,
+    drift_result: Any | None = None,
     generated_at: datetime | None = None,
     top_n: int = 5,
 ) -> str:
@@ -114,6 +115,7 @@ def build_daily_telegram_message(
     lines.extend(_format_candidate_lines(success_frame, top_n))
     lines.extend(_format_backtest_lines(backtest_metrics))
     lines.extend(_format_walk_forward_lines(walk_forward_summary))
+    lines.extend(_format_drift_lines(drift_result))
     lines.extend(
         [
             "",
@@ -175,6 +177,37 @@ def _format_walk_forward_lines(summary: Any | None) -> list[str]:
             f"compounded {_format_percent(metric['compounded_return'])} | "
             f"worst MDD {_format_percent(metric['worst_max_drawdown'])} | "
             f"positive folds {_format_percent(metric['positive_fold_ratio'])}"
+        ),
+    ]
+
+
+def _format_drift_lines(result: Any | None) -> list[str]:
+    if result is None or result.empty or "drift_detected" not in result.columns:
+        return ["", "Drift", "- No latest drift result."]
+
+    drift_count = int(result["drift_detected"].sum())
+    if "feature" in result.columns:
+        drifted = result[result["drift_detected"]].head(3)
+        lines = [
+            "",
+            "Drift",
+            f"- Data drift: {drift_count}/{len(result)} features flagged.",
+        ]
+        if drifted.empty:
+            lines.append("- Status: stable")
+        else:
+            for _, row in drifted.iterrows():
+                lines.append(f"- {row['feature']}: {row['drift_reason']}")
+        return lines
+
+    row = result.iloc[0]
+    return [
+        "",
+        "Drift",
+        (
+            f"- Performance drift: {row['metric']} | "
+            f"detected {bool(row['drift_detected'])} | "
+            f"reason {row['drift_reason']}"
         ),
     ]
 

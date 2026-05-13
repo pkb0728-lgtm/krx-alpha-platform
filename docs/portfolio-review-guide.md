@@ -74,6 +74,7 @@ python main.py show-experiments --limit 10
 
 ```powershell
 python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
+python main.py send-telegram-daily --dry-run
 ```
 
 10. Explain why this is not just price prediction:
@@ -94,7 +95,7 @@ python main.py detect-performance-drift --run-type backtest --metric cumulative_
 - Walk-forward validation checks signal stability across rolling test windows.
 - Experiment tracking records parameters, model version, metrics, and artifacts.
 - Drift monitoring warns when feature distributions or performance metrics change.
-- Telegram brief turns the pipeline output into an operations-ready alert.
+- Telegram brief turns the pipeline output and latest drift status into an operations-ready alert.
 - Daily job runner ties the workflow together for scheduled operation.
 - Reports support human-in-the-loop review.
 
@@ -112,7 +113,7 @@ python main.py detect-performance-drift --run-type backtest --metric cumulative_
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard with universe, backtest, and walk-forward review
+- Streamlit dashboard with universe, backtest, walk-forward, and drift review
 - scheduler-ready daily job runner
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration
@@ -129,5 +130,5 @@ python main.py detect-performance-drift --run-type backtest --metric cumulative_
 - point-in-time release-date handling for financial and disclosure features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking
-- drift alert integration with Telegram
+- richer drift thresholds and scheduled Telegram warnings
 - APScheduler daemon mode

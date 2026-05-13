@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from krx_alpha.database.storage import (
+    drift_result_file_path,
     universe_summary_csv_path,
     universe_summary_file_path,
     write_csv,
@@ -58,6 +59,16 @@ class FakeUniversePipeline:
         )
         write_parquet(frame, summary_path)
         write_csv(frame, summary_csv_path)
+        write_parquet(
+            pd.DataFrame(
+                {
+                    "feature": ["rsi_14"],
+                    "drift_detected": [True],
+                    "drift_reason": ["mean_shift"],
+                }
+            ),
+            drift_result_file_path(self.project_root, "latest_drift"),
+        )
         return UniversePipelineResult(
             summary_path=summary_path,
             summary_csv_path=summary_csv_path,
@@ -108,6 +119,7 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 | buy_candidate" in result.telegram_message
+    assert "Data drift: 1/1 features flagged" in result.telegram_message
     assert sender.messages == [result.telegram_message]
 
 

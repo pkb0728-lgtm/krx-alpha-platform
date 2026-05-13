@@ -31,6 +31,15 @@ def find_latest_walk_forward_summary(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_drift_result(project_root: Path) -> Path | None:
+    drift_dir = project_root / "data" / "signals" / "drift"
+    if not drift_dir.exists():
+        return None
+
+    files = sorted(drift_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def load_universe_summary(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty:
@@ -82,6 +91,14 @@ def load_walk_forward_folds(summary_path: Path) -> Any:
         return frame
 
     return frame.sort_values("fold").reset_index(drop=True)
+
+
+def load_drift_result(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "drift_detected" not in frame.columns:
+        return frame
+
+    return frame.sort_values("drift_detected", ascending=False).reset_index(drop=True)
 
 
 def load_markdown(path: Path) -> str:
