@@ -170,6 +170,30 @@ Backtest runs store return, drawdown, win rate, Sharpe ratio, and trade count.
 Daily job runs store ticker counts, success count, failed count, and the report
 artifact path.
 
+## Drift Monitoring
+
+Example commands:
+
+```powershell
+python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
+python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
+```
+
+Example output:
+
+```text
+Performance drift detection completed.
+Run type: backtest
+Metric: cumulative_return
+Drift detected: False
+Report: reports/monitoring/performance_drift_backtest_cumulative_return.md
+
+Data drift detection completed.
+Checked features: 3
+Drifted features: 1
+Report: reports/monitoring/data_drift_005930_vs_005380.md
+```
+
 ## Backtest
 
 Example command:

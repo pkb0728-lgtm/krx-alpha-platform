@@ -258,6 +258,15 @@ def walk_forward_report_file_path(
     )
 
 
+def drift_result_file_path(project_root: Path, report_name: str) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "drift")
+    return dataset_dir / f"{report_name}.parquet"
+
+
+def monitoring_report_file_path(project_root: Path, report_name: str) -> Path:
+    return project_root / "reports" / "monitoring" / f"{report_name}.md"
+
+
 def experiment_log_file_path(project_root: Path) -> Path:
     return project_root / "experiments" / "experiment_log.csv"
 

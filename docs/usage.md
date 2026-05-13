@@ -286,3 +286,28 @@ python main.py show-experiments --limit 10
 The CSV stores run ID, model version, parameters, metrics, date range, and the
 main artifact path. The file is intentionally ignored by Git because it is a
 local run artifact.
+
+## 13. Detect Drift
+
+Data drift compares numeric feature distributions between a reference dataset
+and a current dataset:
+
+```powershell
+python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
+```
+
+Performance drift compares recent experiment metrics with an earlier baseline:
+
+```powershell
+python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
+```
+
+Outputs:
+
+```text
+data/signals/drift/
+reports/monitoring/
+```
+
+The MVP uses simple thresholds so the result is easy to explain in an interview.
+It is an operations warning, not an automatic trading rule.

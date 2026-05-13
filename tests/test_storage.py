@@ -7,11 +7,13 @@ from krx_alpha.database.storage import (
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
+    drift_result_file_path,
     ensure_project_dirs,
     experiment_log_file_path,
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    monitoring_report_file_path,
     raw_investor_flow_file_path,
     walk_forward_folds_file_path,
     walk_forward_report_file_path,
@@ -118,3 +120,16 @@ def test_dart_storage_paths(tmp_path: Path) -> None:
 
 def test_experiment_log_path(tmp_path: Path) -> None:
     assert experiment_log_file_path(tmp_path).as_posix().endswith("experiments/experiment_log.csv")
+
+
+def test_monitoring_paths(tmp_path: Path) -> None:
+    assert (
+        drift_result_file_path(tmp_path, "data_drift_demo")
+        .as_posix()
+        .endswith("data/signals/drift/data_drift_demo.parquet")
+    )
+    assert (
+        monitoring_report_file_path(tmp_path, "data_drift_demo")
+        .as_posix()
+        .endswith("reports/monitoring/data_drift_demo.md")
+    )

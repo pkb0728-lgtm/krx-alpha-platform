@@ -40,11 +40,15 @@ flowchart TD
     E --> N
     N --> Q["Walk-forward validation"]
     N --> EL["Experiment log"]
+    EL --> PD["Performance drift monitor"]
+    G --> DD["Data drift monitor"]
     N --> O["Backtest report"]
     Q --> M
     Q --> O
     Q --> EL
     DJ --> EL
+    PD --> M
+    DD --> M
     R --> P["Regime report"]
 ```
 
@@ -62,6 +66,7 @@ flowchart TD
 | `signals` | Convert scores into final actions. |
 | `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
 | `experiments` | Append run parameters, model version, metrics, and artifact links to a CSV log. |
+| `monitoring` | Detect feature data drift and experiment performance drift. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display universe, backtest, and walk-forward validation results through Streamlit. |

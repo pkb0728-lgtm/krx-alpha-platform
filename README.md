@@ -7,8 +7,8 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
-backtesting, experiment tracking, report generation, scheduled daily jobs,
-Telegram alerts, and a Streamlit dashboard.
+backtesting, experiment tracking, drift monitoring, report generation,
+scheduled daily jobs, Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -29,6 +29,7 @@ Telegram alerts, and a Streamlit dashboard.
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - CSV-based experiment tracking for backtest and operations runs
+- Data drift and performance drift monitoring
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief preview and send command
@@ -57,6 +58,7 @@ select named universe
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> log experiment metrics
+-> detect data/performance drift
 -> generate Markdown reports
 -> run daily scheduled job
 -> send or preview Telegram daily brief
@@ -104,9 +106,13 @@ flowchart LR
     D --> N
     N --> V["walk-forward validation"]
     N --> EXP["experiment log"]
+    EXP --> PD["performance drift monitor"]
+    F --> DD["data drift monitor"]
     N --> O["backtest report"]
     V --> M
     V --> EXP
+    DD --> M
+    PD --> M
     U --> EXP
     P["universe registry"] --> A
     P --> L
@@ -126,6 +132,7 @@ src/krx_alpha/
   signals/       final signal generation
   backtest/      signal backtesting
   experiments/   CSV experiment tracking
+  monitoring/    data and performance drift detection
   universe/      named universe definitions
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
@@ -248,6 +255,13 @@ Recent experiment log:
 python main.py show-experiments --limit 10
 ```
 
+Drift monitoring:
+
+```powershell
+python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
+python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
+```
+
 ## Quality Checks
 
 ```powershell
@@ -259,7 +273,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 64 passed
+pytest: 69 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -282,6 +296,7 @@ data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
+data/signals/drift/
 data/backtest/trades/
 data/backtest/metrics/
 data/backtest/walk_forward_folds/
@@ -291,6 +306,7 @@ reports/daily/
 reports/regime/
 reports/universe/
 reports/backtest/
+reports/monitoring/
 ```
 
 ## Documentation
@@ -321,5 +337,6 @@ only committed environment file.
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking on top of the CSV experiment log
+- Add richer drift dashboards and Telegram warnings
 - Add APScheduler long-running daemon mode
 - Add Docker Compose dashboard profile

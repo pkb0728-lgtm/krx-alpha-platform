@@ -36,11 +36,13 @@ from krx_alpha.database.storage import (
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
+    drift_result_file_path,
     ensure_project_dirs,
     final_signal_file_path,
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    monitoring_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_investor_flow_file_path,
@@ -66,6 +68,14 @@ from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
+from krx_alpha.monitoring.drift import (
+    DataDriftConfig,
+    DataDriftDetector,
+    PerformanceDriftConfig,
+    PerformanceDriftDetector,
+    format_data_drift_report,
+    format_performance_drift_report,
+)
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 from krx_alpha.processors.price_processor import PriceProcessor
@@ -1532,3 +1542,128 @@ def show_experiments(
         "artifact_path",
     ]
     console.print(frame.tail(limit)[display_columns])
+
+
+@app.command("detect-data-drift")
+def detect_data_drift(
+    reference_path: Annotated[
+        Path,
+        typer.Option("--reference-path", help="Reference feature parquet path."),
+    ],
+    current_path: Annotated[
+        Path,
+        typer.Option("--current-path", help="Current feature parquet path."),
+    ],
+    columns: Annotated[
+        str | None,
+        typer.Option(
+            "--columns",
+            help="Comma-separated numeric columns. Uses common numeric columns if omitted.",
+        ),
+    ] = None,
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output report name without extension."),
+    ] = None,
+    mean_shift_threshold: Annotated[
+        float,
+        typer.Option("--mean-shift-threshold", help="Mean shift threshold in reference std units."),
+    ] = 1.0,
+) -> None:
+    """Detect feature distribution drift between two parquet datasets."""
+    if not reference_path.exists():
+        raise typer.BadParameter(f"Reference file does not exist: {reference_path}")
+    if not current_path.exists():
+        raise typer.BadParameter(f"Current file does not exist: {current_path}")
+
+    reference_frame = read_parquet(reference_path)
+    current_frame = read_parquet(current_path)
+    result_frame = DataDriftDetector(
+        DataDriftConfig(mean_shift_threshold=mean_shift_threshold)
+    ).detect(
+        reference_frame=reference_frame,
+        current_frame=current_frame,
+        columns=_parse_optional_columns(columns),
+    )
+    if result_frame.empty:
+        raise typer.BadParameter("No comparable numeric columns were found for drift detection.")
+
+    report_name = _safe_report_name(
+        output_name or f"data_drift_{reference_path.stem}_vs_{current_path.stem}"
+    )
+    result_path = drift_result_file_path(settings.project_root, report_name)
+    report_path = monitoring_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_text(format_data_drift_report(result_frame), report_path)
+
+    drift_count = int(result_frame["drift_detected"].sum())
+    console.print("[bold green]Data drift detection completed.[/bold green]")
+    console.print(f"Checked features: {len(result_frame)}")
+    console.print(f"Drifted features: {drift_count}")
+    console.print(f"Result: {result_path}")
+    console.print(f"Report: {report_path}")
+
+
+@app.command("detect-performance-drift")
+def detect_performance_drift(
+    run_type: Annotated[
+        str,
+        typer.Option("--run-type", help="Experiment run_type to monitor."),
+    ] = "backtest",
+    metric: Annotated[
+        str,
+        typer.Option("--metric", help="Metric name stored in metrics_json."),
+    ] = "cumulative_return",
+    baseline_window: Annotated[
+        int,
+        typer.Option("--baseline-window", help="Number of older runs for baseline."),
+    ] = 5,
+    recent_window: Annotated[
+        int,
+        typer.Option("--recent-window", help="Number of latest runs to compare."),
+    ] = 3,
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output report name without extension."),
+    ] = None,
+) -> None:
+    """Detect performance drift from the local CSV experiment log."""
+    tracker = ExperimentTracker(settings.project_root)
+    experiment_frame = tracker.load()
+    result_frame = PerformanceDriftDetector(
+        PerformanceDriftConfig(
+            run_type=run_type,
+            metric=metric,
+            baseline_window=baseline_window,
+            recent_window=recent_window,
+        )
+    ).detect(experiment_frame)
+
+    report_name = _safe_report_name(output_name or f"performance_drift_{run_type}_{metric}")
+    result_path = drift_result_file_path(settings.project_root, report_name)
+    report_path = monitoring_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_text(format_performance_drift_report(result_frame), report_path)
+
+    row = result_frame.iloc[0]
+    console.print("[bold green]Performance drift detection completed.[/bold green]")
+    console.print(f"Run type: {row['run_type']}")
+    console.print(f"Metric: {row['metric']}")
+    console.print(f"Baseline mean: {float(row['baseline_mean']):.4f}")
+    console.print(f"Recent mean: {float(row['recent_mean']):.4f}")
+    console.print(f"Drift detected: {bool(row['drift_detected'])}")
+    console.print(f"Reason: {row['drift_reason']}")
+    console.print(f"Result: {result_path}")
+    console.print(f"Report: {report_path}")
+
+
+def _parse_optional_columns(columns: str | None) -> list[str] | None:
+    if columns is None:
+        return None
+    return [column.strip() for column in columns.split(",") if column.strip()]
+
+
+def _safe_report_name(value: str) -> str:
+    return "".join(
+        character if character.isalnum() or character in "_-" else "_" for character in value
+    )

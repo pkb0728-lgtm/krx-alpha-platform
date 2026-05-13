@@ -70,7 +70,13 @@ python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31
 python main.py show-experiments --limit 10
 ```
 
-9. Explain why this is not just price prediction:
+9. Show drift monitoring:
+
+```powershell
+python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
+```
+
+10. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
@@ -87,6 +93,7 @@ python main.py show-experiments --limit 10
 - Backtesting validates signals after costs and slippage.
 - Walk-forward validation checks signal stability across rolling test windows.
 - Experiment tracking records parameters, model version, metrics, and artifacts.
+- Drift monitoring warns when feature distributions or performance metrics change.
 - Telegram brief turns the pipeline output into an operations-ready alert.
 - Daily job runner ties the workflow together for scheduled operation.
 - Reports support human-in-the-loop review.
@@ -112,6 +119,7 @@ python main.py show-experiments --limit 10
 - simple backtest engine with explicit assumptions
 - walk-forward validation with fold-level metrics
 - CSV experiment tracking as an MLflow-ready stepping stone
+- data drift and performance drift monitoring
 
 ## Next Portfolio Improvements
 
@@ -121,4 +129,5 @@ python main.py show-experiments --limit 10
 - point-in-time release-date handling for financial and disclosure features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking
+- drift alert integration with Telegram
 - APScheduler daemon mode

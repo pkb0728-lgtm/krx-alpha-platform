@@ -350,6 +350,44 @@ positive_fold_ratio
 worst_max_drawdown
 ```
 
+### Monitoring Outputs
+
+Drift result tables:
+
+```text
+data/signals/drift/{report_name}.parquet
+```
+
+Drift Markdown reports:
+
+```text
+reports/monitoring/{report_name}.md
+```
+
+Important data drift columns:
+
+```text
+feature
+mean_shift_score
+std_ratio
+missing_rate_delta
+drift_detected
+drift_reason
+```
+
+Important performance drift columns:
+
+```text
+run_type
+metric
+baseline_mean
+recent_mean
+absolute_change
+relative_change
+drift_detected
+drift_reason
+```
+
 ## Data Contract Rules
 
 The current contracts check:
