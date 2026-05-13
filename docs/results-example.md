@@ -94,6 +94,7 @@ The Streamlit dashboard displays:
 - latest backtest trades
 - latest walk-forward summary
 - fold-level walk-forward validation table
+- latest drift monitoring result
 - selected stock Markdown report
 
 Run:
@@ -169,6 +170,28 @@ created_at | experiment_name | run_type | ticker | universe | start_date | end_d
 Backtest runs store return, drawdown, win rate, Sharpe ratio, and trade count.
 Daily job runs store ticker counts, success count, failed count, and the report
 artifact path.
+
+## ML Training Dataset
+
+Example command:
+
+```powershell
+python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+```
+
+Example output:
+
+```text
+Built ML training dataset.
+Ticker: 005380
+Rows: 56
+Holding days: 5
+Positive label rate: 55.36%
+Output: data/features/ml_training/005380_20240101_20240331_h5.parquet
+```
+
+This dataset is for later probability modeling. The model input features are
+dated by `as_of_date`; future-return labels are kept separately for audit.
 
 ## Drift Monitoring
 

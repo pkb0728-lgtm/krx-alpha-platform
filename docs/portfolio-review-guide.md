@@ -38,6 +38,7 @@ python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
+python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
 ```
 
 5. Show OpenDART financial feature scoring:
@@ -93,6 +94,7 @@ python main.py send-telegram-daily --dry-run
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
 - Walk-forward validation checks signal stability across rolling test windows.
+- ML training datasets separate as-of features from future-return labels.
 - Experiment tracking records parameters, model version, metrics, and artifacts.
 - Drift monitoring warns when feature distributions or performance metrics change.
 - Telegram brief turns the pipeline output and latest drift status into an operations-ready alert.
@@ -119,6 +121,7 @@ python main.py send-telegram-daily --dry-run
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
 - walk-forward validation with fold-level metrics
+- leakage-aware ML dataset generation
 - CSV experiment tracking as an MLflow-ready stepping stone
 - data drift and performance drift monitoring
 
@@ -128,7 +131,7 @@ python main.py send-telegram-daily --dry-run
 - Calibrate market regime thresholds with longer validation windows
 - OpenDART disclosure event scoring features
 - point-in-time release-date handling for financial and disclosure features
-- ML baseline with walk-forward validation
+- ML baseline model training on the leakage-aware dataset
 - MLflow experiment tracking
 - richer drift thresholds and scheduled Telegram warnings
 - APScheduler daemon mode

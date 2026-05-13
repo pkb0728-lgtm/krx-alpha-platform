@@ -111,6 +111,17 @@ def price_feature_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def ml_training_dataset_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    holding_days: int,
+) -> Path:
+    dataset_dir = features_dataset_dir(project_root, "ml_training")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}_h{holding_days}.parquet"
+
+
 def investor_flow_feature_file_path(
     project_root: Path,
     ticker: str,

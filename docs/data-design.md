@@ -218,6 +218,43 @@ volatility_20d
 rsi_14
 ```
 
+### ML Training Dataset
+
+Path:
+
+```text
+data/features/ml_training/{ticker}_{start}_{end}_h{holding_days}.parquet
+```
+
+Important columns:
+
+```text
+date
+as_of_date
+ticker
+return_1d
+close_to_ma_5
+close_to_ma_20
+volume_change_5d
+trading_value_change_5d
+range_pct
+volatility_5d
+volatility_20d
+rsi_14
+close
+future_close
+label_end_date
+holding_days
+forward_return
+target_positive_forward_return
+label_created_at
+```
+
+This dataset is designed for probability-style ML models, not direct price
+prediction. Features are known as of `as_of_date`; labels are created from a
+future close at `label_end_date`. The future-return columns are labels/audit
+columns and must not be used as model input features.
+
 ### Investor Flow Features
 
 Raw path:
@@ -400,6 +437,8 @@ The current contracts check:
 - invalid `high < low`
 - score ranges between 0 and 100
 - RSI range between 0 and 100
+- ML label horizon must end after each feature `as_of_date`
+- ML target labels must be binary
 - OpenDART corp_code and ticker formats
 
 ## Point-In-Time Principle
@@ -407,3 +446,7 @@ The current contracts check:
 The project stores `as_of_date`, `collected_at`, `processed_at`, and
 `feature_created_at` to prepare for future point-in-time backtesting and
 data-leakage prevention.
+
+ML training datasets additionally store `label_end_date` and
+`label_created_at` so reviewers can verify that the feature date and future
+label horizon are separated.

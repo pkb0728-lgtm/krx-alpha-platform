@@ -43,6 +43,7 @@ from krx_alpha.database.storage import (
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    ml_training_dataset_file_path,
     monitoring_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
@@ -69,6 +70,7 @@ from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
+from krx_alpha.models.training_dataset import MLTrainingDatasetBuilder, MLTrainingDatasetConfig
 from krx_alpha.monitoring.drift import (
     DataDriftConfig,
     DataDriftDetector,
@@ -619,6 +621,90 @@ def build_features(
 
     console.print(f"[green]Built {len(feature_frame)} feature rows[/green]")
     console.print(f"Input: {input_path}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("build-ml-dataset")
+def build_ml_dataset(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    holding_days: Annotated[
+        int,
+        typer.Option("--holding-days", help="Forward return horizon in trading rows."),
+    ] = 5,
+    minimum_forward_return: Annotated[
+        float,
+        typer.Option(
+            "--minimum-forward-return",
+            help="Minimum forward return required for a positive label.",
+        ),
+    ] = 0.0,
+    dropna_features: Annotated[
+        bool,
+        typer.Option(
+            "--dropna-features/--keepna-features",
+            help="Drop rows with missing technical features before saving.",
+        ),
+    ] = False,
+) -> None:
+    """Build a leakage-aware ML training dataset from feature and price files."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    feature_path = price_feature_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    price_path = processed_price_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not feature_path.exists():
+        raise typer.BadParameter(f"Price feature file does not exist: {feature_path}")
+    if not price_path.exists():
+        raise typer.BadParameter(f"Processed price file does not exist: {price_path}")
+
+    training_frame = MLTrainingDatasetBuilder(
+        MLTrainingDatasetConfig(
+            holding_days=holding_days,
+            minimum_forward_return=minimum_forward_return,
+            dropna_features=dropna_features,
+        )
+    ).build(
+        feature_frame=read_parquet(feature_path),
+        processed_price_frame=read_parquet(price_path),
+    )
+    output_path = ml_training_dataset_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+        holding_days,
+    )
+    write_parquet(training_frame, output_path)
+
+    positive_rate = float(training_frame["target_positive_forward_return"].mean())
+    console.print("[bold green]Built ML training dataset.[/bold green]")
+    console.print(f"Ticker: {request.ticker}")
+    console.print(f"Rows: {len(training_frame)}")
+    console.print(f"Holding days: {holding_days}")
+    console.print(f"Positive label rate: {positive_rate * 100:.2f}%")
+    console.print(f"Feature input: {feature_path}")
+    console.print(f"Price input: {price_path}")
     console.print(f"Output: {output_path}")
 
 

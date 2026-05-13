@@ -165,6 +165,22 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
+Prepare a leakage-aware ML dataset for later probability modeling:
+
+```powershell
+python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+```
+
+Output example:
+
+```text
+data/features/ml_training/005380_20240101_20240331_h5.parquet
+```
+
+The ML dataset uses features available on `as_of_date` and stores the future
+return label separately with `label_end_date`. Do not train on `future_close`,
+`forward_return`, or `target_positive_forward_return` as input features.
+
 Output examples:
 
 ```text
@@ -174,6 +190,7 @@ data/backtest/walk_forward_folds/005380_20240101_20240331.parquet
 data/backtest/walk_forward_summary/005380_20240101_20240331.parquet
 reports/backtest/005380_20240101_20240331.md
 reports/backtest/walk_forward_005380_20240101_20240331.md
+data/features/ml_training/005380_20240101_20240331_h5.parquet
 experiments/experiment_log.csv
 ```
 

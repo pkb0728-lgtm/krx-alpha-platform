@@ -8,7 +8,8 @@ OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
 backtesting, experiment tracking, drift monitoring, report generation,
-scheduled daily jobs, Telegram alerts, and a Streamlit dashboard.
+scheduled daily jobs, ML training dataset generation, Telegram alerts, and a
+Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -28,6 +29,7 @@ scheduled daily jobs, Telegram alerts, and a Streamlit dashboard.
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
+- Leakage-aware ML training dataset generation for probability models
 - CSV-based experiment tracking for backtest and operations runs
 - Data drift and performance drift monitoring
 - Markdown reports for single-stock and universe screening
@@ -57,6 +59,7 @@ select named universe
 -> generate final signals
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
+-> build leakage-aware ML training dataset
 -> log experiment metrics
 -> detect data/performance drift
 -> generate Markdown reports
@@ -105,6 +108,8 @@ flowchart LR
     J --> N["backtest engine"]
     D --> N
     N --> V["walk-forward validation"]
+    F --> ML["ML training dataset"]
+    D --> ML
     N --> EXP["experiment log"]
     EXP --> PD["performance drift monitor"]
     F --> DD["data drift monitor"]
@@ -217,6 +222,12 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
+Leakage-aware ML dataset for future probability models:
+
+```powershell
+python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+```
+
 Dashboard:
 
 ```powershell
@@ -282,7 +293,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 73 passed
+pytest: 77 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -301,6 +312,7 @@ data/features/prices_daily/
 data/features/dart_financials/
 data/features/dart_disclosure_events/
 data/features/investor_flow_daily/
+data/features/ml_training/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
@@ -325,6 +337,7 @@ reports/monitoring/
 - [Data Design](docs/data-design.md)
 - [DART Data Card](docs/data_cards/dart_data_v0.md)
 - [Investor Flow Data Card](docs/data_cards/investor_flow_data_v0.md)
+- [ML Dataset Card](docs/model_cards/ml_training_dataset_v0.md)
 - [Scoring and Risk](docs/scoring-and-risk.md)
 - [Result Example](docs/results-example.md)
 - [Troubleshooting](docs/troubleshooting.md)
