@@ -8,7 +8,7 @@
 | `data/processed` | Cleaned and typed data ready for analysis. |
 | `data/features` | Reusable model/scoring features. |
 | `data/signals` | Scores, final signals, and universe summaries. |
-| `data/backtest` | Reserved for future backtest outputs. |
+| `data/backtest` | Backtest trades and aggregate metrics. |
 
 ## Current Datasets
 
@@ -64,6 +64,32 @@ volatility_20d
 rsi_14
 ```
 
+### Backtest Outputs
+
+Trade-level results:
+
+```text
+data/backtest/trades/{ticker}_{start}_{end}.parquet
+```
+
+Metric-level results:
+
+```text
+data/backtest/metrics/{ticker}_{start}_{end}.parquet
+```
+
+Important columns:
+
+```text
+trade_count
+win_rate
+average_return
+cumulative_return
+max_drawdown
+sharpe_ratio
+exposure_count
+```
+
 ## Data Contract Rules
 
 The current contracts check:
@@ -82,4 +108,3 @@ The current contracts check:
 The project stores `as_of_date`, `collected_at`, `processed_at`, and
 `feature_created_at` to prepare for future point-in-time backtesting and
 data-leakage prevention.
-

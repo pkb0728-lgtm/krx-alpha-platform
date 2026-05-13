@@ -59,7 +59,28 @@ data/signals/universe_summary_daily/universe_20240101_20240131.csv
 reports/universe/universe_20240101_20240131.md
 ```
 
-## 5. Open The Dashboard
+## 5. Backtest A Stock Signal
+
+Run this after `run-pipeline` has created processed prices and final signals:
+
+```powershell
+python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
+Output examples:
+
+```text
+data/backtest/trades/005380_20240101_20240331.parquet
+data/backtest/metrics/005380_20240101_20240331.parquet
+reports/backtest/005380_20240101_20240331.md
+```
+
+The MVP backtest enters on the next trading day's open after a
+`buy_candidate` signal, exits after the configured holding period, and applies
+simple transaction cost and slippage assumptions.
+
+## 6. Open The Dashboard
 
 Install dashboard dependencies if needed:
 
@@ -78,4 +99,3 @@ Open:
 ```text
 http://localhost:8501
 ```
-

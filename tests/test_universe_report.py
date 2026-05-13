@@ -1,4 +1,5 @@
 import pandas as pd
+
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 
 

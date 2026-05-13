@@ -27,10 +27,9 @@ It is not a price prediction model.
 - No financial statement data yet
 - No investor flow data yet
 - No market regime adjustment yet
-- No backtest validation yet
+- Only simple single-stock backtest validation so far
 - No machine learning model yet
 
 ## Prohibited Use
 
 Do not use this output as direct investment advice or automated order logic.
-

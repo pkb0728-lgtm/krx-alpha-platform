@@ -10,9 +10,8 @@ The project should become an explainable Korean stock investment decision suppor
 
 ## Decision
 
-The MVP starts with local files, DuckDB/SQLite-ready storage abstractions, daily price data, reusable features, rule-based scoring, a simple ML baseline, backtesting, Streamlit dashboard, and Telegram notification hooks.
+The MVP starts with local files, DuckDB/SQLite-ready storage abstractions, daily price data, reusable features, rule-based scoring, risk filtering, simple backtesting, Markdown reports, and a Streamlit dashboard. Machine learning, Telegram notifications, and richer data sources remain planned extensions.
 
 ## Consequences
 
 The early architecture favors clear module boundaries and testability over premature distributed infrastructure.
-

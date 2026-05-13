@@ -37,6 +37,10 @@ def signals_dataset_dir(project_root: Path, dataset_name: str) -> Path:
     return dataset_dir(project_root, "signals", dataset_name)
 
 
+def backtest_dataset_dir(project_root: Path, dataset_name: str) -> Path:
+    return dataset_dir(project_root, "backtest", dataset_name)
+
+
 def raw_price_file_path(project_root: Path, ticker: str, start_date: str, end_date: str) -> Path:
     dataset_dir = raw_dataset_dir(project_root, "prices_daily")
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
@@ -98,6 +102,35 @@ def daily_report_file_path(project_root: Path, ticker: str, report_date: str) ->
 
 def universe_report_file_path(project_root: Path, start_date: str, end_date: str) -> Path:
     return project_root / "reports" / "universe" / f"universe_{start_date}_{end_date}.md"
+
+
+def backtest_report_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    return project_root / "reports" / "backtest" / f"{ticker}_{start_date}_{end_date}.md"
+
+
+def backtest_trades_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "trades")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
+def backtest_metrics_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "metrics")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
 def read_parquet(path: Path) -> Any:

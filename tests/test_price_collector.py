@@ -1,4 +1,5 @@
 import pandas as pd
+
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 
 OPEN = "\uc2dc\uac00"

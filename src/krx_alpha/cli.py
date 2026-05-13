@@ -5,9 +5,13 @@ import pandas as pd
 import typer
 from rich.console import Console
 
+from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 from krx_alpha.configs.settings import settings
 from krx_alpha.database.storage import (
+    backtest_metrics_file_path,
+    backtest_report_file_path,
+    backtest_trades_file_path,
     daily_report_file_path,
     daily_score_file_path,
     ensure_project_dirs,
@@ -25,6 +29,7 @@ from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 from krx_alpha.processors.price_processor import PriceProcessor
+from krx_alpha.reports.backtest_report import BacktestReportGenerator
 from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scoring.price_scorer import PriceScorer
@@ -442,3 +447,82 @@ def generate_universe_report(
 
     console.print("[green]Generated universe report[/green]")
     console.print(f"Output: {output_path}")
+
+
+@app.command("backtest-stock")
+def backtest_stock(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    holding_days: Annotated[
+        int,
+        typer.Option("--holding-days", help="Number of trading days to hold each trade."),
+    ] = 5,
+) -> None:
+    """Backtest buy-candidate final signals against processed prices."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    price_path = processed_price_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    signal_path = final_signal_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not price_path.exists():
+        raise typer.BadParameter(f"Processed price file does not exist: {price_path}")
+    if not signal_path.exists():
+        raise typer.BadParameter(f"Final signal file does not exist: {signal_path}")
+
+    price_frame = read_parquet(price_path)
+    signal_frame = read_parquet(signal_path)
+    trades, metrics = SimpleBacktester(BacktestConfig(holding_days=holding_days)).run(
+        price_frame,
+        signal_frame,
+    )
+
+    trades_path = backtest_trades_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    metrics_path = backtest_metrics_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    report_path = backtest_report_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(trades, trades_path)
+    write_parquet(metrics, metrics_path)
+    write_text(BacktestReportGenerator().generate(trades, metrics), report_path)
+
+    metric = metrics.iloc[0]
+    console.print("[bold green]Backtest completed.[/bold green]")
+    console.print(f"Trades: {int(metric['trade_count'])}")
+    console.print(f"Win rate: {float(metric['win_rate']) * 100:.2f}%")
+    console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
+    console.print(f"Max drawdown: {float(metric['max_drawdown']) * 100:.2f}%")
+    console.print(f"Sharpe ratio: {float(metric['sharpe_ratio']):.2f}")
+    console.print(f"Report: {report_path}")

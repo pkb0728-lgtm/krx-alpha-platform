@@ -30,13 +30,21 @@ Ticker  Action         Confidence
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
-4. Explain why this is not just price prediction:
+4. Run one backtest:
+
+```powershell
+python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
+5. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
 - Features are reusable.
 - Signals are explainable.
 - Risk filters can block actions.
+- Backtesting validates signals after costs and slippage.
 - Reports support human-in-the-loop review.
 
 ## Engineering Points
@@ -48,14 +56,14 @@ streamlit run src/krx_alpha/dashboard/app.py
 - CI-ready quality checks
 - Streamlit dashboard
 - separated pipeline orchestration
+- simple backtest engine with explicit assumptions
 
 ## Next Portfolio Improvements
 
-- Backtest engine with transaction costs and slippage
+- Walk-forward backtesting and portfolio-level constraints
 - Market regime detection
 - OpenDART disclosure features
 - Investor flow features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking
 - Telegram notification summary
-

@@ -59,3 +59,8 @@ Current risk filters include:
 Suggested position percentage is intentionally conservative. It is a
 decision-support hint, not an order instruction.
 
+## Backtest Link
+
+The current backtest validates only `buy_candidate` final signals. It enters on
+the next trading day's open, exits after the configured holding period, and
+applies simple transaction cost and slippage assumptions.

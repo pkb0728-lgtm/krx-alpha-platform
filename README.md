@@ -5,7 +5,7 @@ Explainable Korean stock investment decision-support platform built with Python.
 This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
 data validation, feature engineering, explainable scoring, risk filtering,
-report generation, and a Streamlit dashboard.
+backtesting, report generation, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -13,11 +13,12 @@ report generation, and a Streamlit dashboard.
 
 - Python backend development with a modular `src/` layout
 - Korean stock data collection with `pykrx`
-- ETL data layers: `raw`, `processed`, `features`, `signals`
+- ETL data layers: `raw`, `processed`, `features`, `signals`, `backtest`
 - Data contracts and validation checks
 - Technical feature engineering
 - Explainable rule-based scoring
 - Risk filtering before final signals
+- Simple signal backtesting with costs and slippage
 - Markdown reports for single-stock and universe screening
 - Streamlit dashboard for results review
 - Tests, linting, type checking, Docker, and GitHub Actions
@@ -33,6 +34,7 @@ collect price data
 -> score each stock
 -> apply risk filters
 -> generate final signals
+-> backtest buy-candidate signals
 -> generate Markdown reports
 -> view results in Streamlit
 ```
@@ -64,6 +66,9 @@ flowchart LR
     F --> K
     J --> L["universe summary"]
     L --> M["Streamlit dashboard"]
+    J --> N["backtest engine"]
+    D --> N
+    N --> O["backtest report"]
 ```
 
 ## Project Structure
@@ -76,6 +81,7 @@ src/krx_alpha/
   scoring/       explainable scoring
   risk/          risk filters
   signals/       final signal generation
+  backtest/      signal backtesting
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
   pipelines/     single-stock and universe pipelines
@@ -119,6 +125,12 @@ python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --
 python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
 ```
 
+Backtest one stock after running its pipeline:
+
+```powershell
+python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
 Dashboard:
 
 ```powershell
@@ -142,7 +154,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 15 passed
+pytest: 18 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -156,8 +168,11 @@ data/features/prices_daily/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/universe_summary_daily/
+data/backtest/trades/
+data/backtest/metrics/
 reports/daily/
 reports/universe/
+reports/backtest/
 ```
 
 ## Documentation
@@ -182,7 +197,7 @@ only committed environment file.
 - Add KOSPI200/KOSDAQ150 universe management
 - Add OpenDART financial/disclosure features
 - Add investor flow and short-selling features
-- Add backtesting with transaction costs and slippage
+- Expand backtesting with walk-forward validation and portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking
 - Add Telegram daily notifications

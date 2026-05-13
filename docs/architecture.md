@@ -22,6 +22,9 @@ flowchart TD
     J --> K["Reports"]
     J --> L["Universe summary"]
     L --> M["Streamlit dashboard"]
+    J --> N["Backtest engine"]
+    E --> N
+    N --> O["Backtest report"]
 ```
 
 ## Module Responsibilities
@@ -35,6 +38,7 @@ flowchart TD
 | `scoring` | Generate explainable technical and risk scores. |
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
+| `backtest` | Validate historical signal behavior with cost and slippage assumptions. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display results through Streamlit. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
@@ -45,9 +49,8 @@ The project uses explicit data layers because financial systems need traceable
 inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
-raw -> processed -> features -> scores -> final signals -> reports
+raw -> processed -> features -> scores -> final signals -> reports/backtest
 ```
 
-This separation also helps avoid data leakage when backtesting and machine
-learning are added later.
-
+This separation helps avoid data leakage during backtesting and prepares the
+project for walk-forward machine learning validation later.

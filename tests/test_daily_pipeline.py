@@ -1,6 +1,7 @@
 from datetime import date
 
 import pandas as pd
+
 from krx_alpha.collectors.price_collector import PriceRequest
 from krx_alpha.pipelines import daily_pipeline
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline

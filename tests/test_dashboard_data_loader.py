@@ -1,4 +1,5 @@
 import pandas as pd
+
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_universe_summary,

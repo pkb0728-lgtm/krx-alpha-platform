@@ -50,3 +50,25 @@ Run:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
+## Backtest
+
+Example command:
+
+```powershell
+python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
+Example output:
+
+```text
+Backtest completed.
+Trades: 7
+Win rate: 57.14%
+Cumulative return: 78.67%
+Max drawdown: -10.35%
+Sharpe ratio: 4.33
+```
+
+This is a simple MVP backtest for signal validation. It is not a production
+execution simulator.
