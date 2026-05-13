@@ -31,7 +31,6 @@ class Settings(BaseSettings):
     krx_id: str | None = None
     krx_pw: str | None = None
     fred_api_key: str | None = None
-    alphavantage_api_key: str | None = None
 
     @property
     def data_dir(self) -> Path:
