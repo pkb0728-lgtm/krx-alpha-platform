@@ -5,7 +5,8 @@
 Example command:
 
 ```powershell
-python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
+python main.py list-universe --universe demo
+python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
 ```
 
 Example output:

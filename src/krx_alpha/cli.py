@@ -20,8 +20,11 @@ from krx_alpha.database.storage import (
     processed_price_file_path,
     raw_price_file_path,
     read_parquet,
+    universe_csv_path,
+    universe_file_path,
     universe_report_file_path,
     universe_summary_file_path,
+    write_csv,
     write_parquet,
     write_text,
 )
@@ -34,6 +37,7 @@ from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scoring.price_scorer import PriceScorer
 from krx_alpha.signals.signal_engine import SignalEngine
+from krx_alpha.universe.static_universe import UniverseRegistry
 from krx_alpha.utils.logger import configure_logger
 
 app = typer.Typer(help="KRX Alpha Platform command line interface")
@@ -373,16 +377,58 @@ def run_pipeline(
     console.print(f"Confidence: {result.latest_confidence_score:.2f}")
 
 
+@app.command("list-universe")
+def list_universe(
+    universe: Annotated[
+        str,
+        typer.Option("--universe", "-u", help="Universe name. Use 'all' to list names."),
+    ] = "demo",
+    save: Annotated[
+        bool,
+        typer.Option("--save/--no-save", help="Save the selected universe as parquet and CSV."),
+    ] = True,
+) -> None:
+    """List a named stock universe and optionally persist it to data/processed."""
+    configure_logger(settings.log_level)
+    registry = UniverseRegistry()
+
+    if universe.strip().lower() == "all":
+        console.print(registry.list_definitions())
+        return
+
+    try:
+        definition = registry.get(universe)
+    except KeyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    frame = definition.to_frame()
+    console.print(f"[bold green]Universe: {definition.name}[/bold green]")
+    console.print(definition.description)
+    console.print(frame[["ticker", "name", "market", "sector", "reason", "is_active"]])
+
+    if save:
+        parquet_path = universe_file_path(settings.project_root, definition.name)
+        csv_path = universe_csv_path(settings.project_root, definition.name)
+        write_parquet(frame, parquet_path)
+        write_csv(frame, csv_path)
+        console.print(f"Parquet: {parquet_path}")
+        console.print(f"CSV: {csv_path}")
+
+
 @app.command("run-universe")
 def run_universe(
     tickers: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--tickers",
             "-t",
-            help="Comma-separated tickers. Example: 005930,000660,005380",
+            help="Comma-separated tickers. Overrides --universe when provided.",
         ),
-    ] = "005930,000660,005380",
+    ] = None,
+    universe: Annotated[
+        str,
+        typer.Option("--universe", "-u", help="Named universe to run when --tickers is omitted."),
+    ] = "demo",
     start: Annotated[
         str,
         typer.Option("--start", help="Start date in YYYY-MM-DD format."),
@@ -394,7 +440,17 @@ def run_universe(
 ) -> None:
     """Run the daily pipeline for multiple tickers and save a summary table."""
     configure_logger(settings.log_level)
-    ticker_list = [ticker.strip() for ticker in tickers.split(",") if ticker.strip()]
+    if tickers:
+        ticker_list = _parse_tickers(tickers)
+        universe_source = "manual tickers"
+    else:
+        try:
+            definition = UniverseRegistry().get(universe)
+        except KeyError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        ticker_list = definition.tickers()
+        universe_source = f"universe:{definition.name}"
+
     result = UniversePipeline(settings.project_root).run(
         tickers=ticker_list,
         start_date=start,
@@ -409,12 +465,17 @@ def run_universe(
     )
 
     console.print("[bold green]Universe pipeline completed.[/bold green]")
+    console.print(f"Source: {universe_source}")
     console.print(f"Total: {result.total_count}")
     console.print(f"Success: {result.success_count}")
     console.print(f"Failed: {result.failed_count}")
     console.print(f"Summary: {result.summary_path}")
     console.print(f"CSV: {result.summary_csv_path}")
     console.print(summary_frame[["ticker", "status", "latest_action", "latest_confidence_score"]])
+
+
+def _parse_tickers(tickers: str) -> list[str]:
+    return [ticker.strip().zfill(6) for ticker in tickers.split(",") if ticker.strip()]
 
 
 @app.command("generate-universe-report")

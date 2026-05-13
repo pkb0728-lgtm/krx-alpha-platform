@@ -96,6 +96,16 @@ def universe_summary_csv_path(project_root: Path, start_date: str, end_date: str
     return dataset_dir / f"universe_{start_date}_{end_date}.csv"
 
 
+def universe_file_path(project_root: Path, universe_name: str) -> Path:
+    dataset_dir = processed_dataset_dir(project_root, "universe")
+    return dataset_dir / f"{universe_name}.parquet"
+
+
+def universe_csv_path(project_root: Path, universe_name: str) -> Path:
+    dataset_dir = processed_dataset_dir(project_root, "universe")
+    return dataset_dir / f"{universe_name}.csv"
+
+
 def daily_report_file_path(project_root: Path, ticker: str, report_date: str) -> Path:
     return project_root / "reports" / "daily" / f"{ticker}_{report_date}.md"
 

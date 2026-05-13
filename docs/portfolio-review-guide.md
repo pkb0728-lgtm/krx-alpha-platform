@@ -12,7 +12,8 @@ dashboard for human review.
 1. Run the universe pipeline:
 
 ```powershell
-python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
+python main.py list-universe --universe demo
+python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
 ```
 
 2. Show the summary output:
@@ -41,6 +42,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 
 - The system uses data contracts.
 - Each data layer is persisted.
+- Named universes make screening repeatable.
 - Features are reusable.
 - Signals are explainable.
 - Risk filters can block actions.
@@ -52,6 +54,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - `src/` package layout
 - CLI with Typer
 - Parquet data storage
+- named universe registry
 - testable modules
 - CI-ready quality checks
 - Streamlit dashboard with universe and backtest review

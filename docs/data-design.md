@@ -5,12 +5,34 @@
 | Layer | Purpose |
 | --- | --- |
 | `data/raw` | Source-shaped data with minimal changes. |
-| `data/processed` | Cleaned and typed data ready for analysis. |
+| `data/processed` | Cleaned prices and named universe snapshots. |
 | `data/features` | Reusable model/scoring features. |
 | `data/signals` | Scores, final signals, and universe summaries. |
 | `data/backtest` | Backtest trades and aggregate metrics. |
 
 ## Current Datasets
+
+### Named Universes
+
+Path:
+
+```text
+data/processed/universe/{universe_name}.parquet
+```
+
+Important columns:
+
+```text
+ticker
+name
+market
+sector
+reason
+is_active
+```
+
+The current MVP includes static universes such as `demo`, `large_cap`, and
+`semiconductor_auto`. Dynamic KOSPI200/KOSDAQ150 collectors are planned later.
 
 ### Raw Daily Prices
 

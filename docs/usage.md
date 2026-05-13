@@ -44,11 +44,38 @@ data/signals/final_signals_daily/
 reports/daily/
 ```
 
-## 4. Run A Universe Pipeline
+## 4. List A Named Universe
+
+List available universes:
+
+```powershell
+python main.py list-universe --universe all
+```
+
+Save and inspect the beginner-friendly demo universe:
+
+```powershell
+python main.py list-universe --universe demo
+```
+
+This creates:
+
+```text
+data/processed/universe/demo.parquet
+data/processed/universe/demo.csv
+```
+
+## 5. Run A Universe Pipeline
+
+```powershell
+python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
+python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
+```
+
+Manual tickers are also supported:
 
 ```powershell
 python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
-python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
 ```
 
 Output examples:
@@ -59,7 +86,7 @@ data/signals/universe_summary_daily/universe_20240101_20240131.csv
 reports/universe/universe_20240101_20240131.md
 ```
 
-## 5. Backtest A Stock Signal
+## 6. Backtest A Stock Signal
 
 Run this after `run-pipeline` has created processed prices and final signals:
 
@@ -80,7 +107,7 @@ The MVP backtest enters on the next trading day's open after a
 `buy_candidate` signal, exits after the configured holding period, and applies
 simple transaction cost and slippage assumptions.
 
-## 6. Open The Dashboard
+## 7. Open The Dashboard
 
 Install dashboard dependencies if needed:
 

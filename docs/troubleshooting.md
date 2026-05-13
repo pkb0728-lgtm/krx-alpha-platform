@@ -38,7 +38,7 @@ Then:
 Run:
 
 ```powershell
-python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
+python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
 ```
 
 Then restart or refresh Streamlit:
@@ -52,4 +52,3 @@ streamlit run src/krx_alpha/dashboard/app.py
 When a new required column is added to a data contract, update both production
 code and test fixtures. This is expected because contracts protect the pipeline
 from silent schema drift.
-

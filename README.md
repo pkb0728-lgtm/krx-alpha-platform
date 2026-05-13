@@ -15,6 +15,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Korean stock data collection with `pykrx`
 - ETL data layers: `raw`, `processed`, `features`, `signals`, `backtest`
 - Data contracts and validation checks
+- Named universe management for repeatable screening
 - Technical feature engineering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -28,7 +29,8 @@ backtesting, report generation, and a Streamlit dashboard.
 The current MVP supports this end-to-end flow:
 
 ```text
-collect price data
+select named universe
+-> collect price data
 -> process raw data
 -> build price features
 -> score each stock
@@ -69,6 +71,8 @@ flowchart LR
     J --> N["backtest engine"]
     D --> N
     N --> O["backtest report"]
+    P["universe registry"] --> A
+    P --> L
 ```
 
 ## Project Structure
@@ -82,6 +86,7 @@ src/krx_alpha/
   risk/          risk filters
   signals/       final signal generation
   backtest/      signal backtesting
+  universe/      named universe definitions
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
   pipelines/     single-stock and universe pipelines
@@ -121,8 +126,16 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31
 Multiple stocks:
 
 ```powershell
-python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
+python main.py list-universe --universe all
+python main.py list-universe --universe demo
+python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
 python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
+```
+
+Manual tickers are still supported:
+
+```powershell
+python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --end 2024-01-31
 ```
 
 Backtest one stock after running its pipeline:
@@ -154,7 +167,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 19 passed
+pytest: 24 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -163,6 +176,7 @@ mypy: no issues found
 
 ```text
 data/raw/prices_daily/
+data/processed/universe/
 data/processed/prices_daily/
 data/features/prices_daily/
 data/signals/scores_daily/
@@ -194,7 +208,7 @@ only committed environment file.
 
 ## Roadmap
 
-- Add KOSPI200/KOSDAQ150 universe management
+- Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
 - Add OpenDART financial/disclosure features
 - Add investor flow and short-selling features
 - Expand backtesting with walk-forward validation and portfolio-level constraints

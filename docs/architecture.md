@@ -10,6 +10,7 @@ control, and human review over direct price prediction.
 
 ```mermaid
 flowchart TD
+    U["Universe registry"] --> A
     A["Collector: pykrx"] --> B["Raw data layer"]
     B --> C["Data contract checks"]
     C --> D["Processor"]
@@ -39,6 +40,7 @@ flowchart TD
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
 | `backtest` | Validate historical signal behavior with cost and slippage assumptions. |
+| `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display results through Streamlit. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
@@ -49,7 +51,7 @@ The project uses explicit data layers because financial systems need traceable
 inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
-raw -> processed -> features -> scores -> final signals -> reports/backtest
+universe -> raw -> processed -> features -> scores -> final signals -> reports/backtest
 ```
 
 This separation helps avoid data leakage during backtesting and prepares the
