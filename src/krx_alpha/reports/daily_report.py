@@ -12,6 +12,16 @@ REASON_DESCRIPTIONS = {
     "trading_value_increase": "Trading value increased versus the recent baseline.",
     "high_short_term_volatility": "Short-term volatility is elevated.",
     "insufficient_or_neutral_evidence": "Evidence is neutral or insufficient.",
+    "no_financial_feature_available": "No financial feature file was attached to this score.",
+    "revenue_growth_positive": "Revenue growth is positive versus the previous period.",
+    "revenue_growth_negative": "Revenue growth is weak versus the previous period.",
+    "operating_margin_healthy": "Operating margin is healthy.",
+    "operating_loss": "Operating income is negative.",
+    "net_margin_positive": "Net margin is positive.",
+    "debt_ratio_conservative": "Debt ratio is conservative.",
+    "debt_ratio_high": "Debt ratio is elevated.",
+    "roe_positive": "Return on equity is positive.",
+    "financial_evidence_neutral": "Financial evidence is neutral.",
 }
 
 SIGNAL_DESCRIPTIONS = {
@@ -38,6 +48,7 @@ class DailyReportGenerator:
         ].iloc[-1]
 
         reasons = _format_reasons(str(latest_score["score_reason"]))
+        financial_reasons = _format_reasons(str(latest_score["financial_reason"]))
         signal = str(latest_score["signal_label"])
         signal_description = SIGNAL_DESCRIPTIONS.get(signal, "Unknown signal.")
 
@@ -51,6 +62,7 @@ class DailyReportGenerator:
                 f"- Total score: {_format_number(latest_score['total_score'])}",
                 f"- Technical score: {_format_number(latest_score['technical_score'])}",
                 f"- Risk score: {_format_number(latest_score['risk_score'])}",
+                f"- Financial score: {_format_number(latest_score['financial_score'])}",
                 "",
                 "## Key Metrics",
                 "",
@@ -65,6 +77,10 @@ class DailyReportGenerator:
                 "## Explanation",
                 "",
                 reasons,
+                "",
+                "## Financial Evidence",
+                "",
+                financial_reasons,
                 "",
                 "## Risk Note",
                 "",

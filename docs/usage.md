@@ -90,6 +90,16 @@ data/raw/dart_disclosures/00126380_20240101_20240131.parquet
 The financial feature output includes revenue growth, operating margin, debt
 ratio, ROE, a 0-100 financial score, and reason labels for explainability.
 
+Use the financial feature file in the daily pipeline:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+```
+
+When `--financial-year` is provided, the score blends technical, risk, and
+financial evidence. Without that option, the pipeline uses a neutral financial
+score of `50.0`.
+
 To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 `--demo` with `--live`.
 

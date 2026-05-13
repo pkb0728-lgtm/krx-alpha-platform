@@ -5,6 +5,8 @@ REQUIRED_FINAL_SIGNAL_COLUMNS = {
     "as_of_date",
     "ticker",
     "source_signal_label",
+    "financial_score",
+    "financial_reason",
     "final_action",
     "confidence_score",
     "risk_blocked",
@@ -31,6 +33,9 @@ def validate_final_signal_frame(frame: Any) -> None:
 
     if frame["confidence_score"].dropna().between(0, 100).all() is False:
         raise ValueError("confidence_score values must be between 0 and 100.")
+
+    if frame["financial_score"].dropna().between(0, 100).all() is False:
+        raise ValueError("financial_score values must be between 0 and 100.")
 
     if frame["suggested_position_pct"].dropna().between(0, 100).all() is False:
         raise ValueError("suggested_position_pct values must be between 0 and 100.")

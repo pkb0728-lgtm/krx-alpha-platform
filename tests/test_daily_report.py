@@ -11,9 +11,11 @@ def test_daily_report_generator_creates_markdown() -> None:
             "ticker": ["005930"],
             "technical_score": [62.0],
             "risk_score": [70.17],
+            "financial_score": [82.0],
             "total_score": [64.45],
             "signal_label": ["watch"],
             "score_reason": ["rsi_recovery_zone, trading_value_increase"],
+            "financial_reason": ["revenue_growth_positive, operating_margin_healthy"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -45,4 +47,6 @@ def test_daily_report_generator_creates_markdown() -> None:
     assert "# Daily Stock Report: 005930" in report
     assert "Signal: `watch`" in report
     assert "`rsi_recovery_zone`" in report
+    assert "Financial score" in report
+    assert "`revenue_growth_positive`" in report
     assert "This report is decision-support output" in report

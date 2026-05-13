@@ -29,12 +29,13 @@ without an API key.
 
 - Corp-code mapping is currently a small built-in dictionary.
 - Financial statement data is converted into reusable financial features.
-- Financial features are not yet blended into the final signal engine.
+- Financial features can be blended into the daily scoring flow with
+  `--financial-year`.
 - Disclosure data is still stored in the raw layer only.
 - Live API usage requires `DART_API_KEY`.
 
 ## Next Steps
 
 - Add a corp-code ZIP downloader/parser.
-- Blend financial score into multi-factor stock scoring.
+- Add stricter point-in-time release-date handling for financial statements.
 - Add disclosure event scoring.

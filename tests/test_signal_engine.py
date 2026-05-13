@@ -11,9 +11,11 @@ def test_signal_engine_generates_final_actions() -> None:
             "ticker": ["005930", "005930"],
             "technical_score": [72.0, 62.0],
             "risk_score": [70.0, 70.0],
+            "financial_score": [80.0, 50.0],
             "total_score": [71.4, 64.4],
             "signal_label": ["watch_buy", "watch"],
             "score_reason": ["close_above_ma20", "rsi_recovery_zone"],
+            "financial_reason": ["revenue_growth_positive", "no_financial_feature_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")] * 2,
         }
     )
@@ -55,9 +57,11 @@ def test_signal_engine_blocks_insufficient_history() -> None:
             "ticker": ["005930"],
             "technical_score": [72.0],
             "risk_score": [80.0],
+            "financial_score": [50.0],
             "total_score": [74.0],
             "signal_label": ["watch_buy"],
             "score_reason": ["close_above_ma5"],
+            "financial_reason": ["no_financial_feature_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -98,9 +102,11 @@ def test_signal_engine_blocks_unfavorable_market_regime() -> None:
             "ticker": ["005930"],
             "technical_score": [76.0],
             "risk_score": [80.0],
+            "financial_score": [70.0],
             "total_score": [77.0],
             "signal_label": ["watch_buy"],
             "score_reason": ["close_above_ma20"],
+            "financial_reason": ["operating_margin_healthy"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -151,4 +157,5 @@ def test_signal_engine_blocks_unfavorable_market_regime() -> None:
 
     assert signal_frame.loc[0, "final_action"] == "blocked"
     assert signal_frame.loc[0, "market_regime"] == "high_volatility"
+    assert signal_frame.loc[0, "financial_score"] == 70.0
     assert "market_regime_high_volatility" in signal_frame.loc[0, "risk_flags"]

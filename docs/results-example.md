@@ -57,6 +57,18 @@ Financial score: 100.00
 Reason: revenue_growth_positive, operating_margin_healthy, net_margin_positive, debt_ratio_conservative
 ```
 
+Example multi-factor pipeline command:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+```
+
+Example scoring line:
+
+```text
+Financial score: 100.00
+```
+
 | Action | Meaning |
 | --- | --- |
 | `buy_candidate` | Candidate passed score and risk filters. |

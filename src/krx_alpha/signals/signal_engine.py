@@ -14,6 +14,8 @@ FINAL_SIGNAL_COLUMNS = [
     "as_of_date",
     "ticker",
     "source_signal_label",
+    "financial_score",
+    "financial_reason",
     "market_regime",
     "market_regime_score",
     "market_regime_risk_level",

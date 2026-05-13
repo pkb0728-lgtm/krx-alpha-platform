@@ -10,14 +10,23 @@ Current score components:
 ```text
 technical_score
 risk_score
+financial_score
 total_score
 signal_label
 score_reason
+financial_reason
 ```
 
 OpenDART financial statements can also be converted into a separate
-`financial_score` and `financial_reason`. The MVP keeps this score separate so
-it can be reviewed before it is blended into the final stock score.
+`financial_score` and `financial_reason`. When a financial feature file is
+attached, the total score blends technical, risk, and financial evidence.
+Without a financial feature file, the score uses a neutral financial value.
+
+Current MVP weighting:
+
+```text
+total_score = technical_score * 0.55 + risk_score * 0.25 + financial_score * 0.20
+```
 
 ## Technical Score
 

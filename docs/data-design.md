@@ -138,8 +138,8 @@ financial_reason
 ```
 
 These features convert normalized OpenDART accounts into reusable financial
-signals. The MVP stores them separately from the price signal so they can be
-reviewed and tested before being blended into the final score.
+signals. When a financial year is provided to the scoring command or daily
+pipeline, the latest financial score is blended into the final daily score.
 
 ### Raw OpenDART Disclosures
 
@@ -188,6 +188,26 @@ trading_value_change_5d
 volatility_5d
 volatility_20d
 rsi_14
+```
+
+### Daily Scores
+
+Path:
+
+```text
+data/signals/scores_daily/{ticker}_{start}_{end}.parquet
+```
+
+Important columns:
+
+```text
+technical_score
+risk_score
+financial_score
+total_score
+signal_label
+score_reason
+financial_reason
 ```
 
 ### Market Regime

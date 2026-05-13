@@ -73,7 +73,13 @@ def _format_success_table(frame: pd.DataFrame) -> str:
         return "No successful ticker results."
 
     has_regime = "latest_market_regime" in frame.columns
-    if has_regime:
+    has_financial = "latest_financial_score" in frame.columns
+    if has_regime and has_financial:
+        rows = [
+            "| Rank | Ticker | Action | Confidence | Financial | Regime | Report |",
+            "| --- | --- | --- | ---: | ---: | --- | --- |",
+        ]
+    elif has_regime:
         rows = [
             "| Rank | Ticker | Action | Confidence | Regime | Report |",
             "| --- | --- | --- | ---: | --- | --- |",
@@ -84,7 +90,18 @@ def _format_success_table(frame: pd.DataFrame) -> str:
             "| --- | --- | --- | ---: | --- |",
         ]
     for rank, (_, row) in enumerate(frame.iterrows(), start=1):
-        if has_regime:
+        if has_regime and has_financial:
+            rows.append(
+                "| "
+                f"{rank} | "
+                f"{row['ticker']} | "
+                f"{row['latest_action']} | "
+                f"{float(row['latest_confidence_score']):.2f} | "
+                f"{float(row['latest_financial_score']):.2f} | "
+                f"{row['latest_market_regime']} | "
+                f"{row['report_path']} |"
+            )
+        elif has_regime:
             rows.append(
                 "| "
                 f"{rank} | "

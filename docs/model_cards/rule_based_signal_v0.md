@@ -12,7 +12,7 @@ It is not a price prediction model.
 - trading value change
 - volatility
 - daily price range
-- optional OpenDART financial feature output for separate review
+- optional OpenDART financial score
 
 ## Outputs
 
@@ -25,7 +25,8 @@ It is not a price prediction model.
 
 ## Limitations
 
-- Financial features exist, but are not yet blended into final action scoring
+- Financial features use the latest available demo snapshot unless a more
+  precise point-in-time mapping is added later
 - No investor flow data yet
 - Market regime blocks `bear` and `high_volatility` final signals
 - Only simple single-stock backtest validation so far

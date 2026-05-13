@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from krx_alpha.contracts.feature_contract import validate_price_feature_frame
+from krx_alpha.contracts.financial_feature_contract import validate_financial_feature_frame
 from krx_alpha.contracts.score_contract import validate_daily_score_frame
 
 SCORE_COLUMNS = [
@@ -12,9 +13,11 @@ SCORE_COLUMNS = [
     "ticker",
     "technical_score",
     "risk_score",
+    "financial_score",
     "total_score",
     "signal_label",
     "score_reason",
+    "financial_reason",
     "scored_at",
 ]
 
@@ -22,15 +25,18 @@ SCORE_COLUMNS = [
 class PriceScorer:
     """Score stocks using simple explainable rules over price features."""
 
-    def score(self, feature_frame: Any) -> Any:
+    def score(self, feature_frame: Any, financial_feature_frame: Any | None = None) -> Any:
         frame = feature_frame.copy()
         validate_price_feature_frame(frame)
+        frame = _attach_financial_scores(frame, financial_feature_frame)
 
         frame["technical_score"] = frame.apply(_technical_score, axis=1)
         frame["risk_score"] = frame.apply(_risk_score, axis=1)
-        frame["total_score"] = (frame["technical_score"] * 0.7 + frame["risk_score"] * 0.3).clip(
-            0, 100
-        )
+        frame["total_score"] = (
+            frame["technical_score"] * 0.55
+            + frame["risk_score"] * 0.25
+            + frame["financial_score"] * 0.20
+        ).clip(0, 100)
         frame["signal_label"] = frame["total_score"].apply(_signal_label)
         frame["score_reason"] = frame.apply(_score_reason, axis=1)
         frame["scored_at"] = pd.Timestamp.now(tz="UTC")
@@ -38,6 +44,31 @@ class PriceScorer:
         score_frame = frame[SCORE_COLUMNS]
         validate_daily_score_frame(score_frame)
         return score_frame
+
+
+def _attach_financial_scores(frame: Any, financial_feature_frame: Any | None) -> Any:
+    frame = frame.copy()
+    if financial_feature_frame is None:
+        frame["financial_score"] = 50.0
+        frame["financial_reason"] = "no_financial_feature_available"
+        return frame
+
+    validate_financial_feature_frame(financial_feature_frame)
+    financials = financial_feature_frame.copy()
+    financials["ticker"] = financials["ticker"].astype(str).str.zfill(6)
+    financials["bsns_year"] = financials["bsns_year"].astype(str)
+    financials["reprt_code"] = financials["reprt_code"].astype(str)
+
+    latest_financials = (
+        financials.sort_values(["ticker", "bsns_year", "reprt_code"])
+        .groupby("ticker", as_index=False)
+        .tail(1)
+    )
+    financial_columns = ["ticker", "financial_score", "financial_reason"]
+    merged = frame.merge(latest_financials[financial_columns], on="ticker", how="left")
+    merged["financial_score"] = merged["financial_score"].fillna(50.0)
+    merged["financial_reason"] = merged["financial_reason"].fillna("no_financial_feature_available")
+    return merged
 
 
 def _technical_score(row: pd.Series) -> float:

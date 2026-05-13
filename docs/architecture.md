@@ -22,7 +22,7 @@ flowchart TD
     E --> F["Feature builder"]
     F --> G["Feature store"]
     G --> R["Market regime analyzer"]
-    G --> H["Scoring engine"]
+    G --> H["Multi-factor scoring engine"]
     H --> I["Risk filter"]
     I --> J["Final signal engine"]
     J --> K["Reports"]
@@ -59,7 +59,7 @@ inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
 universe -> raw -> processed -> features -> regime/scores -> final signals -> reports/backtest
-OpenDART raw -> financial features -> later multi-factor scoring
+OpenDART raw -> financial features -> multi-factor scoring
 ```
 
 This separation helps avoid data leakage during backtesting and prepares the

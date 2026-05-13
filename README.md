@@ -40,6 +40,7 @@ select named universe
 -> build OpenDART financial features
 -> analyze market regime
 -> score each stock
+   using technical + risk + financial evidence
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
@@ -144,6 +145,12 @@ python main.py build-dart-financial-features --ticker 005930 --year 2023 --repor
 python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
 ```
 
+Blend the OpenDART financial score into the daily stock score:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+```
+
 Multiple stocks:
 
 ```powershell
@@ -189,7 +196,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 37 passed
+pytest: 38 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -238,7 +245,6 @@ only committed environment file.
 ## Roadmap
 
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
-- Integrate OpenDART financial score into final stock scoring
 - Convert OpenDART disclosures into event scoring features
 - Add investor flow and short-selling features
 - Calibrate market regime thresholds with longer validation windows

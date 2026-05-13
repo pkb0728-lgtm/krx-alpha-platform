@@ -60,6 +60,32 @@ app = typer.Typer(help="KRX Alpha Platform command line interface")
 console = Console()
 
 
+def _load_financial_feature_frame(
+    ticker: str,
+    corp_code: str | None,
+    financial_year: str | None,
+    financial_report_code: str,
+) -> pd.DataFrame | None:
+    if financial_year is None:
+        return None
+
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    financial_path = dart_financial_feature_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        financial_year,
+        financial_report_code,
+    )
+    if not financial_path.exists():
+        raise typer.BadParameter(
+            "DART financial feature file does not exist. "
+            "Run build-dart-financial-features first: "
+            f"{financial_path}"
+        )
+    return read_parquet(financial_path)
+
+
 @app.command()
 def doctor() -> None:
     """Check whether the local project environment is ready."""
@@ -422,6 +448,18 @@ def score_stock(
         str,
         typer.Option("--end", help="End date in YYYY-MM-DD format."),
     ] = "2024-01-31",
+    financial_year: Annotated[
+        str | None,
+        typer.Option("--financial-year", help="OpenDART business year to blend into scoring."),
+    ] = None,
+    financial_report_code: Annotated[
+        str,
+        typer.Option("--financial-report-code", help="OpenDART report code. 11011 is annual."),
+    ] = "11011",
+    financial_corp_code: Annotated[
+        str | None,
+        typer.Option("--financial-corp-code", help="OpenDART corporation code when needed."),
+    ] = None,
 ) -> None:
     """Score a stock from feature data and save daily explainable scores."""
     configure_logger(settings.log_level)
@@ -437,7 +475,13 @@ def score_stock(
         raise typer.BadParameter(f"Price feature file does not exist: {input_path}")
 
     feature_frame = read_parquet(input_path)
-    score_frame = PriceScorer().score(feature_frame)
+    financial_frame = _load_financial_feature_frame(
+        request.ticker,
+        financial_corp_code,
+        financial_year,
+        financial_report_code,
+    )
+    score_frame = PriceScorer().score(feature_frame, financial_frame)
     output_path = daily_score_file_path(
         settings.project_root,
         request.ticker,
@@ -450,7 +494,9 @@ def score_stock(
     console.print(f"[green]Scored {len(score_frame)} rows[/green]")
     console.print(f"Latest signal: {latest['signal_label']}")
     console.print(f"Latest total score: {latest['total_score']:.2f}")
+    console.print(f"Latest financial score: {latest['financial_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
+    console.print(f"Financial reason: {latest['financial_reason']}")
     console.print(f"Output: {output_path}")
 
 
@@ -638,11 +684,29 @@ def run_pipeline(
         str,
         typer.Option("--end", help="End date in YYYY-MM-DD format."),
     ] = "2024-01-31",
+    financial_year: Annotated[
+        str | None,
+        typer.Option("--financial-year", help="OpenDART business year to blend into scoring."),
+    ] = None,
+    financial_report_code: Annotated[
+        str,
+        typer.Option("--financial-report-code", help="OpenDART report code. 11011 is annual."),
+    ] = "11011",
+    financial_corp_code: Annotated[
+        str | None,
+        typer.Option("--financial-corp-code", help="OpenDART corporation code when needed."),
+    ] = None,
 ) -> None:
     """Run collect, process, feature, score, signal, and report steps at once."""
     configure_logger(settings.log_level)
     request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
-    result = DailyPipeline(settings.project_root).run(request)
+    financial_frame = _load_financial_feature_frame(
+        request.ticker,
+        financial_corp_code,
+        financial_year,
+        financial_report_code,
+    )
+    result = DailyPipeline(settings.project_root).run(request, financial_frame)
 
     console.print("[bold green]Daily pipeline completed.[/bold green]")
     console.print(f"Raw: {result.raw_path}")
@@ -654,6 +718,7 @@ def run_pipeline(
     console.print(f"Report: {result.report_path}")
     console.print(f"Latest action: {result.latest_action}")
     console.print(f"Confidence: {result.latest_confidence_score:.2f}")
+    console.print(f"Financial score: {result.latest_financial_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
 
 
