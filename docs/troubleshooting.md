@@ -1,15 +1,10 @@
 # Troubleshooting
 
-## `KRX login failed`
+## Public Price Collection Warning
 
-You may see:
-
-```text
-KRX login failed: KRX_ID or KRX_PW environment variable is not set.
-```
-
-For the current public OHLCV pipeline, this warning can appear while the data
-still downloads correctly. If rows are saved, the MVP pipeline is working.
+The current MVP uses public OHLCV collection and does not require exchange
+login credentials. If rows are saved under `data/raw/prices_daily`, the price
+collection step is working.
 
 ## `ModuleNotFoundError: No module named 'streamlit'`
 

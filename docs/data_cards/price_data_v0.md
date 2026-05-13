@@ -20,7 +20,7 @@ data for user-selected date ranges.
 
 ## Known Issues
 
-- `KRX_ID` and `KRX_PW` warnings may appear even when public price data works.
+- Public OHLCV collection does not require storing exchange login credentials.
 - Trading value may be estimated as `close * volume` when missing.
 - The MVP does not yet handle corporate actions beyond source-adjusted prices.
 
@@ -28,4 +28,3 @@ data for user-selected date ranges.
 
 The project stores `as_of_date` and timestamp columns to support future
 point-in-time validation.
-

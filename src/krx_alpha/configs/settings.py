@@ -28,8 +28,6 @@ class Settings(BaseSettings):
     kis_app_key: str | None = None
     kis_app_secret: str | None = None
     kis_account_no: str | None = None
-    krx_id: str | None = None
-    krx_pw: str | None = None
     fred_api_key: str | None = None
 
     @property
