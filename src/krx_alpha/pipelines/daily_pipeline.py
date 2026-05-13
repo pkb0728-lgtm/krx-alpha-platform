@@ -39,6 +39,7 @@ class DailyPipelineResult:
     latest_action: str
     latest_confidence_score: float
     latest_financial_score: float
+    latest_event_score: float
     latest_market_regime: str
 
 
@@ -52,6 +53,7 @@ class DailyPipeline:
         self,
         request: PriceRequest,
         financial_feature_frame: pd.DataFrame | None = None,
+        event_feature_frame: pd.DataFrame | None = None,
     ) -> DailyPipelineResult:
         raw_frame = PykrxPriceCollector().collect(request)
         raw_path = raw_price_file_path(
@@ -96,7 +98,11 @@ class DailyPipeline:
         )
         write_text(MarketRegimeReportGenerator().generate(regime_frame), regime_report_path)
 
-        score_frame = PriceScorer().score(feature_frame, financial_feature_frame)
+        score_frame = PriceScorer().score(
+            feature_frame,
+            financial_feature_frame,
+            event_feature_frame,
+        )
         score_path = daily_score_file_path(
             self.project_root,
             request.ticker,
@@ -139,5 +145,6 @@ class DailyPipeline:
             latest_financial_score=float(
                 score_frame.sort_values("date").iloc[-1]["financial_score"]
             ),
+            latest_event_score=float(score_frame.sort_values("date").iloc[-1]["event_score"]),
             latest_market_regime=str(latest_regime["regime"]),
         )

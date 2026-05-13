@@ -29,6 +29,7 @@ class FakeDailyPipeline:
             latest_action="watch",
             latest_confidence_score=60.0,
             latest_financial_score=50.0,
+            latest_event_score=50.0,
             latest_market_regime="neutral",
         )
 

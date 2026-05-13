@@ -12,10 +12,13 @@ def test_daily_report_generator_creates_markdown() -> None:
             "technical_score": [62.0],
             "risk_score": [70.17],
             "financial_score": [82.0],
+            "event_score": [50.0],
+            "event_risk_flag": [False],
             "total_score": [64.45],
             "signal_label": ["watch"],
             "score_reason": ["rsi_recovery_zone, trading_value_increase"],
             "financial_reason": ["revenue_growth_positive, operating_margin_healthy"],
+            "event_reason": ["disclosure_routine_report"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -49,4 +52,6 @@ def test_daily_report_generator_creates_markdown() -> None:
     assert "`rsi_recovery_zone`" in report
     assert "Financial score" in report
     assert "`revenue_growth_positive`" in report
+    assert "Event score" in report
+    assert "`disclosure_routine_report`" in report
     assert "This report is decision-support output" in report

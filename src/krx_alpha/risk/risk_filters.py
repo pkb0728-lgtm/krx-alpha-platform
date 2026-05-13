@@ -41,6 +41,9 @@ class RiskFilter:
         if pd.notna(risk_score) and float(risk_score) < self.config.min_risk_score:
             flags.append("weak_risk_score")
 
+        if bool(row.get("event_risk_flag", False)):
+            flags.append("disclosure_event_risk")
+
         market_regime = str(row.get("market_regime", "")).lower()
         if market_regime in self.config.blocked_market_regimes:
             flags.append(f"market_regime_{market_regime}")

@@ -71,6 +71,16 @@ def dart_disclosure_file_path(
     return dataset_dir / f"{corp_code}_{start_date}_{end_date}.parquet"
 
 
+def dart_disclosure_event_file_path(
+    project_root: Path,
+    corp_code: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = features_dataset_dir(project_root, "dart_disclosure_events")
+    return dataset_dir / f"{corp_code}_{start_date}_{end_date}.parquet"
+
+
 def processed_price_file_path(
     project_root: Path,
     ticker: str,

@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from krx_alpha.contracts.disclosure_event_contract import validate_disclosure_event_frame
 from krx_alpha.contracts.feature_contract import validate_price_feature_frame
 from krx_alpha.contracts.financial_feature_contract import validate_financial_feature_frame
 from krx_alpha.contracts.score_contract import validate_daily_score_frame
@@ -14,10 +15,13 @@ SCORE_COLUMNS = [
     "technical_score",
     "risk_score",
     "financial_score",
+    "event_score",
+    "event_risk_flag",
     "total_score",
     "signal_label",
     "score_reason",
     "financial_reason",
+    "event_reason",
     "scored_at",
 ]
 
@@ -25,17 +29,24 @@ SCORE_COLUMNS = [
 class PriceScorer:
     """Score stocks using simple explainable rules over price features."""
 
-    def score(self, feature_frame: Any, financial_feature_frame: Any | None = None) -> Any:
+    def score(
+        self,
+        feature_frame: Any,
+        financial_feature_frame: Any | None = None,
+        event_feature_frame: Any | None = None,
+    ) -> Any:
         frame = feature_frame.copy()
         validate_price_feature_frame(frame)
         frame = _attach_financial_scores(frame, financial_feature_frame)
+        frame = _attach_event_scores(frame, event_feature_frame)
 
         frame["technical_score"] = frame.apply(_technical_score, axis=1)
         frame["risk_score"] = frame.apply(_risk_score, axis=1)
         frame["total_score"] = (
-            frame["technical_score"] * 0.55
-            + frame["risk_score"] * 0.25
+            frame["technical_score"] * 0.50
+            + frame["risk_score"] * 0.20
             + frame["financial_score"] * 0.20
+            + frame["event_score"] * 0.10
         ).clip(0, 100)
         frame["signal_label"] = frame["total_score"].apply(_signal_label)
         frame["score_reason"] = frame.apply(_score_reason, axis=1)
@@ -69,6 +80,43 @@ def _attach_financial_scores(frame: Any, financial_feature_frame: Any | None) ->
     merged["financial_score"] = merged["financial_score"].fillna(50.0)
     merged["financial_reason"] = merged["financial_reason"].fillna("no_financial_feature_available")
     return merged
+
+
+def _attach_event_scores(frame: Any, event_feature_frame: Any | None) -> Any:
+    frame = frame.copy()
+    frame["date"] = pd.to_datetime(frame["date"]).dt.date
+    if event_feature_frame is None:
+        frame["event_score"] = 50.0
+        frame["event_risk_flag"] = False
+        frame["event_reason"] = "no_disclosure_event_available"
+        return frame
+
+    validate_disclosure_event_frame(event_feature_frame)
+    events = event_feature_frame.copy()
+    events["ticker"] = events["ticker"].astype(str).str.zfill(6)
+    events["date"] = pd.to_datetime(events["date"]).dt.date
+
+    event_summary = (
+        events.groupby(["ticker", "date"], as_index=False)
+        .agg(
+            event_score=("event_score", "min"),
+            event_risk_flag=("event_risk_flag", "max"),
+            event_reason=("event_reason", _join_reasons),
+        )
+        .reset_index(drop=True)
+    )
+    merged = frame.merge(event_summary, on=["ticker", "date"], how="left")
+    merged["event_score"] = merged["event_score"].fillna(50.0)
+    merged["event_risk_flag"] = (
+        merged["event_risk_flag"].where(merged["event_risk_flag"].notna(), False).astype(bool)
+    )
+    merged["event_reason"] = merged["event_reason"].fillna("no_disclosure_event_available")
+    return merged
+
+
+def _join_reasons(values: pd.Series) -> str:
+    reasons = sorted({str(value) for value in values if str(value)})
+    return ", ".join(reasons) if reasons else "disclosure_event_neutral"
 
 
 def _technical_score(row: pd.Series) -> float:

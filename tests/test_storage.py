@@ -3,6 +3,7 @@ from pathlib import Path
 from krx_alpha.database.storage import (
     DATA_LAYERS,
     dart_company_file_path,
+    dart_disclosure_event_file_path,
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
@@ -67,4 +68,14 @@ def test_dart_storage_paths(tmp_path: Path) -> None:
         )
         .as_posix()
         .endswith("data/raw/dart_disclosures/00126380_20240101_20240131.parquet")
+    )
+    assert (
+        dart_disclosure_event_file_path(
+            tmp_path,
+            "00126380",
+            "20240101",
+            "20240131",
+        )
+        .as_posix()
+        .endswith("data/features/dart_disclosure_events/00126380_20240101_20240131.parquet")
     )

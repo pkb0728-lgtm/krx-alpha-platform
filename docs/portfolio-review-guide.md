@@ -44,7 +44,9 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 ```powershell
 python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
 python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
 ```
 
 6. Explain why this is not just price prediction:
@@ -54,6 +56,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - OpenDART collectors work in demo mode without exposing API keys.
 - DART accounts are transformed into reusable financial ratios and reasons.
 - Financial evidence is blended into the daily stock score when requested.
+- DART disclosures are transformed into event scores and risk flags.
 - Named universes make screening repeatable.
 - Features are reusable.
 - Market regime can block signals before they become buy candidates.
@@ -70,6 +73,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - named universe registry
 - OpenDART raw data collectors
 - OpenDART financial feature scoring
+- OpenDART disclosure event risk scoring
 - multi-factor score blending
 - market regime analyzer
 - testable modules
@@ -83,6 +87,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - Walk-forward backtesting and portfolio-level constraints
 - Calibrate market regime thresholds with longer validation windows
 - OpenDART disclosure event scoring features
+- point-in-time release-date handling for financial and disclosure features
 - Investor flow features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking

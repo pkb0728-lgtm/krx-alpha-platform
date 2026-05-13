@@ -141,6 +141,34 @@ These features convert normalized OpenDART accounts into reusable financial
 signals. When a financial year is provided to the scoring command or daily
 pipeline, the latest financial score is blended into the final daily score.
 
+### OpenDART Disclosure Event Features
+
+Path:
+
+```text
+data/features/dart_disclosure_events/{corp_code}_{start}_{end}.parquet
+```
+
+Important columns:
+
+```text
+date
+as_of_date
+corp_code
+ticker
+report_nm
+rcept_no
+event_category
+event_score
+event_risk_flag
+event_reason
+```
+
+The event builder turns disclosure names into conservative event scores. Risk
+events such as capital increases, convertible bonds, lawsuits, governance
+issues, audit/designation warnings, listing risk, or trading suspension are
+flagged so the final risk filter can block a candidate.
+
 ### Raw OpenDART Disclosures
 
 Path:
@@ -204,10 +232,13 @@ Important columns:
 technical_score
 risk_score
 financial_score
+event_score
+event_risk_flag
 total_score
 signal_label
 score_reason
 financial_reason
+event_reason
 ```
 
 ### Market Regime

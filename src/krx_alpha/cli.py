@@ -22,6 +22,7 @@ from krx_alpha.database.storage import (
     daily_report_file_path,
     daily_score_file_path,
     dart_company_file_path,
+    dart_disclosure_event_file_path,
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
@@ -41,6 +42,7 @@ from krx_alpha.database.storage import (
     write_parquet,
     write_text,
 )
+from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
@@ -84,6 +86,32 @@ def _load_financial_feature_frame(
             f"{financial_path}"
         )
     return read_parquet(financial_path)
+
+
+def _load_disclosure_event_frame(
+    ticker: str,
+    corp_code: str | None,
+    event_start: str | None,
+    event_end: str,
+) -> pd.DataFrame | None:
+    if event_start is None:
+        return None
+
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    event_path = dart_disclosure_event_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        event_start.replace("-", ""),
+        event_end.replace("-", ""),
+    )
+    if not event_path.exists():
+        raise typer.BadParameter(
+            "DART disclosure event feature file does not exist. "
+            "Run build-dart-disclosure-events first: "
+            f"{event_path}"
+        )
+    return read_parquet(event_path)
 
 
 @app.command()
@@ -297,6 +325,62 @@ def collect_dart_disclosures(
     console.print(f"Output: {output_path}")
 
 
+@app.command("build-dart-disclosure-events")
+def build_dart_disclosure_events(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    corp_code: Annotated[
+        str | None,
+        typer.Option("--corp-code", help="OpenDART corporation code. Example: 00126380"),
+    ] = None,
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Disclosure start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="Disclosure end date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+) -> None:
+    """Build event features from raw OpenDART disclosure search data."""
+    configure_logger(settings.log_level)
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    start_compact = start.replace("-", "")
+    end_compact = end.replace("-", "")
+    input_path = dart_disclosure_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        start_compact,
+        end_compact,
+    )
+    if not input_path.exists():
+        raise typer.BadParameter(f"DART disclosure file does not exist: {input_path}")
+
+    disclosure_frame = read_parquet(input_path)
+    event_frame = DartDisclosureEventBuilder().build(disclosure_frame)
+    output_path = dart_disclosure_event_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        start_compact,
+        end_compact,
+    )
+    write_parquet(event_frame, output_path)
+
+    risk_count = int(event_frame["event_risk_flag"].sum())
+    latest = event_frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Built DART disclosure event features.[/bold green]")
+    console.print(f"Ticker: {latest['ticker']}")
+    console.print(f"Corp code: {latest['corp_code']}")
+    console.print(f"Events: {len(event_frame)}")
+    console.print(f"Risk events: {risk_count}")
+    console.print(f"Latest event score: {float(latest['event_score']):.2f}")
+    console.print(f"Latest event reason: {latest['event_reason']}")
+    console.print(f"Output: {output_path}")
+
+
 @app.command("build-dart-financial-features")
 def build_dart_financial_features(
     ticker: Annotated[
@@ -460,6 +544,18 @@ def score_stock(
         str | None,
         typer.Option("--financial-corp-code", help="OpenDART corporation code when needed."),
     ] = None,
+    event_start: Annotated[
+        str | None,
+        typer.Option("--event-start", help="Disclosure event feature start date."),
+    ] = None,
+    event_end: Annotated[
+        str | None,
+        typer.Option("--event-end", help="Disclosure event feature end date."),
+    ] = None,
+    event_corp_code: Annotated[
+        str | None,
+        typer.Option("--event-corp-code", help="OpenDART corporation code for event features."),
+    ] = None,
 ) -> None:
     """Score a stock from feature data and save daily explainable scores."""
     configure_logger(settings.log_level)
@@ -481,7 +577,13 @@ def score_stock(
         financial_year,
         financial_report_code,
     )
-    score_frame = PriceScorer().score(feature_frame, financial_frame)
+    event_frame = _load_disclosure_event_frame(
+        request.ticker,
+        event_corp_code,
+        event_start,
+        event_end or end,
+    )
+    score_frame = PriceScorer().score(feature_frame, financial_frame, event_frame)
     output_path = daily_score_file_path(
         settings.project_root,
         request.ticker,
@@ -495,8 +597,10 @@ def score_stock(
     console.print(f"Latest signal: {latest['signal_label']}")
     console.print(f"Latest total score: {latest['total_score']:.2f}")
     console.print(f"Latest financial score: {latest['financial_score']:.2f}")
+    console.print(f"Latest event score: {latest['event_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
     console.print(f"Financial reason: {latest['financial_reason']}")
+    console.print(f"Event reason: {latest['event_reason']}")
     console.print(f"Output: {output_path}")
 
 
@@ -696,6 +800,18 @@ def run_pipeline(
         str | None,
         typer.Option("--financial-corp-code", help="OpenDART corporation code when needed."),
     ] = None,
+    event_start: Annotated[
+        str | None,
+        typer.Option("--event-start", help="Disclosure event feature start date."),
+    ] = None,
+    event_end: Annotated[
+        str | None,
+        typer.Option("--event-end", help="Disclosure event feature end date."),
+    ] = None,
+    event_corp_code: Annotated[
+        str | None,
+        typer.Option("--event-corp-code", help="OpenDART corporation code for event features."),
+    ] = None,
 ) -> None:
     """Run collect, process, feature, score, signal, and report steps at once."""
     configure_logger(settings.log_level)
@@ -706,7 +822,13 @@ def run_pipeline(
         financial_year,
         financial_report_code,
     )
-    result = DailyPipeline(settings.project_root).run(request, financial_frame)
+    event_frame = _load_disclosure_event_frame(
+        request.ticker,
+        event_corp_code,
+        event_start,
+        event_end or end,
+    )
+    result = DailyPipeline(settings.project_root).run(request, financial_frame, event_frame)
 
     console.print("[bold green]Daily pipeline completed.[/bold green]")
     console.print(f"Raw: {result.raw_path}")
@@ -719,6 +841,7 @@ def run_pipeline(
     console.print(f"Latest action: {result.latest_action}")
     console.print(f"Confidence: {result.latest_confidence_score:.2f}")
     console.print(f"Financial score: {result.latest_financial_score:.2f}")
+    console.print(f"Event score: {result.latest_event_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
 
 

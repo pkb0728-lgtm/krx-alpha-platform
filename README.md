@@ -6,7 +6,8 @@ This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, market regime analysis, explainable scoring, risk
-filtering, backtesting, report generation, and a Streamlit dashboard.
+disclosure event risk scoring, filtering, backtesting, report generation, and a
+Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -19,6 +20,7 @@ filtering, backtesting, report generation, and a Streamlit dashboard.
 - Data contracts and validation checks
 - Named universe management for repeatable screening
 - Technical and financial feature engineering
+- Disclosure event feature engineering
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -38,9 +40,10 @@ select named universe
 -> process raw data
 -> build price features
 -> build OpenDART financial features
+-> build OpenDART disclosure event features
 -> analyze market regime
 -> score each stock
-   using technical + risk + financial evidence
+   using technical + risk + financial + event evidence
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
@@ -143,12 +146,13 @@ python main.py collect-dart-company --ticker 005930 --demo
 python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
 python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
 python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
-Blend the OpenDART financial score into the daily stock score:
+Blend OpenDART financial and disclosure event scores into the daily stock score:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
 ```
 
 Multiple stocks:
@@ -196,7 +200,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 38 passed
+pytest: 42 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -212,6 +216,7 @@ data/processed/universe/
 data/processed/prices_daily/
 data/features/prices_daily/
 data/features/dart_financials/
+data/features/dart_disclosure_events/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
@@ -245,7 +250,7 @@ only committed environment file.
 ## Roadmap
 
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
-- Convert OpenDART disclosures into event scoring features
+- Add stricter point-in-time release-date handling for DART financial and event data
 - Add investor flow and short-selling features
 - Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with walk-forward validation and portfolio-level constraints

@@ -14,7 +14,9 @@ flowchart TD
     A["Collector: pykrx"] --> B["Raw data layer"]
     X["Collector: OpenDART"] --> Y["Raw DART data layer"]
     Y --> Z["DART financial feature builder"]
+    Y --> V["DART disclosure event builder"]
     Z --> G
+    V --> G
     B --> C["Data contract checks"]
     Y --> C
     C --> D["Processor"]
@@ -59,7 +61,7 @@ inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
 universe -> raw -> processed -> features -> regime/scores -> final signals -> reports/backtest
-OpenDART raw -> financial features -> multi-factor scoring
+OpenDART raw -> financial/event features -> multi-factor scoring
 ```
 
 This separation helps avoid data leakage during backtesting and prepares the

@@ -76,6 +76,7 @@ python main.py collect-dart-company --ticker 005930 --demo
 python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
 python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
 python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
 Output examples:
@@ -85,20 +86,21 @@ data/raw/dart_company/00126380.parquet
 data/raw/dart_financials/00126380_2023_11011.parquet
 data/features/dart_financials/00126380_2023_11011.parquet
 data/raw/dart_disclosures/00126380_20240101_20240131.parquet
+data/features/dart_disclosure_events/00126380_20240101_20240131.parquet
 ```
 
 The financial feature output includes revenue growth, operating margin, debt
 ratio, ROE, a 0-100 financial score, and reason labels for explainability.
 
-Use the financial feature file in the daily pipeline:
+Use the financial and disclosure event feature files in the daily pipeline:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
 ```
 
-When `--financial-year` is provided, the score blends technical, risk, and
-financial evidence. Without that option, the pipeline uses a neutral financial
-score of `50.0`.
+When these options are provided, the score blends technical, risk, financial,
+and event evidence. Without those options, the pipeline uses neutral financial
+and event scores of `50.0`.
 
 To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 `--demo` with `--live`.

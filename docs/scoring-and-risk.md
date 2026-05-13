@@ -11,21 +11,26 @@ Current score components:
 technical_score
 risk_score
 financial_score
+event_score
+event_risk_flag
 total_score
 signal_label
 score_reason
 financial_reason
+event_reason
 ```
 
 OpenDART financial statements can also be converted into a separate
 `financial_score` and `financial_reason`. When a financial feature file is
 attached, the total score blends technical, risk, and financial evidence.
 Without a financial feature file, the score uses a neutral financial value.
+OpenDART disclosure event features can also be attached. Risky disclosure
+events are given a lower `event_score` and can set `event_risk_flag`.
 
 Current MVP weighting:
 
 ```text
-total_score = technical_score * 0.55 + risk_score * 0.25 + financial_score * 0.20
+total_score = technical_score * 0.50 + risk_score * 0.20 + financial_score * 0.20 + event_score * 0.10
 ```
 
 ## Technical Score
@@ -66,6 +71,7 @@ Current risk filters include:
 - wide daily range
 - high short-term volatility
 - weak risk score
+- disclosure event risk
 - unfavorable market regime, currently `bear` and `high_volatility`
 
 ## Market Regime

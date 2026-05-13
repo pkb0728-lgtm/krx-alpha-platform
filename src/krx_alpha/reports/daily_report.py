@@ -22,6 +22,19 @@ REASON_DESCRIPTIONS = {
     "debt_ratio_high": "Debt ratio is elevated.",
     "roe_positive": "Return on equity is positive.",
     "financial_evidence_neutral": "Financial evidence is neutral.",
+    "no_disclosure_event_available": "No disclosure event feature file was attached.",
+    "disclosure_routine_report": "Disclosure is a routine periodic report.",
+    "disclosure_event_neutral": "Disclosure event is neutral under current rules.",
+    "disclosure_positive_shareholder_return": "Disclosure suggests shareholder return.",
+    "disclosure_positive_dividend": "Disclosure is related to dividends.",
+    "disclosure_positive_contract": "Disclosure suggests business momentum.",
+    "disclosure_risk_capital_increase": "Disclosure may dilute existing shareholders.",
+    "disclosure_risk_convertible_bond": "Disclosure may create convertible security overhang.",
+    "disclosure_risk_warrant": "Disclosure may create warrant-related overhang.",
+    "disclosure_risk_litigation": "Disclosure contains litigation risk.",
+    "disclosure_risk_governance": "Disclosure contains governance risk.",
+    "disclosure_risk_listing": "Disclosure contains listing or trading-suspension risk.",
+    "disclosure_risk_audit_or_designation": "Disclosure contains audit or designation risk.",
 }
 
 SIGNAL_DESCRIPTIONS = {
@@ -49,6 +62,7 @@ class DailyReportGenerator:
 
         reasons = _format_reasons(str(latest_score["score_reason"]))
         financial_reasons = _format_reasons(str(latest_score["financial_reason"]))
+        event_reasons = _format_reasons(str(latest_score["event_reason"]))
         signal = str(latest_score["signal_label"])
         signal_description = SIGNAL_DESCRIPTIONS.get(signal, "Unknown signal.")
 
@@ -63,6 +77,8 @@ class DailyReportGenerator:
                 f"- Technical score: {_format_number(latest_score['technical_score'])}",
                 f"- Risk score: {_format_number(latest_score['risk_score'])}",
                 f"- Financial score: {_format_number(latest_score['financial_score'])}",
+                f"- Event score: {_format_number(latest_score['event_score'])}",
+                f"- Event risk flag: {bool(latest_score['event_risk_flag'])}",
                 "",
                 "## Key Metrics",
                 "",
@@ -81,6 +97,10 @@ class DailyReportGenerator:
                 "## Financial Evidence",
                 "",
                 financial_reasons,
+                "",
+                "## Disclosure Event Evidence",
+                "",
+                event_reasons,
                 "",
                 "## Risk Note",
                 "",
