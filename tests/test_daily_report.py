@@ -14,11 +14,13 @@ def test_daily_report_generator_creates_markdown() -> None:
             "financial_score": [82.0],
             "event_score": [50.0],
             "event_risk_flag": [False],
+            "flow_score": [82.0],
             "total_score": [64.45],
             "signal_label": ["watch"],
             "score_reason": ["rsi_recovery_zone, trading_value_increase"],
             "financial_reason": ["revenue_growth_positive, operating_margin_healthy"],
             "event_reason": ["disclosure_routine_report"],
+            "flow_reason": ["strong_smart_money_inflow"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -54,4 +56,6 @@ def test_daily_report_generator_creates_markdown() -> None:
     assert "`revenue_growth_positive`" in report
     assert "Event score" in report
     assert "`disclosure_routine_report`" in report
+    assert "Investor flow score" in report
+    assert "`strong_smart_money_inflow`" in report
     assert "This report is decision-support output" in report

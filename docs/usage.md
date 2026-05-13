@@ -46,6 +46,14 @@ reports/daily/
 reports/regime/
 ```
 
+Optional investor flow features can be prepared before running the multi-factor
+pipeline:
+
+```powershell
+python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
+```
+
 ## 4. List A Named Universe
 
 List available universes:
@@ -95,12 +103,12 @@ ratio, ROE, a 0-100 financial score, and reason labels for explainability.
 Use the financial and disclosure event feature files in the daily pipeline:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
 ```
 
 When these options are provided, the score blends technical, risk, financial,
-and event evidence. Without those options, the pipeline uses neutral financial
-and event scores of `50.0`.
+event, and investor flow evidence. Without those options, the pipeline uses
+neutral financial, event, and flow scores of `50.0`.
 
 To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 `--demo` with `--live`.

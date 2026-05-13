@@ -44,6 +44,10 @@ class RiskFilter:
         if bool(row.get("event_risk_flag", False)):
             flags.append("disclosure_event_risk")
 
+        flow_score = row.get("flow_score")
+        if pd.notna(flow_score) and float(flow_score) < 25:
+            flags.append("weak_investor_flow")
+
         market_regime = str(row.get("market_regime", "")).lower()
         if market_regime in self.config.blocked_market_regimes:
             flags.append(f"market_regime_{market_regime}")

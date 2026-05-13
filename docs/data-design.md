@@ -218,6 +218,37 @@ volatility_20d
 rsi_14
 ```
 
+### Investor Flow Features
+
+Raw path:
+
+```text
+data/raw/investor_flow_daily/{ticker}_{start}_{end}.parquet
+```
+
+Feature path:
+
+```text
+data/features/investor_flow_daily/{ticker}_{start}_{end}.parquet
+```
+
+Important feature columns:
+
+```text
+foreign_net_buy_value
+institution_net_buy_value
+smart_money_net_buy_value
+foreign_net_buy_value_5d
+institution_net_buy_value_5d
+smart_money_net_buy_value_5d
+flow_score
+flow_reason
+```
+
+`smart_money_net_buy_value` is the combined foreign and institutional net-buy
+value. The MVP scores recent inflow/outflow conservatively and keeps the reason
+codes explainable.
+
 ### Daily Scores
 
 Path:
@@ -234,11 +265,13 @@ risk_score
 financial_score
 event_score
 event_risk_flag
+flow_score
 total_score
 signal_label
 score_reason
 financial_reason
 event_reason
+flow_reason
 ```
 
 ### Market Regime

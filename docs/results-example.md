@@ -37,6 +37,8 @@ python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code
 python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
 python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
 python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
+python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
 Example output:
@@ -62,7 +64,7 @@ Reason: revenue_growth_positive, operating_margin_healthy, net_margin_positive, 
 Example multi-factor pipeline command:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
 ```
 
 Example scoring line:
@@ -70,6 +72,7 @@ Example scoring line:
 ```text
 Financial score: 100.00
 Event score: 50.00
+Flow score: 85.00
 ```
 
 | Action | Meaning |

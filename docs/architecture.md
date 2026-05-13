@@ -12,11 +12,14 @@ control, and human review over direct price prediction.
 flowchart TD
     U["Universe registry"] --> A
     A["Collector: pykrx"] --> B["Raw data layer"]
+    A --> W["Raw investor flow layer"]
     X["Collector: OpenDART"] --> Y["Raw DART data layer"]
     Y --> Z["DART financial feature builder"]
     Y --> V["DART disclosure event builder"]
     Z --> G
     V --> G
+    W --> S["Investor flow feature builder"]
+    S --> G
     B --> C["Data contract checks"]
     Y --> C
     C --> D["Processor"]

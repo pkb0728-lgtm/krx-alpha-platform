@@ -14,11 +14,13 @@ def test_signal_engine_generates_final_actions() -> None:
             "financial_score": [80.0, 50.0],
             "event_score": [50.0, 50.0],
             "event_risk_flag": [False, False],
+            "flow_score": [80.0, 50.0],
             "total_score": [71.4, 64.4],
             "signal_label": ["watch_buy", "watch"],
             "score_reason": ["close_above_ma20", "rsi_recovery_zone"],
             "financial_reason": ["revenue_growth_positive", "no_financial_feature_available"],
             "event_reason": ["disclosure_routine_report", "no_disclosure_event_available"],
+            "flow_reason": ["strong_smart_money_inflow", "no_investor_flow_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")] * 2,
         }
     )
@@ -63,11 +65,13 @@ def test_signal_engine_blocks_insufficient_history() -> None:
             "financial_score": [50.0],
             "event_score": [50.0],
             "event_risk_flag": [False],
+            "flow_score": [50.0],
             "total_score": [74.0],
             "signal_label": ["watch_buy"],
             "score_reason": ["close_above_ma5"],
             "financial_reason": ["no_financial_feature_available"],
             "event_reason": ["no_disclosure_event_available"],
+            "flow_reason": ["no_investor_flow_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -111,11 +115,13 @@ def test_signal_engine_blocks_unfavorable_market_regime() -> None:
             "financial_score": [70.0],
             "event_score": [50.0],
             "event_risk_flag": [False],
+            "flow_score": [50.0],
             "total_score": [77.0],
             "signal_label": ["watch_buy"],
             "score_reason": ["close_above_ma20"],
             "financial_reason": ["operating_margin_healthy"],
             "event_reason": ["disclosure_routine_report"],
+            "flow_reason": ["no_investor_flow_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -181,11 +187,13 @@ def test_signal_engine_blocks_disclosure_event_risk() -> None:
             "financial_score": [70.0],
             "event_score": [20.0],
             "event_risk_flag": [True],
+            "flow_score": [50.0],
             "total_score": [72.0],
             "signal_label": ["watch_buy"],
             "score_reason": ["close_above_ma20"],
             "financial_reason": ["operating_margin_healthy"],
             "event_reason": ["disclosure_risk_capital_increase"],
+            "flow_reason": ["no_investor_flow_available"],
             "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
@@ -216,3 +224,53 @@ def test_signal_engine_blocks_disclosure_event_risk() -> None:
 
     assert signal_frame.loc[0, "final_action"] == "blocked"
     assert "disclosure_event_risk" in signal_frame.loc[0, "risk_flags"]
+
+
+def test_signal_engine_blocks_weak_investor_flow() -> None:
+    score_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "technical_score": [76.0],
+            "risk_score": [80.0],
+            "financial_score": [70.0],
+            "event_score": [50.0],
+            "event_risk_flag": [False],
+            "flow_score": [20.0],
+            "total_score": [72.0],
+            "signal_label": ["watch_buy"],
+            "score_reason": ["close_above_ma20"],
+            "financial_reason": ["operating_margin_healthy"],
+            "event_reason": ["disclosure_routine_report"],
+            "flow_reason": ["strong_smart_money_outflow"],
+            "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+    feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "close": [72700],
+            "volume": [1200],
+            "trading_value": [87240000000],
+            "return_1d": [0.01],
+            "ma_5": [72000],
+            "ma_20": [71000],
+            "close_to_ma_5": [0.01],
+            "close_to_ma_20": [0.02],
+            "volume_change_5d": [0.2],
+            "trading_value_change_5d": [0.3],
+            "range_pct": [0.02],
+            "volatility_5d": [0.01],
+            "volatility_20d": [0.018],
+            "rsi_14": [55],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+
+    signal_frame = SignalEngine().generate(score_frame, feature_frame)
+
+    assert signal_frame.loc[0, "final_action"] == "blocked"
+    assert "weak_investor_flow" in signal_frame.loc[0, "risk_flags"]

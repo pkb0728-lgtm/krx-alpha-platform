@@ -19,6 +19,8 @@ FINAL_SIGNAL_COLUMNS = [
     "event_score",
     "event_risk_flag",
     "event_reason",
+    "flow_score",
+    "flow_reason",
     "market_regime",
     "market_regime_score",
     "market_regime_risk_level",

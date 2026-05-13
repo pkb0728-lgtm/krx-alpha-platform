@@ -35,6 +35,16 @@ REASON_DESCRIPTIONS = {
     "disclosure_risk_governance": "Disclosure contains governance risk.",
     "disclosure_risk_listing": "Disclosure contains listing or trading-suspension risk.",
     "disclosure_risk_audit_or_designation": "Disclosure contains audit or designation risk.",
+    "no_investor_flow_available": "No investor flow feature file was attached.",
+    "foreign_net_buy_positive_5d": "Foreign investors were net buyers over the recent window.",
+    "foreign_net_sell_5d": "Foreign investors were net sellers over the recent window.",
+    "institution_net_buy_positive_5d": "Institutions were net buyers over the recent window.",
+    "institution_net_sell_5d": "Institutions were net sellers over the recent window.",
+    "strong_smart_money_inflow": "Foreign and institutional inflow is strong.",
+    "smart_money_inflow": "Foreign and institutional flow is positive.",
+    "strong_smart_money_outflow": "Foreign and institutional outflow is strong.",
+    "smart_money_outflow": "Foreign and institutional flow is negative.",
+    "investor_flow_neutral": "Investor flow evidence is neutral.",
 }
 
 SIGNAL_DESCRIPTIONS = {
@@ -63,6 +73,7 @@ class DailyReportGenerator:
         reasons = _format_reasons(str(latest_score["score_reason"]))
         financial_reasons = _format_reasons(str(latest_score["financial_reason"]))
         event_reasons = _format_reasons(str(latest_score["event_reason"]))
+        flow_reasons = _format_reasons(str(latest_score["flow_reason"]))
         signal = str(latest_score["signal_label"])
         signal_description = SIGNAL_DESCRIPTIONS.get(signal, "Unknown signal.")
 
@@ -78,6 +89,7 @@ class DailyReportGenerator:
                 f"- Risk score: {_format_number(latest_score['risk_score'])}",
                 f"- Financial score: {_format_number(latest_score['financial_score'])}",
                 f"- Event score: {_format_number(latest_score['event_score'])}",
+                f"- Investor flow score: {_format_number(latest_score['flow_score'])}",
                 f"- Event risk flag: {bool(latest_score['event_risk_flag'])}",
                 "",
                 "## Key Metrics",
@@ -101,6 +113,10 @@ class DailyReportGenerator:
                 "## Disclosure Event Evidence",
                 "",
                 event_reasons,
+                "",
+                "## Investor Flow Evidence",
+                "",
+                flow_reasons,
                 "",
                 "## Risk Note",
                 "",

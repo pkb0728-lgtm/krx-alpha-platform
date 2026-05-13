@@ -13,6 +13,10 @@ from krx_alpha.collectors.dart_collector import (
     OpenDartCollector,
     resolve_corp_code,
 )
+from krx_alpha.collectors.investor_flow_collector import (
+    InvestorFlowRequest,
+    PykrxInvestorFlowCollector,
+)
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 from krx_alpha.configs.settings import settings
 from krx_alpha.database.storage import (
@@ -28,10 +32,12 @@ from krx_alpha.database.storage import (
     dart_financial_file_path,
     ensure_project_dirs,
     final_signal_file_path,
+    investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
+    raw_investor_flow_file_path,
     raw_price_file_path,
     read_parquet,
     universe_csv_path,
@@ -44,6 +50,7 @@ from krx_alpha.database.storage import (
 )
 from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
+from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
@@ -114,6 +121,30 @@ def _load_disclosure_event_frame(
     return read_parquet(event_path)
 
 
+def _load_investor_flow_feature_frame(
+    ticker: str,
+    flow_start: str | None,
+    flow_end: str,
+) -> pd.DataFrame | None:
+    if flow_start is None:
+        return None
+
+    normalized_ticker = ticker.zfill(6)
+    flow_path = investor_flow_feature_file_path(
+        settings.project_root,
+        normalized_ticker,
+        flow_start.replace("-", ""),
+        flow_end.replace("-", ""),
+    )
+    if not flow_path.exists():
+        raise typer.BadParameter(
+            "Investor flow feature file does not exist. "
+            "Run build-investor-flow-features first: "
+            f"{flow_path}"
+        )
+    return read_parquet(flow_path)
+
+
 @app.command()
 def doctor() -> None:
     """Check whether the local project environment is ready."""
@@ -173,6 +204,52 @@ def collect_price(
 
     console.print(f"[green]Saved {len(frame)} rows[/green]")
     console.print(f"Ticker: {request.ticker}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-investor-flow")
+def collect_investor_flow(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo flow data instead of live pykrx."),
+    ] = True,
+) -> None:
+    """Collect daily investor flow data and save it as a raw parquet file."""
+    configure_logger(settings.log_level)
+    request = InvestorFlowRequest.from_strings(
+        ticker=ticker,
+        start_date=start,
+        end_date=end,
+        demo=demo,
+    )
+
+    frame = PykrxInvestorFlowCollector().collect(request)
+    output_path = raw_investor_flow_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(frame, output_path)
+
+    latest = frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Collected investor flow data.[/bold green]")
+    console.print(f"Ticker: {request.ticker}")
+    console.print(f"Rows: {len(frame)}")
+    console.print(f"Latest foreign net buy value: {latest['foreign_net_buy_value']:,.0f}")
+    console.print(f"Latest institution net buy value: {latest['institution_net_buy_value']:,.0f}")
     console.print(f"Output: {output_path}")
 
 
@@ -518,6 +595,53 @@ def build_features(
     console.print(f"Output: {output_path}")
 
 
+@app.command("build-investor-flow-features")
+def build_investor_flow_features(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+) -> None:
+    """Build investor flow features from raw investor net-buy data."""
+    configure_logger(settings.log_level)
+    request = InvestorFlowRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    input_path = raw_investor_flow_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not input_path.exists():
+        raise typer.BadParameter(f"Raw investor flow file does not exist: {input_path}")
+
+    flow_frame = read_parquet(input_path)
+    feature_frame = InvestorFlowFeatureBuilder().build(flow_frame)
+    output_path = investor_flow_feature_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(feature_frame, output_path)
+
+    latest = feature_frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Built investor flow features.[/bold green]")
+    console.print(f"Ticker: {latest['ticker']}")
+    console.print(f"Rows: {len(feature_frame)}")
+    console.print(f"Latest flow score: {float(latest['flow_score']):.2f}")
+    console.print(f"Latest flow reason: {latest['flow_reason']}")
+    console.print(f"Output: {output_path}")
+
+
 @app.command("score-stock")
 def score_stock(
     ticker: Annotated[
@@ -556,6 +680,14 @@ def score_stock(
         str | None,
         typer.Option("--event-corp-code", help="OpenDART corporation code for event features."),
     ] = None,
+    flow_start: Annotated[
+        str | None,
+        typer.Option("--flow-start", help="Investor flow feature start date."),
+    ] = None,
+    flow_end: Annotated[
+        str | None,
+        typer.Option("--flow-end", help="Investor flow feature end date."),
+    ] = None,
 ) -> None:
     """Score a stock from feature data and save daily explainable scores."""
     configure_logger(settings.log_level)
@@ -583,7 +715,12 @@ def score_stock(
         event_start,
         event_end or end,
     )
-    score_frame = PriceScorer().score(feature_frame, financial_frame, event_frame)
+    flow_frame = _load_investor_flow_feature_frame(
+        request.ticker,
+        flow_start,
+        flow_end or end,
+    )
+    score_frame = PriceScorer().score(feature_frame, financial_frame, event_frame, flow_frame)
     output_path = daily_score_file_path(
         settings.project_root,
         request.ticker,
@@ -598,9 +735,11 @@ def score_stock(
     console.print(f"Latest total score: {latest['total_score']:.2f}")
     console.print(f"Latest financial score: {latest['financial_score']:.2f}")
     console.print(f"Latest event score: {latest['event_score']:.2f}")
+    console.print(f"Latest flow score: {latest['flow_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
     console.print(f"Financial reason: {latest['financial_reason']}")
     console.print(f"Event reason: {latest['event_reason']}")
+    console.print(f"Flow reason: {latest['flow_reason']}")
     console.print(f"Output: {output_path}")
 
 
@@ -812,6 +951,14 @@ def run_pipeline(
         str | None,
         typer.Option("--event-corp-code", help="OpenDART corporation code for event features."),
     ] = None,
+    flow_start: Annotated[
+        str | None,
+        typer.Option("--flow-start", help="Investor flow feature start date."),
+    ] = None,
+    flow_end: Annotated[
+        str | None,
+        typer.Option("--flow-end", help="Investor flow feature end date."),
+    ] = None,
 ) -> None:
     """Run collect, process, feature, score, signal, and report steps at once."""
     configure_logger(settings.log_level)
@@ -828,7 +975,17 @@ def run_pipeline(
         event_start,
         event_end or end,
     )
-    result = DailyPipeline(settings.project_root).run(request, financial_frame, event_frame)
+    flow_frame = _load_investor_flow_feature_frame(
+        request.ticker,
+        flow_start,
+        flow_end or end,
+    )
+    result = DailyPipeline(settings.project_root).run(
+        request,
+        financial_frame,
+        event_frame,
+        flow_frame,
+    )
 
     console.print("[bold green]Daily pipeline completed.[/bold green]")
     console.print(f"Raw: {result.raw_path}")
@@ -842,6 +999,7 @@ def run_pipeline(
     console.print(f"Confidence: {result.latest_confidence_score:.2f}")
     console.print(f"Financial score: {result.latest_financial_score:.2f}")
     console.print(f"Event score: {result.latest_event_score:.2f}")
+    console.print(f"Flow score: {result.latest_flow_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
 
 

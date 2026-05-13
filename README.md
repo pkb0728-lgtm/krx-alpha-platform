@@ -5,9 +5,9 @@ Explainable Korean stock investment decision-support platform built with Python.
 This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
-financial feature scoring, market regime analysis, explainable scoring, risk
-disclosure event risk scoring, filtering, backtesting, report generation, and a
-Streamlit dashboard.
+financial feature scoring, disclosure event risk scoring, investor flow
+scoring, market regime analysis, explainable scoring, risk filtering,
+backtesting, report generation, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -21,6 +21,7 @@ Streamlit dashboard.
 - Named universe management for repeatable screening
 - Technical and financial feature engineering
 - Disclosure event feature engineering
+- Foreign/institution investor flow feature engineering
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -36,14 +37,16 @@ The current MVP supports this end-to-end flow:
 ```text
 select named universe
 -> collect price data
+-> collect investor flow data
 -> collect OpenDART company/financial/disclosure data
 -> process raw data
 -> build price features
+-> build investor flow features
 -> build OpenDART financial features
 -> build OpenDART disclosure event features
 -> analyze market regime
 -> score each stock
-   using technical + risk + financial + event evidence
+   using technical + risk + financial + event + flow evidence
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
@@ -65,9 +68,12 @@ Ticker  Action         Confidence
 ```mermaid
 flowchart LR
     A["pykrx collector"] --> B["raw parquet"]
+    A --> W["investor flow raw parquet"]
     X["OpenDART collector"] --> Y["DART raw parquet"]
     Y --> Z["financial feature builder"]
     Z --> F
+    W --> S["investor flow feature builder"]
+    S --> F
     B --> C["price processor"]
     C --> D["processed parquet"]
     D --> E["feature builder"]
@@ -149,10 +155,17 @@ python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end
 python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
-Blend OpenDART financial and disclosure event scores into the daily stock score:
+Investor flow demo data:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31
+python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
+```
+
+Blend OpenDART financial, disclosure event, and investor flow scores:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
 ```
 
 Multiple stocks:
@@ -200,7 +213,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 42 passed
+pytest: 48 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -212,11 +225,13 @@ data/raw/prices_daily/
 data/raw/dart_company/
 data/raw/dart_financials/
 data/raw/dart_disclosures/
+data/raw/investor_flow_daily/
 data/processed/universe/
 data/processed/prices_daily/
 data/features/prices_daily/
 data/features/dart_financials/
 data/features/dart_disclosure_events/
+data/features/investor_flow_daily/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
@@ -235,6 +250,7 @@ reports/backtest/
 - [Usage Guide](docs/usage.md)
 - [Data Design](docs/data-design.md)
 - [DART Data Card](docs/data_cards/dart_data_v0.md)
+- [Investor Flow Data Card](docs/data_cards/investor_flow_data_v0.md)
 - [Scoring and Risk](docs/scoring-and-risk.md)
 - [Result Example](docs/results-example.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -251,7 +267,7 @@ only committed environment file.
 
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
 - Add stricter point-in-time release-date handling for DART financial and event data
-- Add investor flow and short-selling features
+- Add short-selling features
 - Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with walk-forward validation and portfolio-level constraints
 - Add ML baselines with walk-forward validation

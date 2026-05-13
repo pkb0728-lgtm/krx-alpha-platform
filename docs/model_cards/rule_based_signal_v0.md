@@ -14,6 +14,7 @@ It is not a price prediction model.
 - daily price range
 - optional OpenDART financial score
 - optional OpenDART disclosure event score
+- optional investor flow score
 
 ## Outputs
 
@@ -29,7 +30,7 @@ It is not a price prediction model.
 - Financial features use the latest available demo snapshot unless a more
   precise point-in-time mapping is added later
 - Disclosure event rules are conservative and keyword-based in the MVP
-- No investor flow data yet
+- Investor flow data is demo-capable and can be blended into scoring
 - Market regime blocks `bear` and `high_volatility` final signals
 - Only simple single-stock backtest validation so far
 - No machine learning model yet

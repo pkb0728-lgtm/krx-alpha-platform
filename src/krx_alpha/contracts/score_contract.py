@@ -9,11 +9,13 @@ REQUIRED_DAILY_SCORE_COLUMNS = {
     "financial_score",
     "event_score",
     "event_risk_flag",
+    "flow_score",
     "total_score",
     "signal_label",
     "score_reason",
     "financial_reason",
     "event_reason",
+    "flow_reason",
     "scored_at",
 }
 
@@ -37,6 +39,7 @@ def validate_daily_score_frame(frame: Any) -> None:
         "risk_score",
         "financial_score",
         "event_score",
+        "flow_score",
         "total_score",
     ]
     for column in score_columns:

@@ -36,10 +36,12 @@ def test_price_scorer_creates_scores_and_labels() -> None:
     assert score_frame["financial_score"].eq(50.0).all()
     assert score_frame["event_score"].eq(50.0).all()
     assert score_frame["event_risk_flag"].eq(False).all()
+    assert score_frame["flow_score"].eq(50.0).all()
     assert score_frame["total_score"].between(0, 100).all()
     assert "rsi_recovery_zone" in score_frame.loc[0, "score_reason"]
     assert score_frame.loc[0, "financial_reason"] == "no_financial_feature_available"
     assert score_frame.loc[0, "event_reason"] == "no_disclosure_event_available"
+    assert score_frame.loc[0, "flow_reason"] == "no_investor_flow_available"
 
 
 def test_price_scorer_blends_financial_score() -> None:
@@ -142,3 +144,50 @@ def test_price_scorer_blends_disclosure_event_score() -> None:
     assert score_frame.loc[0, "event_score"] == 20.0
     assert bool(score_frame.loc[0, "event_risk_flag"]) is True
     assert score_frame.loc[0, "event_reason"] == "disclosure_risk_capital_increase"
+
+
+def test_price_scorer_blends_investor_flow_score() -> None:
+    feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "close": [72700],
+            "volume": [1200],
+            "trading_value": [87240000],
+            "return_1d": [-0.02],
+            "ma_5": [73780],
+            "ma_20": [74070],
+            "close_to_ma_5": [-0.015],
+            "close_to_ma_20": [-0.018],
+            "volume_change_5d": [0.1],
+            "trading_value_change_5d": [0.05],
+            "range_pct": [0.03],
+            "volatility_5d": [0.02],
+            "volatility_20d": [0.018],
+            "rsi_14": [48],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+    flow_feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "individual_net_buy_value": [-8_000_000_000.0],
+            "foreign_net_buy_value": [5_000_000_000.0],
+            "institution_net_buy_value": [3_000_000_000.0],
+            "smart_money_net_buy_value": [8_000_000_000.0],
+            "foreign_net_buy_value_5d": [25_000_000_000.0],
+            "institution_net_buy_value_5d": [15_000_000_000.0],
+            "smart_money_net_buy_value_5d": [40_000_000_000.0],
+            "flow_score": [85.0],
+            "flow_reason": ["strong_smart_money_inflow"],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+
+    score_frame = PriceScorer().score(feature_frame, flow_feature_frame=flow_feature_frame)
+
+    assert score_frame.loc[0, "flow_score"] == 85.0
+    assert score_frame.loc[0, "flow_reason"] == "strong_smart_money_inflow"
