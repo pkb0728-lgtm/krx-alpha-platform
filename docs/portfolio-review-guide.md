@@ -39,11 +39,19 @@ python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-3
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 ```
 
-5. Explain why this is not just price prediction:
+5. Show OpenDART financial feature scoring:
+
+```powershell
+python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
+python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
+```
+
+6. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
 - OpenDART collectors work in demo mode without exposing API keys.
+- DART accounts are transformed into reusable financial ratios and reasons.
 - Named universes make screening repeatable.
 - Features are reusable.
 - Market regime can block signals before they become buy candidates.
@@ -59,6 +67,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - Parquet data storage
 - named universe registry
 - OpenDART raw data collectors
+- OpenDART financial feature scoring
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
@@ -70,7 +79,8 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 
 - Walk-forward backtesting and portfolio-level constraints
 - Calibrate market regime thresholds with longer validation windows
-- OpenDART disclosure and financial scoring features
+- Blend OpenDART financial score into final stock scoring
+- OpenDART disclosure event scoring features
 - Investor flow features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking

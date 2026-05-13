@@ -15,6 +15,10 @@ signal_label
 score_reason
 ```
 
+OpenDART financial statements can also be converted into a separate
+`financial_score` and `financial_reason`. The MVP keeps this score separate so
+it can be reviewed before it is blended into the final stock score.
+
 ## Technical Score
 
 The technical score starts from a neutral base and adjusts for:

@@ -204,6 +204,7 @@ def _normalize_financial_statement(
                 "reprt_code": str(item.get("reprt_code", request.reprt_code)),
                 "fs_div": str(item.get("fs_div", request.fs_div)),
                 "sj_div": str(item.get("sj_div", "")),
+                "account_id": str(item.get("account_id", "")),
                 "account_nm": str(item.get("account_nm", "")),
                 "thstrm_amount": str(item.get("thstrm_amount", "")),
                 "thstrm_amount_value": _parse_amount(item.get("thstrm_amount")),

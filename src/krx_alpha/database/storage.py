@@ -91,6 +91,16 @@ def price_feature_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def dart_financial_feature_file_path(
+    project_root: Path,
+    corp_code: str,
+    bsns_year: str,
+    reprt_code: str,
+) -> Path:
+    dataset_dir = features_dataset_dir(project_root, "dart_financials")
+    return dataset_dir / f"{corp_code}_{bsns_year}_{reprt_code}.parquet"
+
+
 def daily_score_file_path(
     project_root: Path,
     ticker: str,

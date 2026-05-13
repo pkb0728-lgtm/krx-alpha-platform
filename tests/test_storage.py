@@ -4,6 +4,7 @@ from krx_alpha.database.storage import (
     DATA_LAYERS,
     dart_company_file_path,
     dart_disclosure_file_path,
+    dart_financial_feature_file_path,
     dart_financial_file_path,
     ensure_project_dirs,
     market_regime_file_path,
@@ -51,6 +52,11 @@ def test_dart_storage_paths(tmp_path: Path) -> None:
         dart_financial_file_path(tmp_path, "00126380", "2023", "11011")
         .as_posix()
         .endswith("data/raw/dart_financials/00126380_2023_11011.parquet")
+    )
+    assert (
+        dart_financial_feature_file_path(tmp_path, "00126380", "2023", "11011")
+        .as_posix()
+        .endswith("data/features/dart_financials/00126380_2023_11011.parquet")
     )
     assert (
         dart_disclosure_file_path(

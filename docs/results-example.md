@@ -34,6 +34,7 @@ Example command:
 
 ```powershell
 python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
+python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
 ```
 
 Example output:
@@ -44,6 +45,16 @@ Ticker: 005930
 Corp code: 00126380
 Rows: 6
 Source: opendart_demo
+```
+
+Example financial feature output:
+
+```text
+Built DART financial features.
+Ticker: 005930
+Corp code: 00126380
+Financial score: 100.00
+Reason: revenue_growth_positive, operating_margin_healthy, net_margin_positive, debt_ratio_conservative
 ```
 
 | Action | Meaning |

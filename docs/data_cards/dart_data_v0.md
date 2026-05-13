@@ -17,6 +17,7 @@ context to the price-based MVP.
 data/raw/dart_company/
 data/raw/dart_financials/
 data/raw/dart_disclosures/
+data/features/dart_financials/
 ```
 
 ## Demo Mode
@@ -27,12 +28,13 @@ without an API key.
 ## Limitations
 
 - Corp-code mapping is currently a small built-in dictionary.
-- Financial statement data is stored in the raw layer only.
-- OpenDART data is not yet converted into scoring features.
+- Financial statement data is converted into reusable financial features.
+- Financial features are not yet blended into the final signal engine.
+- Disclosure data is still stored in the raw layer only.
 - Live API usage requires `DART_API_KEY`.
 
 ## Next Steps
 
 - Add a corp-code ZIP downloader/parser.
-- Convert accounts into reusable financial features.
+- Blend financial score into multi-factor stock scoring.
 - Add disclosure event scoring.

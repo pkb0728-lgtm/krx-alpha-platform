@@ -5,8 +5,8 @@ Explainable Korean stock investment decision-support platform built with Python.
 This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
-market regime analysis, explainable scoring, risk filtering, backtesting, report
-generation, and a Streamlit dashboard.
+financial feature scoring, market regime analysis, explainable scoring, risk
+filtering, backtesting, report generation, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -18,7 +18,7 @@ generation, and a Streamlit dashboard.
 - ETL data layers: `raw`, `processed`, `features`, `signals`, `backtest`
 - Data contracts and validation checks
 - Named universe management for repeatable screening
-- Technical feature engineering
+- Technical and financial feature engineering
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -37,6 +37,7 @@ select named universe
 -> collect OpenDART company/financial/disclosure data
 -> process raw data
 -> build price features
+-> build OpenDART financial features
 -> analyze market regime
 -> score each stock
 -> apply risk filters
@@ -61,6 +62,8 @@ Ticker  Action         Confidence
 flowchart LR
     A["pykrx collector"] --> B["raw parquet"]
     X["OpenDART collector"] --> Y["DART raw parquet"]
+    Y --> Z["financial feature builder"]
+    Z --> F
     B --> C["price processor"]
     C --> D["processed parquet"]
     D --> E["feature builder"]
@@ -137,6 +140,7 @@ OpenDART demo data:
 ```powershell
 python main.py collect-dart-company --ticker 005930 --demo
 python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
+python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
 python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
 ```
 
@@ -185,7 +189,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 35 passed
+pytest: 37 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -200,6 +204,7 @@ data/raw/dart_disclosures/
 data/processed/universe/
 data/processed/prices_daily/
 data/features/prices_daily/
+data/features/dart_financials/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
@@ -233,7 +238,8 @@ only committed environment file.
 ## Roadmap
 
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
-- Convert OpenDART financial/disclosure data into scoring features
+- Integrate OpenDART financial score into final stock scoring
+- Convert OpenDART disclosures into event scoring features
 - Add investor flow and short-selling features
 - Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with walk-forward validation and portfolio-level constraints

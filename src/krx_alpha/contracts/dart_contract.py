@@ -22,6 +22,7 @@ REQUIRED_DART_FINANCIAL_COLUMNS = {
     "reprt_code",
     "fs_div",
     "sj_div",
+    "account_id",
     "account_nm",
     "thstrm_amount",
     "thstrm_amount_value",

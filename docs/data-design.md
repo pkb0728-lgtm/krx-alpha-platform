@@ -98,12 +98,48 @@ reprt_code
 fs_div
 sj_div
 account_nm
+account_id
 thstrm_amount
 thstrm_amount_value
 frmtrm_amount
 frmtrm_amount_value
 currency
 ```
+
+### OpenDART Financial Features
+
+Path:
+
+```text
+data/features/dart_financials/{corp_code}_{year}_{report_code}.parquet
+```
+
+Important columns:
+
+```text
+corp_code
+ticker
+bsns_year
+reprt_code
+fs_div
+revenue
+operating_income
+net_income
+total_assets
+total_liabilities
+total_equity
+revenue_growth
+operating_margin
+net_margin
+debt_ratio
+roe
+financial_score
+financial_reason
+```
+
+These features convert normalized OpenDART accounts into reusable financial
+signals. The MVP stores them separately from the price signal so they can be
+reviewed and tested before being blended into the final score.
 
 ### Raw OpenDART Disclosures
 

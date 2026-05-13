@@ -23,6 +23,7 @@ from krx_alpha.database.storage import (
     daily_score_file_path,
     dart_company_file_path,
     dart_disclosure_file_path,
+    dart_financial_feature_file_path,
     dart_financial_file_path,
     ensure_project_dirs,
     final_signal_file_path,
@@ -40,6 +41,7 @@ from krx_alpha.database.storage import (
     write_parquet,
     write_text,
 )
+from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
@@ -266,6 +268,57 @@ def collect_dart_disclosures(
     console.print(f"Corp code: {resolved_corp_code}")
     console.print(f"Rows: {len(frame)}")
     console.print(f"Source: {frame.iloc[0]['source']}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("build-dart-financial-features")
+def build_dart_financial_features(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    corp_code: Annotated[
+        str | None,
+        typer.Option("--corp-code", help="OpenDART corporation code. Example: 00126380"),
+    ] = None,
+    year: Annotated[
+        str,
+        typer.Option("--year", help="Business year. Example: 2023"),
+    ] = "2023",
+    report_code: Annotated[
+        str,
+        typer.Option("--report-code", help="OpenDART report code. 11011 is annual report."),
+    ] = "11011",
+) -> None:
+    """Build financial features from raw OpenDART financial statement data."""
+    configure_logger(settings.log_level)
+    normalized_ticker = ticker.zfill(6)
+    resolved_corp_code = resolve_corp_code(normalized_ticker, corp_code)
+    input_path = dart_financial_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        year,
+        report_code,
+    )
+    if not input_path.exists():
+        raise typer.BadParameter(f"DART financial file does not exist: {input_path}")
+
+    financial_frame = read_parquet(input_path)
+    feature_frame = DartFinancialFeatureBuilder().build(financial_frame)
+    output_path = dart_financial_feature_file_path(
+        settings.project_root,
+        resolved_corp_code,
+        year,
+        report_code,
+    )
+    write_parquet(feature_frame, output_path)
+
+    latest = feature_frame.iloc[0]
+    console.print("[bold green]Built DART financial features.[/bold green]")
+    console.print(f"Ticker: {latest['ticker']}")
+    console.print(f"Corp code: {latest['corp_code']}")
+    console.print(f"Financial score: {float(latest['financial_score']):.2f}")
+    console.print(f"Reason: {latest['financial_reason']}")
     console.print(f"Output: {output_path}")
 
 
