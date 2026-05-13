@@ -37,6 +37,7 @@ streamlit run src/krx_alpha/dashboard/app.py
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
 5. Show OpenDART financial feature scoring:
@@ -66,6 +67,7 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - Signals are explainable.
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
+- Walk-forward validation checks signal stability across rolling test windows.
 - Reports support human-in-the-loop review.
 
 ## Engineering Points
@@ -85,10 +87,11 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 - Streamlit dashboard with universe and backtest review
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
+- walk-forward validation with fold-level metrics
 
 ## Next Portfolio Improvements
 
-- Walk-forward backtesting and portfolio-level constraints
+- Portfolio-level backtesting constraints
 - Calibrate market regime thresholds with longer validation windows
 - OpenDART disclosure event scoring features
 - point-in-time release-date handling for financial and disclosure features

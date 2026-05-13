@@ -162,6 +162,7 @@ Run this after `run-pipeline` has created processed prices and final signals:
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
 Output examples:
@@ -169,12 +170,16 @@ Output examples:
 ```text
 data/backtest/trades/005380_20240101_20240331.parquet
 data/backtest/metrics/005380_20240101_20240331.parquet
+data/backtest/walk_forward_folds/005380_20240101_20240331.parquet
+data/backtest/walk_forward_summary/005380_20240101_20240331.parquet
 reports/backtest/005380_20240101_20240331.md
+reports/backtest/walk_forward_005380_20240101_20240331.md
 ```
 
 The MVP backtest enters on the next trading day's open after a
 `buy_candidate` signal, exits after the configured holding period, and applies
-simple transaction cost and slippage assumptions.
+simple transaction cost and slippage assumptions. Walk-forward validation
+repeats that backtest across rolling out-of-sample windows.
 
 ## 9. Open The Dashboard
 

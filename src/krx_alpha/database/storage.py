@@ -227,6 +227,37 @@ def backtest_metrics_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def walk_forward_folds_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "walk_forward_folds")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
+def walk_forward_summary_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "walk_forward_summary")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
+def walk_forward_report_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    return (
+        project_root / "reports" / "backtest" / f"walk_forward_{ticker}_{start_date}_{end_date}.md"
+    )
+
+
 def read_parquet(path: Path) -> Any:
     import pandas as pd
 

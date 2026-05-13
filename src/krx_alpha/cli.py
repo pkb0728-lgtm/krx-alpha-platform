@@ -6,6 +6,7 @@ import typer
 from rich.console import Console
 
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
+from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
 from krx_alpha.collectors.dart_collector import (
     DartCompanyRequest,
     DartDisclosureSearchRequest,
@@ -44,6 +45,9 @@ from krx_alpha.database.storage import (
     universe_file_path,
     universe_report_file_path,
     universe_summary_file_path,
+    walk_forward_folds_file_path,
+    walk_forward_report_file_path,
+    walk_forward_summary_file_path,
     write_csv,
     write_parquet,
     write_text,
@@ -56,7 +60,7 @@ from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 from krx_alpha.processors.price_processor import PriceProcessor
 from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
-from krx_alpha.reports.backtest_report import BacktestReportGenerator
+from krx_alpha.reports.backtest_report import BacktestReportGenerator, WalkForwardReportGenerator
 from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
@@ -1222,4 +1226,99 @@ def backtest_stock(
     console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
     console.print(f"Max drawdown: {float(metric['max_drawdown']) * 100:.2f}%")
     console.print(f"Sharpe ratio: {float(metric['sharpe_ratio']):.2f}")
+    console.print(f"Report: {report_path}")
+
+
+@app.command("walk-forward-backtest")
+def walk_forward_backtest(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-03-31",
+    train_size: Annotated[
+        int,
+        typer.Option("--train-size", help="Number of signal dates in each train window."),
+    ] = 20,
+    test_size: Annotated[
+        int,
+        typer.Option("--test-size", help="Number of signal dates in each test window."),
+    ] = 5,
+    step_size: Annotated[
+        int,
+        typer.Option("--step-size", help="Number of signal dates to move between folds."),
+    ] = 5,
+    holding_days: Annotated[
+        int,
+        typer.Option("--holding-days", help="Number of trading days to hold each trade."),
+    ] = 5,
+) -> None:
+    """Run rolling walk-forward validation for final signals."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    price_path = processed_price_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    signal_path = final_signal_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not price_path.exists():
+        raise typer.BadParameter(f"Processed price file does not exist: {price_path}")
+    if not signal_path.exists():
+        raise typer.BadParameter(f"Final signal file does not exist: {signal_path}")
+
+    price_frame = read_parquet(price_path)
+    signal_frame = read_parquet(signal_path)
+    folds, summary = WalkForwardBacktester(
+        WalkForwardConfig(
+            train_size=train_size,
+            test_size=test_size,
+            step_size=step_size,
+            holding_days=holding_days,
+        )
+    ).run(price_frame, signal_frame)
+
+    folds_path = walk_forward_folds_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    summary_path = walk_forward_summary_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    report_path = walk_forward_report_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(folds, folds_path)
+    write_parquet(summary, summary_path)
+    write_text(WalkForwardReportGenerator().generate(folds, summary), report_path)
+
+    metric = summary.iloc[0]
+    console.print("[bold green]Walk-forward backtest completed.[/bold green]")
+    console.print(f"Folds: {int(metric['fold_count'])}")
+    console.print(f"Trades: {int(metric['total_trade_count'])}")
+    console.print(f"Compounded return: {float(metric['compounded_return']) * 100:.2f}%")
+    console.print(f"Worst max drawdown: {float(metric['worst_max_drawdown']) * 100:.2f}%")
+    console.print(f"Positive fold ratio: {float(metric['positive_fold_ratio']) * 100:.2f}%")
     console.print(f"Report: {report_path}")

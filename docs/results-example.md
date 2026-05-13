@@ -108,6 +108,7 @@ Example command:
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
 Example regime output:
@@ -128,6 +129,16 @@ Win rate: 57.14%
 Cumulative return: 78.67%
 Max drawdown: -10.35%
 Sharpe ratio: 4.33
+```
+
+Example walk-forward output:
+
+```text
+Walk-forward backtest completed.
+Folds: 3
+Trades: 0
+Compounded return: 0.00%
+Positive fold ratio: 0.00%
 ```
 
 This is a simple MVP backtest for signal validation. It is not a production

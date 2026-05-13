@@ -323,6 +323,33 @@ sharpe_ratio
 exposure_count
 ```
 
+Walk-forward fold results:
+
+```text
+data/backtest/walk_forward_folds/{ticker}_{start}_{end}.parquet
+```
+
+Walk-forward summary:
+
+```text
+data/backtest/walk_forward_summary/{ticker}_{start}_{end}.parquet
+```
+
+Important walk-forward columns:
+
+```text
+fold
+train_start
+train_end
+test_start
+test_end
+signal_count
+trade_count
+compounded_return
+positive_fold_ratio
+worst_max_drawdown
+```
+
 ## Data Contract Rules
 
 The current contracts check:

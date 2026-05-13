@@ -3,6 +3,8 @@ from typing import Any
 from krx_alpha.contracts.backtest_contract import (
     validate_backtest_metrics,
     validate_backtest_trades,
+    validate_walk_forward_folds,
+    validate_walk_forward_summary,
 )
 
 
@@ -42,6 +44,73 @@ class BacktestReportGenerator:
                 "",
             ]
         )
+
+
+class WalkForwardReportGenerator:
+    """Generate a Markdown report for walk-forward backtest validation."""
+
+    def generate(self, folds: Any, summary: Any) -> str:
+        validate_walk_forward_folds(folds)
+        validate_walk_forward_summary(summary)
+        metric = summary.iloc[0]
+
+        return "\n".join(
+            [
+                f"# Walk-Forward Backtest Report: {metric['ticker']}",
+                "",
+                "## Summary",
+                "",
+                f"- Fold count: {int(metric['fold_count'])}",
+                f"- Total trade count: {int(metric['total_trade_count'])}",
+                f"- Total exposure count: {int(metric['total_exposure_count'])}",
+                f"- Average win rate: {_format_percent(metric['average_win_rate'])}",
+                f"- Average return: {_format_percent(metric['average_return'])}",
+                f"- Compounded return: {_format_percent(metric['compounded_return'])}",
+                f"- Worst max drawdown: {_format_percent(metric['worst_max_drawdown'])}",
+                f"- Average Sharpe ratio: {float(metric['average_sharpe_ratio']):.2f}",
+                f"- Positive fold ratio: {_format_percent(metric['positive_fold_ratio'])}",
+                "",
+                "## Fold Results",
+                "",
+                _format_fold_table(folds),
+                "",
+                "## Method",
+                "",
+                "- Uses rolling train and out-of-sample test windows.",
+                "- Backtests only the test window signals in each fold.",
+                "- Reuses the next-day-entry simple backtest engine.",
+                "- Applies transaction cost and slippage assumptions.",
+                "",
+                "## Risk Note",
+                "",
+                "Walk-forward validation improves robustness review, but it is still "
+                "a research backtest rather than live execution evidence.",
+                "",
+            ]
+        )
+
+
+def _format_fold_table(folds: Any) -> str:
+    if folds.empty:
+        return "No walk-forward folds were created."
+
+    rows = [
+        "| Fold | Train | Test | Trades | Win Rate | Return | MDD | Sharpe |",
+        "| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for _, row in folds.iterrows():
+        rows.append(
+            "| "
+            f"{int(row['fold'])} | "
+            f"{row['train_start']} to {row['train_end']} | "
+            f"{row['test_start']} to {row['test_end']} | "
+            f"{int(row['trade_count'])} | "
+            f"{_format_percent(row['win_rate'])} | "
+            f"{_format_percent(row['cumulative_return'])} | "
+            f"{_format_percent(row['max_drawdown'])} | "
+            f"{float(row['sharpe_ratio']):.2f} |"
+        )
+    return "\n".join(rows)
 
 
 def _format_percent(value: Any) -> str:

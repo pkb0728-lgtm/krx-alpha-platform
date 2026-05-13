@@ -96,3 +96,7 @@ decision-support hint, not an order instruction.
 The current backtest validates only `buy_candidate` final signals. It enters on
 the next trading day's open, exits after the configured holding period, and
 applies simple transaction cost and slippage assumptions.
+
+Walk-forward validation repeats the same next-day-entry backtest across rolling
+train/test windows. This helps review whether signal behavior is stable across
+time instead of depending on a single backtest period.

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from krx_alpha.reports.backtest_report import BacktestReportGenerator
+from krx_alpha.reports.backtest_report import BacktestReportGenerator, WalkForwardReportGenerator
 
 
 def test_backtest_report_generator_creates_markdown() -> None:
@@ -36,3 +36,44 @@ def test_backtest_report_generator_creates_markdown() -> None:
     assert "# Backtest Report: 005930" in report
     assert "Trade count: 1" in report
     assert "Cumulative return: 9.75%" in report
+
+
+def test_walk_forward_report_generator_creates_markdown() -> None:
+    folds = pd.DataFrame(
+        {
+            "ticker": ["005930"],
+            "fold": [1],
+            "train_start": ["2024-01-02"],
+            "train_end": ["2024-01-15"],
+            "test_start": ["2024-01-16"],
+            "test_end": ["2024-01-20"],
+            "signal_count": [5],
+            "trade_count": [2],
+            "win_rate": [0.5],
+            "average_return": [0.02],
+            "cumulative_return": [0.04],
+            "max_drawdown": [-0.01],
+            "sharpe_ratio": [1.2],
+            "exposure_count": [5],
+        }
+    )
+    summary = pd.DataFrame(
+        {
+            "ticker": ["005930"],
+            "fold_count": [1],
+            "total_trade_count": [2],
+            "total_exposure_count": [5],
+            "average_win_rate": [0.5],
+            "average_return": [0.02],
+            "compounded_return": [0.04],
+            "worst_max_drawdown": [-0.01],
+            "average_sharpe_ratio": [1.2],
+            "positive_fold_ratio": [1.0],
+        }
+    )
+
+    report = WalkForwardReportGenerator().generate(folds, summary)
+
+    assert "# Walk-Forward Backtest Report: 005930" in report
+    assert "Fold count: 1" in report
+    assert "Positive fold ratio: 100.00%" in report

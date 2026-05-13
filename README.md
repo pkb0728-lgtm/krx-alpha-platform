@@ -26,6 +26,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Explainable rule-based scoring
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
+- Walk-forward validation for signal robustness review
 - Markdown reports for single-stock and universe screening
 - Streamlit dashboard for universe, report, and backtest review
 - Tests, linting, type checking, Docker, and GitHub Actions
@@ -50,6 +51,7 @@ select named universe
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
+-> validate signals with walk-forward folds
 -> generate Markdown reports
 -> view results in Streamlit
 ```
@@ -188,6 +190,7 @@ Backtest one stock after running its pipeline:
 ```powershell
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
 Dashboard:
@@ -213,7 +216,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 48 passed
+pytest: 52 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -238,6 +241,8 @@ data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
 data/backtest/trades/
 data/backtest/metrics/
+data/backtest/walk_forward_folds/
+data/backtest/walk_forward_summary/
 reports/daily/
 reports/regime/
 reports/universe/
@@ -269,7 +274,7 @@ only committed environment file.
 - Add stricter point-in-time release-date handling for DART financial and event data
 - Add short-selling features
 - Calibrate market regime thresholds with longer validation windows
-- Expand backtesting with walk-forward validation and portfolio-level constraints
+- Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking
 - Add Telegram daily notifications

@@ -12,6 +12,9 @@ from krx_alpha.database.storage import (
     market_regime_file_path,
     market_regime_report_file_path,
     raw_investor_flow_file_path,
+    walk_forward_folds_file_path,
+    walk_forward_report_file_path,
+    walk_forward_summary_file_path,
 )
 
 
@@ -42,6 +45,24 @@ def test_market_regime_paths(tmp_path: Path) -> None:
         )
         .as_posix()
         .endswith("reports/regime/005930_20240101_20240331.md")
+    )
+
+
+def test_walk_forward_backtest_paths(tmp_path: Path) -> None:
+    assert (
+        walk_forward_folds_file_path(tmp_path, "005930", "20240101", "20240331")
+        .as_posix()
+        .endswith("data/backtest/walk_forward_folds/005930_20240101_20240331.parquet")
+    )
+    assert (
+        walk_forward_summary_file_path(tmp_path, "005930", "20240101", "20240331")
+        .as_posix()
+        .endswith("data/backtest/walk_forward_summary/005930_20240101_20240331.parquet")
+    )
+    assert (
+        walk_forward_report_file_path(tmp_path, "005930", "20240101", "20240331")
+        .as_posix()
+        .endswith("reports/backtest/walk_forward_005930_20240101_20240331.md")
     )
 
 

@@ -51,7 +51,7 @@ flowchart TD
 | `scoring` | Generate explainable technical and risk scores. |
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
-| `backtest` | Validate historical signal behavior with cost and slippage assumptions. |
+| `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display results through Streamlit. |

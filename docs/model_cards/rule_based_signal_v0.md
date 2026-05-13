@@ -32,7 +32,7 @@ It is not a price prediction model.
 - Disclosure event rules are conservative and keyword-based in the MVP
 - Investor flow data is demo-capable and can be blended into scoring
 - Market regime blocks `bear` and `high_volatility` final signals
-- Only simple single-stock backtest validation so far
+- Single-stock and walk-forward backtest validation are available
 - No machine learning model yet
 
 ## Prohibited Use
