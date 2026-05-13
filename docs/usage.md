@@ -231,3 +231,39 @@ python main.py send-telegram-daily --send
 
 The default mode is `--dry-run` so beginners can verify the message safely
 before sending it to Telegram.
+
+## 11. Run The After-Market Daily Job
+
+The daily job combines the operational steps into one command:
+
+```text
+run universe pipeline -> generate universe report -> build Telegram brief
+```
+
+Run it safely in preview mode:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+```
+
+When `--start` is omitted, the job uses `--lookback-days` and today's date:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --telegram-dry-run
+```
+
+After Telegram credentials are configured in `.env`, send the brief:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --telegram-send
+```
+
+Windows Task Scheduler can run the same command after market close. Use the
+full Python path from your virtual environment:
+
+```powershell
+schtasks /Create /SC DAILY /TN KRXAlphaDaily /ST 16:30 /TR "C:\Users\USER\Documents\Codex\2026-05-13\role-python-mlops-github-vscode-python\.venv\Scripts\python.exe C:\Users\USER\Documents\Codex\2026-05-13\role-python-mlops-github-vscode-python\main.py run-daily-job --universe demo --lookback-days 60 --telegram-send"
+```
+
+Keep the first scheduled runs in `--telegram-dry-run` mode if you are still
+checking the output.

@@ -7,7 +7,8 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
-backtesting, report generation, Telegram alerts, and a Streamlit dashboard.
+backtesting, report generation, scheduled daily jobs, Telegram alerts, and a
+Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -28,6 +29,7 @@ backtesting, report generation, Telegram alerts, and a Streamlit dashboard.
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - Markdown reports for single-stock and universe screening
+- Daily job runner for after-market operations
 - Telegram daily brief preview and send command
 - Streamlit dashboard for universe, report, backtest, and walk-forward review
 - Tests, linting, type checking, Docker, and GitHub Actions
@@ -54,6 +56,7 @@ select named universe
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> generate Markdown reports
+-> run daily scheduled job
 -> send or preview Telegram daily brief
 -> view results in Streamlit
 ```
@@ -91,7 +94,10 @@ flowchart LR
     H --> K["daily report"]
     F --> K
     J --> L["universe summary"]
+    L --> U["daily job runner"]
     L --> M["Streamlit dashboard"]
+    U --> M
+    U --> T["Telegram brief"]
     J --> N["backtest engine"]
     D --> N
     N --> V["walk-forward validation"]
@@ -117,6 +123,7 @@ src/krx_alpha/
   universe/      named universe definitions
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
+  scheduler/     after-market daily job orchestration
   pipelines/     single-stock and universe pipelines
   contracts/     dataset validation rules
   database/      file paths and storage helpers
@@ -221,6 +228,14 @@ After setting `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`, send it:
 python main.py send-telegram-daily --send
 ```
 
+After-market daily job:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+```
+
+With Telegram credentials configured, use `--telegram-send` for real delivery.
+
 ## Quality Checks
 
 ```powershell
@@ -232,7 +247,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 57 passed
+pytest: 60 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -293,5 +308,5 @@ only committed environment file.
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking
-- Add scheduled Telegram daily notifications
+- Add APScheduler long-running daemon mode
 - Add Docker Compose dashboard profile

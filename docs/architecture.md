@@ -32,7 +32,9 @@ flowchart TD
     I --> J["Final signal engine"]
     J --> K["Reports"]
     J --> L["Universe summary"]
+    L --> S["Daily job runner"]
     L --> M["Streamlit dashboard"]
+    S --> M
     L --> T["Telegram brief"]
     J --> N["Backtest engine"]
     E --> N
@@ -59,6 +61,7 @@ flowchart TD
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display universe, backtest, and walk-forward validation results through Streamlit. |
+| `scheduler` | Orchestrate after-market daily jobs for universe runs, reports, and alerts. |
 | `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
 

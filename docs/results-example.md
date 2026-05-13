@@ -131,6 +131,26 @@ Walk-forward
 - 005380 | folds 3 | trades 2 | compounded 3.64% | worst MDD -5.20% | positive folds 66.67%
 ```
 
+## Daily Job
+
+Example command:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+```
+
+Example output:
+
+```text
+Daily scheduled job completed.
+Universe: demo
+Period: 2024-01-01 to 2024-01-31
+Total: 3
+Success: 3
+Failed: 0
+Telegram: dry-run
+```
+
 ## Backtest
 
 Example command:

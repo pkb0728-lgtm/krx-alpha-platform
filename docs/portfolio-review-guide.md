@@ -58,7 +58,13 @@ python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 
 python main.py send-telegram-daily --dry-run
 ```
 
-7. Explain why this is not just price prediction:
+7. Run the daily operations job:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+```
+
+8. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
@@ -75,6 +81,7 @@ python main.py send-telegram-daily --dry-run
 - Backtesting validates signals after costs and slippage.
 - Walk-forward validation checks signal stability across rolling test windows.
 - Telegram brief turns the pipeline output into an operations-ready alert.
+- Daily job runner ties the workflow together for scheduled operation.
 - Reports support human-in-the-loop review.
 
 ## Engineering Points
@@ -92,6 +99,7 @@ python main.py send-telegram-daily --dry-run
 - testable modules
 - CI-ready quality checks
 - Streamlit dashboard with universe, backtest, and walk-forward review
+- scheduler-ready daily job runner
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
@@ -105,4 +113,4 @@ python main.py send-telegram-daily --dry-run
 - point-in-time release-date handling for financial and disclosure features
 - ML baseline with walk-forward validation
 - MLflow experiment tracking
-- Telegram notification summary
+- APScheduler daemon mode

@@ -69,6 +69,7 @@ from krx_alpha.reports.backtest_report import BacktestReportGenerator, WalkForwa
 from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
+from krx_alpha.scheduler.daily_job import DailyJobConfig, DailyJobRunner
 from krx_alpha.scoring.price_scorer import PriceScorer
 from krx_alpha.signals.signal_engine import SignalEngine
 from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
@@ -1395,7 +1396,7 @@ def send_telegram_daily(
     )
     try:
         result = notifier.send_message(message, dry_run=dry_run)
-    except ValueError as exc:
+    except (KeyError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
     if result.dry_run:
@@ -1405,3 +1406,77 @@ def send_telegram_daily(
 
     console.print("[bold green]Telegram daily brief sent.[/bold green]")
     console.print(f"Status code: {result.status_code}")
+
+
+@app.command("run-daily-job")
+def run_daily_job(
+    universe: Annotated[
+        str,
+        typer.Option("--universe", "-u", help="Named universe to run."),
+    ] = "demo",
+    start: Annotated[
+        str | None,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format. Defaults by lookback."),
+    ] = None,
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="End date in YYYY-MM-DD format. Defaults to today."),
+    ] = None,
+    lookback_days: Annotated[
+        int,
+        typer.Option("--lookback-days", help="Lookback days when --start is omitted."),
+    ] = 60,
+    notify: Annotated[
+        bool,
+        typer.Option("--notify/--no-notify", help="Build and send or preview Telegram brief."),
+    ] = True,
+    telegram_dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--telegram-dry-run/--telegram-send",
+            help="Preview Telegram brief locally or send it.",
+        ),
+    ] = True,
+    top_n: Annotated[
+        int,
+        typer.Option("--top-n", help="Number of ranked candidates in Telegram brief."),
+    ] = 5,
+) -> None:
+    """Run the after-market daily job: universe pipeline, report, and Telegram brief."""
+    configure_logger(settings.log_level)
+    runner = DailyJobRunner(
+        project_root=settings.project_root,
+        telegram_sender=TelegramNotifier(
+            bot_token=settings.telegram_bot_token,
+            chat_id=settings.telegram_chat_id,
+        ),
+    )
+    try:
+        result = runner.run(
+            DailyJobConfig(
+                universe=universe,
+                start_date=start,
+                end_date=end,
+                lookback_days=lookback_days,
+                notify=notify,
+                telegram_dry_run=telegram_dry_run,
+                telegram_top_n=top_n,
+            )
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    console.print("[bold green]Daily scheduled job completed.[/bold green]")
+    console.print(f"Universe: {result.universe}")
+    console.print(f"Period: {result.start_date} to {result.end_date}")
+    console.print(f"Total: {result.total_count}")
+    console.print(f"Success: {result.success_count}")
+    console.print(f"Failed: {result.failed_count}")
+    console.print(f"Summary: {result.summary_path}")
+    console.print(f"CSV: {result.summary_csv_path}")
+    console.print(f"Report: {result.report_path}")
+    if notify:
+        status = "sent" if result.telegram_sent else "dry-run"
+        console.print(f"Telegram: {status}")
+        if result.telegram_dry_run:
+            console.print(result.telegram_message)
