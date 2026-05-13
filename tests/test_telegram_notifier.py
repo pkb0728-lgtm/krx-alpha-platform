@@ -9,7 +9,9 @@ from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_m
 
 
 class FakeTelegramResponse:
-    status = 200
+    def __init__(self, status: int = 200, body: bytes = b'{"ok": true}') -> None:
+        self.status = status
+        self.body = body
 
     def __enter__(self) -> "FakeTelegramResponse":
         return self
@@ -18,7 +20,7 @@ class FakeTelegramResponse:
         return None
 
     def read(self) -> bytes:
-        return b'{"ok": true}'
+        return self.body
 
 
 def test_build_daily_telegram_message_includes_core_sections() -> None:
@@ -109,6 +111,65 @@ def test_telegram_notifier_uses_transport() -> None:
     assert "bottoken/sendMessage" in captured["url"]
     assert b"chat_id=123" in captured["data"]
     assert captured["timeout"] == 3.0
+
+
+def test_telegram_notifier_retries_transient_transport_failure() -> None:
+    calls: list[int] = []
+
+    def fake_transport(telegram_request: request.Request, timeout: float) -> FakeTelegramResponse:
+        calls.append(1)
+        if len(calls) == 1:
+            raise TimeoutError("temporary network failure")
+        return FakeTelegramResponse()
+
+    result = TelegramNotifier(
+        bot_token="token",
+        chat_id="123",
+        max_retries=1,
+        retry_sleep_seconds=0,
+        transport=fake_transport,
+    ).send_message("hello")
+
+    assert result.sent is True
+    assert len(calls) == 2
+
+
+def test_telegram_notifier_retries_retryable_api_status() -> None:
+    statuses = [500, 200]
+
+    def fake_transport(telegram_request: request.Request, timeout: float) -> FakeTelegramResponse:
+        return FakeTelegramResponse(status=statuses.pop(0))
+
+    result = TelegramNotifier(
+        bot_token="token",
+        chat_id="123",
+        max_retries=1,
+        retry_sleep_seconds=0,
+        transport=fake_transport,
+    ).send_message("hello")
+
+    assert result.sent is True
+    assert result.status_code == 200
+    assert statuses == []
+
+
+def test_telegram_notifier_does_not_retry_non_retryable_api_status() -> None:
+    calls: list[int] = []
+
+    def fake_transport(telegram_request: request.Request, timeout: float) -> FakeTelegramResponse:
+        calls.append(1)
+        return FakeTelegramResponse(status=400)
+
+    with pytest.raises(RuntimeError, match="status 400"):
+        TelegramNotifier(
+            bot_token="token",
+            chat_id="123",
+            max_retries=2,
+            retry_sleep_seconds=0,
+            transport=fake_transport,
+        ).send_message("hello")
+
+    assert len(calls) == 1
 
 
 def test_telegram_notifier_requires_credentials_when_sending() -> None:

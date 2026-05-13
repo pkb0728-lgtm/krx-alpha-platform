@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from time import sleep
 from typing import Any
 from urllib import parse, request
 
@@ -9,6 +10,7 @@ import pandas as pd
 TELEGRAM_MESSAGE_LIMIT = 4096
 
 TelegramTransport = Callable[[request.Request, float], Any]
+TelegramSleeper = Callable[[float], None]
 
 
 @dataclass(frozen=True)
@@ -28,12 +30,23 @@ class TelegramNotifier:
         bot_token: str | None,
         chat_id: str | None,
         timeout_seconds: float = 10.0,
+        max_retries: int = 2,
+        retry_sleep_seconds: float = 1.0,
         transport: TelegramTransport | None = None,
+        sleeper: TelegramSleeper | None = None,
     ) -> None:
+        if max_retries < 0:
+            raise ValueError("max_retries must be zero or positive.")
+        if retry_sleep_seconds < 0:
+            raise ValueError("retry_sleep_seconds must be zero or positive.")
+
         self.bot_token = bot_token
         self.chat_id = chat_id
         self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.retry_sleep_seconds = retry_sleep_seconds
         self._transport = transport or _default_transport
+        self._sleeper = sleeper or sleep
 
     def send_message(self, message: str, dry_run: bool = False) -> TelegramSendResult:
         text = _truncate_message(message)
@@ -45,6 +58,34 @@ class TelegramNotifier:
                 message=text,
             )
 
+        if not self.bot_token or not self.chat_id:
+            raise ValueError("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set.")
+
+        last_error: Exception | None = None
+        for attempt_index in range(self.max_retries + 1):
+            try:
+                result = self._send_once(text)
+            except Exception as exc:
+                last_error = exc
+                if not self._can_retry(attempt_index):
+                    raise RuntimeError(
+                        f"Telegram message send failed after {attempt_index + 1} attempt(s)."
+                    ) from exc
+                self._sleep_before_retry()
+                continue
+
+            if result.sent:
+                return result
+
+            status_code = result.status_code or 0
+            last_error = RuntimeError(f"Telegram API returned status {status_code}.")
+            if not _is_retryable_status(status_code) or not self._can_retry(attempt_index):
+                raise last_error
+            self._sleep_before_retry()
+
+        raise RuntimeError("Telegram message send failed.") from last_error
+
+    def _send_once(self, text: str) -> TelegramSendResult:
         if not self.bot_token or not self.chat_id:
             raise ValueError("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set.")
 
@@ -62,23 +103,24 @@ class TelegramNotifier:
             method="POST",
         )
 
-        try:
-            with self._transport(telegram_request, self.timeout_seconds) as response:
-                response_text = response.read().decode("utf-8", errors="replace")
-                status_code = _response_status_code(response)
-        except Exception as exc:
-            raise RuntimeError("Telegram message send failed.") from exc
-
-        if status_code < 200 or status_code >= 300:
-            raise RuntimeError(f"Telegram API returned status {status_code}.")
+        with self._transport(telegram_request, self.timeout_seconds) as response:
+            response_text = response.read().decode("utf-8", errors="replace")
+            status_code = _response_status_code(response)
 
         return TelegramSendResult(
-            sent=True,
+            sent=200 <= status_code < 300,
             dry_run=False,
             status_code=status_code,
             message=text,
             response_text=response_text,
         )
+
+    def _can_retry(self, attempt_index: int) -> bool:
+        return attempt_index < self.max_retries
+
+    def _sleep_before_retry(self) -> None:
+        if self.retry_sleep_seconds > 0:
+            self._sleeper(self.retry_sleep_seconds)
 
 
 def build_daily_telegram_message(
@@ -225,6 +267,10 @@ def _response_status_code(response: Any) -> int:
     if status_value is None:
         status_value = getattr(response, "code", 0)
     return int(status_value)
+
+
+def _is_retryable_status(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
 
 
 def _truncate_message(message: str) -> str:

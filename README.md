@@ -32,7 +32,7 @@ scheduled daily jobs, Telegram alerts, and a Streamlit dashboard.
 - Data drift and performance drift monitoring
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
-- Telegram daily brief with drift status preview and send command
+- Telegram daily brief with drift status preview, send command, and retry settings
 - Streamlit dashboard for universe, report, backtest, walk-forward, and drift review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
@@ -241,6 +241,14 @@ After setting `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`, send it:
 python main.py send-telegram-daily --send
 ```
 
+Optional Telegram operations settings:
+
+```text
+TELEGRAM_TIMEOUT_SECONDS=10
+TELEGRAM_MAX_RETRIES=2
+TELEGRAM_RETRY_SLEEP_SECONDS=1
+```
+
 After-market daily job:
 
 ```powershell
@@ -274,7 +282,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 70 passed
+pytest: 73 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -338,6 +346,6 @@ only committed environment file.
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking on top of the CSV experiment log
-- Add richer drift thresholds and scheduled Telegram warnings
+- Add richer drift thresholds and scheduled Telegram warning policies
 - Add APScheduler long-running daemon mode
 - Add Docker Compose dashboard profile

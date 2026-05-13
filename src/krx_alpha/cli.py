@@ -1429,6 +1429,9 @@ def send_telegram_daily(
     notifier = TelegramNotifier(
         bot_token=settings.telegram_bot_token,
         chat_id=settings.telegram_chat_id,
+        timeout_seconds=settings.telegram_timeout_seconds,
+        max_retries=settings.telegram_max_retries,
+        retry_sleep_seconds=settings.telegram_retry_sleep_seconds,
     )
     try:
         result = notifier.send_message(message, dry_run=dry_run)
@@ -1485,6 +1488,9 @@ def run_daily_job(
         telegram_sender=TelegramNotifier(
             bot_token=settings.telegram_bot_token,
             chat_id=settings.telegram_chat_id,
+            timeout_seconds=settings.telegram_timeout_seconds,
+            max_retries=settings.telegram_max_retries,
+            retry_sleep_seconds=settings.telegram_retry_sleep_seconds,
         ),
     )
     try:

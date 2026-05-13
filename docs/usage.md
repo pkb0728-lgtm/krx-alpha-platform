@@ -222,6 +222,9 @@ To send the message, set these values in `.env`:
 ```text
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+TELEGRAM_TIMEOUT_SECONDS=10
+TELEGRAM_MAX_RETRIES=2
+TELEGRAM_RETRY_SLEEP_SECONDS=1
 ```
 
 Then run:
@@ -231,7 +234,8 @@ python main.py send-telegram-daily --send
 ```
 
 The default mode is `--dry-run` so beginners can verify the message safely
-before sending it to Telegram.
+before sending it to Telegram. Real sends retry transient network failures and
+retryable Telegram API responses such as `429` and `5xx`.
 
 ## 11. Run The After-Market Daily Job
 

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
+    telegram_timeout_seconds: float = 10.0
+    telegram_max_retries: int = 2
+    telegram_retry_sleep_seconds: float = 1.0
     kis_app_key: str | None = None
     kis_app_secret: str | None = None
     kis_account_no: str | None = None
