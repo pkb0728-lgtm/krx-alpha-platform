@@ -54,7 +54,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - Parquet data storage
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard
+- Streamlit dashboard with universe and backtest review
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
 

@@ -20,7 +20,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
 - Markdown reports for single-stock and universe screening
-- Streamlit dashboard for results review
+- Streamlit dashboard for universe, report, and backtest review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -154,7 +154,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 18 passed
+pytest: 19 passed
 ruff: all checks passed
 mypy: no issues found
 ```

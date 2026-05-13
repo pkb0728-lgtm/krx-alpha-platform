@@ -99,3 +99,6 @@ Open:
 ```text
 http://localhost:8501
 ```
+
+The dashboard shows the latest universe summary, action distribution, latest
+backtest metrics, backtest trades, and selected Markdown report.

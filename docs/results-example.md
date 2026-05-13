@@ -42,6 +42,8 @@ The Streamlit dashboard displays:
 - success and failed counts
 - ranked candidate table
 - action distribution chart
+- latest backtest metrics
+- latest backtest trades
 - selected stock Markdown report
 
 Run:

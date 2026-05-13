@@ -1,11 +1,15 @@
 from pathlib import Path
+from typing import Any
 
 import plotly.express as px
 import streamlit as st
 
 from krx_alpha.dashboard.data_loader import (
     action_counts,
+    find_latest_backtest_metrics,
     find_latest_universe_summary,
+    load_backtest_metrics,
+    load_backtest_trades,
     load_markdown,
     load_universe_summary,
 )
@@ -83,6 +87,55 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("Backtest Summary")
+    metrics_path = find_latest_backtest_metrics(PROJECT_ROOT)
+    if metrics_path is None:
+        st.info("No backtest metrics found.")
+    else:
+        metrics_frame = load_backtest_metrics(metrics_path)
+        if metrics_frame.empty:
+            st.info("Backtest metrics are empty.")
+        else:
+            metric = metrics_frame.iloc[0]
+            backtest_cols = st.columns(6)
+            backtest_cols[0].metric("Ticker", str(metric["ticker"]))
+            backtest_cols[1].metric("Trades", int(metric["trade_count"]))
+            backtest_cols[2].metric("Win rate", _format_percent(metric["win_rate"]))
+            backtest_cols[3].metric(
+                "Cumulative return",
+                _format_percent(metric["cumulative_return"]),
+            )
+            backtest_cols[4].metric("MDD", _format_percent(metric["max_drawdown"]))
+            backtest_cols[5].metric("Sharpe", f"{float(metric['sharpe_ratio']):.2f}")
+
+            st.caption(f"Latest metrics file: {metrics_path.name}")
+            st.dataframe(
+                metrics_frame,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            trades_frame = load_backtest_trades(metrics_path)
+            if not trades_frame.empty:
+                st.subheader("Backtest Trades")
+                display_trade_columns = [
+                    "ticker",
+                    "signal_date",
+                    "entry_date",
+                    "exit_date",
+                    "entry_price",
+                    "exit_price",
+                    "net_return",
+                    "signal_confidence",
+                ]
+                st.dataframe(
+                    trades_frame[display_trade_columns],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
     st.subheader("Report Viewer")
     successful = summary_frame[summary_frame["status"] == "success"]
     if successful.empty:
@@ -93,6 +146,10 @@ def main() -> None:
     selected_row = successful[successful["ticker"] == selected_ticker].iloc[0]
     report_path = Path(str(selected_row["report_path"]))
     st.markdown(load_markdown(report_path))
+
+
+def _format_percent(value: Any) -> str:
+    return f"{float(value) * 100:.2f}%"
 
 
 if __name__ == "__main__":
