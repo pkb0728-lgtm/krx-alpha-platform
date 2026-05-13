@@ -148,8 +148,27 @@ Period: 2024-01-01 to 2024-01-31
 Total: 3
 Success: 3
 Failed: 0
+Experiment log: experiments/experiment_log.csv
 Telegram: dry-run
 ```
+
+## Experiment Tracking
+
+Example command:
+
+```powershell
+python main.py show-experiments --limit 5
+```
+
+Example fields:
+
+```text
+created_at | experiment_name | run_type | ticker | universe | start_date | end_date | metrics_json | artifact_path
+```
+
+Backtest runs store return, drawdown, win rate, Sharpe ratio, and trade count.
+Daily job runs store ticker counts, success count, failed count, and the report
+artifact path.
 
 ## Backtest
 

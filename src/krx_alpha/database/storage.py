@@ -8,7 +8,7 @@ def ensure_project_dirs(project_root: Path) -> None:
     for layer in DATA_LAYERS:
         (project_root / "data" / layer).mkdir(parents=True, exist_ok=True)
 
-    for directory in ("logs", "models", "notebooks", "docs"):
+    for directory in ("logs", "models", "notebooks", "docs", "experiments"):
         (project_root / directory).mkdir(parents=True, exist_ok=True)
 
 
@@ -256,6 +256,10 @@ def walk_forward_report_file_path(
     return (
         project_root / "reports" / "backtest" / f"walk_forward_{ticker}_{start_date}_{end_date}.md"
     )
+
+
+def experiment_log_file_path(project_root: Path) -> Path:
+    return project_root / "experiments" / "experiment_log.csv"
 
 
 def read_parquet(path: Path) -> Any:

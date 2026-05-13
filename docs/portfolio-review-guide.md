@@ -64,7 +64,13 @@ python main.py send-telegram-daily --dry-run
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
 ```
 
-8. Explain why this is not just price prediction:
+8. Show experiment tracking:
+
+```powershell
+python main.py show-experiments --limit 10
+```
+
+9. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.
@@ -80,6 +86,7 @@ python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
 - Walk-forward validation checks signal stability across rolling test windows.
+- Experiment tracking records parameters, model version, metrics, and artifacts.
 - Telegram brief turns the pipeline output into an operations-ready alert.
 - Daily job runner ties the workflow together for scheduled operation.
 - Reports support human-in-the-loop review.
@@ -104,6 +111,7 @@ python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions
 - walk-forward validation with fold-level metrics
+- CSV experiment tracking as an MLflow-ready stepping stone
 
 ## Next Portfolio Improvements
 

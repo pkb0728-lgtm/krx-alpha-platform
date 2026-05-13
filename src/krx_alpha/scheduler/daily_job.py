@@ -12,6 +12,10 @@ from krx_alpha.database.storage import (
     universe_report_file_path,
     write_text,
 )
+from krx_alpha.experiments.tracker import (
+    ExperimentTracker,
+    build_daily_job_experiment_record,
+)
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline, UniversePipelineResult
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.telegram.notifier import (
@@ -47,6 +51,7 @@ class DailyJobResult:
     summary_path: Path
     summary_csv_path: Path
     report_path: Path
+    experiment_log_path: Path
     total_count: int
     success_count: int
     failed_count: int
@@ -63,10 +68,12 @@ class DailyJobRunner:
         project_root: Path,
         universe_pipeline: UniversePipeline | None = None,
         telegram_sender: TelegramMessageSender | None = None,
+        experiment_tracker: ExperimentTracker | None = None,
     ) -> None:
         self.project_root = project_root
         self.universe_pipeline = universe_pipeline or UniversePipeline(project_root)
         self.telegram_sender = telegram_sender
+        self.experiment_tracker = experiment_tracker or ExperimentTracker(project_root)
 
     def run(self, config: DailyJobConfig, today: date | None = None) -> DailyJobResult:
         start_date, end_date = resolve_daily_job_date_range(config, today or date.today())
@@ -89,6 +96,19 @@ class DailyJobRunner:
         )
 
         telegram_result = self._notify(config, summary_frame)
+        experiment_log_path = self.experiment_tracker.log(
+            build_daily_job_experiment_record(
+                universe=config.universe,
+                start_date=start_date,
+                end_date=end_date,
+                total_count=pipeline_result.total_count,
+                success_count=pipeline_result.success_count,
+                failed_count=pipeline_result.failed_count,
+                report_path=report_path,
+                telegram_sent=telegram_result.sent,
+                telegram_dry_run=telegram_result.dry_run,
+            )
+        )
         return _build_result(
             config=config,
             start_date=start_date,
@@ -96,6 +116,7 @@ class DailyJobRunner:
             pipeline_result=pipeline_result,
             report_path=report_path,
             telegram_result=telegram_result,
+            experiment_log_path=experiment_log_path,
         )
 
     def _notify(self, config: DailyJobConfig, summary_frame: object) -> TelegramSendResult:
@@ -150,6 +171,7 @@ def _build_result(
     pipeline_result: UniversePipelineResult,
     report_path: Path,
     telegram_result: TelegramSendResult,
+    experiment_log_path: Path,
 ) -> DailyJobResult:
     return DailyJobResult(
         universe=config.universe,
@@ -158,6 +180,7 @@ def _build_result(
         summary_path=pipeline_result.summary_path,
         summary_csv_path=pipeline_result.summary_csv_path,
         report_path=report_path,
+        experiment_log_path=experiment_log_path,
         total_count=pipeline_result.total_count,
         success_count=pipeline_result.success_count,
         failed_count=pipeline_result.failed_count,

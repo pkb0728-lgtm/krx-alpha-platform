@@ -8,6 +8,7 @@ from krx_alpha.database.storage import (
     dart_financial_feature_file_path,
     dart_financial_file_path,
     ensure_project_dirs,
+    experiment_log_file_path,
     investor_flow_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
@@ -23,6 +24,7 @@ def test_ensure_project_dirs(tmp_path: Path) -> None:
 
     for layer in DATA_LAYERS:
         assert (tmp_path / "data" / layer).is_dir()
+    assert (tmp_path / "experiments").is_dir()
 
 
 def test_market_regime_paths(tmp_path: Path) -> None:
@@ -112,3 +114,7 @@ def test_dart_storage_paths(tmp_path: Path) -> None:
         .as_posix()
         .endswith("data/features/dart_disclosure_events/00126380_20240101_20240131.parquet")
     )
+
+
+def test_experiment_log_path(tmp_path: Path) -> None:
+    assert experiment_log_file_path(tmp_path).as_posix().endswith("experiments/experiment_log.csv")

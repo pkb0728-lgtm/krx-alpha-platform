@@ -32,16 +32,19 @@ flowchart TD
     I --> J["Final signal engine"]
     J --> K["Reports"]
     J --> L["Universe summary"]
-    L --> S["Daily job runner"]
+    L --> DJ["Daily job runner"]
     L --> M["Streamlit dashboard"]
-    S --> M
+    DJ --> M
     L --> T["Telegram brief"]
     J --> N["Backtest engine"]
     E --> N
     N --> Q["Walk-forward validation"]
+    N --> EL["Experiment log"]
     N --> O["Backtest report"]
     Q --> M
     Q --> O
+    Q --> EL
+    DJ --> EL
     R --> P["Regime report"]
 ```
 
@@ -58,6 +61,7 @@ flowchart TD
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
 | `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
+| `experiments` | Append run parameters, model version, metrics, and artifact links to a CSV log. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display universe, backtest, and walk-forward validation results through Streamlit. |

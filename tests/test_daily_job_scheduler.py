@@ -104,6 +104,7 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.summary_path.exists()
     assert result.summary_csv_path.exists()
     assert result.report_path.exists()
+    assert result.experiment_log_path.exists()
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 | buy_candidate" in result.telegram_message

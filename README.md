@@ -7,8 +7,8 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, market regime analysis, explainable scoring, risk filtering,
-backtesting, report generation, scheduled daily jobs, Telegram alerts, and a
-Streamlit dashboard.
+backtesting, experiment tracking, report generation, scheduled daily jobs,
+Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -28,6 +28,7 @@ Streamlit dashboard.
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
+- CSV-based experiment tracking for backtest and operations runs
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief preview and send command
@@ -55,6 +56,7 @@ select named universe
 -> generate final signals
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
+-> log experiment metrics
 -> generate Markdown reports
 -> run daily scheduled job
 -> send or preview Telegram daily brief
@@ -101,8 +103,11 @@ flowchart LR
     J --> N["backtest engine"]
     D --> N
     N --> V["walk-forward validation"]
+    N --> EXP["experiment log"]
     N --> O["backtest report"]
     V --> M
+    V --> EXP
+    U --> EXP
     P["universe registry"] --> A
     P --> L
     R --> Q["regime report"]
@@ -120,6 +125,7 @@ src/krx_alpha/
   risk/          risk filters
   signals/       final signal generation
   backtest/      signal backtesting
+  experiments/   CSV experiment tracking
   universe/      named universe definitions
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
@@ -236,6 +242,12 @@ python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31
 
 With Telegram credentials configured, use `--telegram-send` for real delivery.
 
+Recent experiment log:
+
+```powershell
+python main.py show-experiments --limit 10
+```
+
 ## Quality Checks
 
 ```powershell
@@ -247,7 +259,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 60 passed
+pytest: 64 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -274,6 +286,7 @@ data/backtest/trades/
 data/backtest/metrics/
 data/backtest/walk_forward_folds/
 data/backtest/walk_forward_summary/
+experiments/experiment_log.csv
 reports/daily/
 reports/regime/
 reports/universe/
@@ -307,6 +320,6 @@ only committed environment file.
 - Calibrate market regime thresholds with longer validation windows
 - Expand backtesting with portfolio-level constraints
 - Add ML baselines with walk-forward validation
-- Add MLflow experiment tracking
+- Add MLflow experiment tracking on top of the CSV experiment log
 - Add APScheduler long-running daemon mode
 - Add Docker Compose dashboard profile

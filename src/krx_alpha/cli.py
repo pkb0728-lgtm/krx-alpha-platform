@@ -57,6 +57,11 @@ from krx_alpha.database.storage import (
     write_parquet,
     write_text,
 )
+from krx_alpha.experiments.tracker import (
+    ExperimentTracker,
+    build_backtest_experiment_record,
+    build_walk_forward_experiment_record,
+)
 from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
@@ -1199,10 +1204,8 @@ def backtest_stock(
 
     price_frame = read_parquet(price_path)
     signal_frame = read_parquet(signal_path)
-    trades, metrics = SimpleBacktester(BacktestConfig(holding_days=holding_days)).run(
-        price_frame,
-        signal_frame,
-    )
+    config = BacktestConfig(holding_days=holding_days)
+    trades, metrics = SimpleBacktester(config).run(price_frame, signal_frame)
 
     trades_path = backtest_trades_file_path(
         settings.project_root,
@@ -1225,6 +1228,15 @@ def backtest_stock(
     write_parquet(trades, trades_path)
     write_parquet(metrics, metrics_path)
     write_text(BacktestReportGenerator().generate(trades, metrics), report_path)
+    experiment_log_path = ExperimentTracker(settings.project_root).log(
+        build_backtest_experiment_record(
+            metrics=metrics,
+            config=config,
+            start_date=start,
+            end_date=end,
+            artifact_path=report_path,
+        )
+    )
 
     metric = metrics.iloc[0]
     console.print("[bold green]Backtest completed.[/bold green]")
@@ -1234,6 +1246,7 @@ def backtest_stock(
     console.print(f"Max drawdown: {float(metric['max_drawdown']) * 100:.2f}%")
     console.print(f"Sharpe ratio: {float(metric['sharpe_ratio']):.2f}")
     console.print(f"Report: {report_path}")
+    console.print(f"Experiment log: {experiment_log_path}")
 
 
 @app.command("walk-forward-backtest")
@@ -1290,14 +1303,13 @@ def walk_forward_backtest(
 
     price_frame = read_parquet(price_path)
     signal_frame = read_parquet(signal_path)
-    folds, summary = WalkForwardBacktester(
-        WalkForwardConfig(
-            train_size=train_size,
-            test_size=test_size,
-            step_size=step_size,
-            holding_days=holding_days,
-        )
-    ).run(price_frame, signal_frame)
+    config = WalkForwardConfig(
+        train_size=train_size,
+        test_size=test_size,
+        step_size=step_size,
+        holding_days=holding_days,
+    )
+    folds, summary = WalkForwardBacktester(config).run(price_frame, signal_frame)
 
     folds_path = walk_forward_folds_file_path(
         settings.project_root,
@@ -1320,6 +1332,15 @@ def walk_forward_backtest(
     write_parquet(folds, folds_path)
     write_parquet(summary, summary_path)
     write_text(WalkForwardReportGenerator().generate(folds, summary), report_path)
+    experiment_log_path = ExperimentTracker(settings.project_root).log(
+        build_walk_forward_experiment_record(
+            summary=summary,
+            config=config,
+            start_date=start,
+            end_date=end,
+            artifact_path=report_path,
+        )
+    )
 
     metric = summary.iloc[0]
     console.print("[bold green]Walk-forward backtest completed.[/bold green]")
@@ -1329,6 +1350,7 @@ def walk_forward_backtest(
     console.print(f"Worst max drawdown: {float(metric['worst_max_drawdown']) * 100:.2f}%")
     console.print(f"Positive fold ratio: {float(metric['positive_fold_ratio']) * 100:.2f}%")
     console.print(f"Report: {report_path}")
+    console.print(f"Experiment log: {experiment_log_path}")
 
 
 @app.command("send-telegram-daily")
@@ -1475,8 +1497,38 @@ def run_daily_job(
     console.print(f"Summary: {result.summary_path}")
     console.print(f"CSV: {result.summary_csv_path}")
     console.print(f"Report: {result.report_path}")
+    console.print(f"Experiment log: {result.experiment_log_path}")
     if notify:
         status = "sent" if result.telegram_sent else "dry-run"
         console.print(f"Telegram: {status}")
         if result.telegram_dry_run:
             console.print(result.telegram_message)
+
+
+@app.command("show-experiments")
+def show_experiments(
+    limit: Annotated[
+        int,
+        typer.Option("--limit", help="Number of recent experiment rows to display."),
+    ] = 10,
+) -> None:
+    """Show recent local experiment tracking rows."""
+    tracker = ExperimentTracker(settings.project_root)
+    frame = tracker.load()
+    if frame.empty:
+        console.print("[yellow]No experiment log found.[/yellow]")
+        console.print(f"Expected path: {tracker.path}")
+        return
+
+    display_columns = [
+        "created_at",
+        "experiment_name",
+        "run_type",
+        "ticker",
+        "universe",
+        "start_date",
+        "end_date",
+        "metrics_json",
+        "artifact_path",
+    ]
+    console.print(frame.tail(limit)[display_columns])

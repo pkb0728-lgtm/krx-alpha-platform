@@ -174,6 +174,7 @@ data/backtest/walk_forward_folds/005380_20240101_20240331.parquet
 data/backtest/walk_forward_summary/005380_20240101_20240331.parquet
 reports/backtest/005380_20240101_20240331.md
 reports/backtest/walk_forward_005380_20240101_20240331.md
+experiments/experiment_log.csv
 ```
 
 The MVP backtest enters on the next trading day's open after a
@@ -267,3 +268,21 @@ schtasks /Create /SC DAILY /TN KRXAlphaDaily /ST 16:30 /TR "C:\Users\USER\Docume
 
 Keep the first scheduled runs in `--telegram-dry-run` mode if you are still
 checking the output.
+
+## 12. Review Experiment Logs
+
+Backtest, walk-forward validation, and daily job runs append metadata to:
+
+```text
+experiments/experiment_log.csv
+```
+
+Show recent rows from the CLI:
+
+```powershell
+python main.py show-experiments --limit 10
+```
+
+The CSV stores run ID, model version, parameters, metrics, date range, and the
+main artifact path. The file is intentionally ignored by Git because it is a
+local run artifact.
