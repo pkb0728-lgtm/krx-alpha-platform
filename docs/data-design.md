@@ -7,7 +7,7 @@
 | `data/raw` | Source-shaped data with minimal changes. |
 | `data/processed` | Cleaned prices and named universe snapshots. |
 | `data/features` | Reusable model/scoring features. |
-| `data/signals` | Scores, final signals, and universe summaries. |
+| `data/signals` | Scores, regimes, final signals, and universe summaries. |
 | `data/backtest` | Backtest trades and aggregate metrics. |
 
 ## Current Datasets
@@ -85,6 +85,29 @@ volatility_5d
 volatility_20d
 rsi_14
 ```
+
+### Market Regime
+
+Path:
+
+```text
+data/signals/market_regime_daily/{ticker}_{start}_{end}.parquet
+```
+
+Important columns:
+
+```text
+regime
+regime_score
+risk_level
+regime_reason
+return_20d
+volatility_20d
+close_to_ma_60
+```
+
+The regime output is currently used as a human review context. It is not yet
+automatically applied to scoring or risk filters.
 
 ### Backtest Outputs
 

@@ -35,6 +35,7 @@ streamlit run src/krx_alpha/dashboard/app.py
 
 ```powershell
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 ```
 
@@ -44,6 +45,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - Each data layer is persisted.
 - Named universes make screening repeatable.
 - Features are reusable.
+- Market regime is analyzed before reviewing signals.
 - Signals are explainable.
 - Risk filters can block actions.
 - Backtesting validates signals after costs and slippage.
@@ -55,6 +57,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 - CLI with Typer
 - Parquet data storage
 - named universe registry
+- market regime analyzer
 - testable modules
 - CI-ready quality checks
 - Streamlit dashboard with universe and backtest review
@@ -64,7 +67,7 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 ## Next Portfolio Improvements
 
 - Walk-forward backtesting and portfolio-level constraints
-- Market regime detection
+- Apply market regime to scoring and risk filters
 - OpenDART disclosure features
 - Investor flow features
 - ML baseline with walk-forward validation

@@ -54,6 +54,12 @@ Current risk filters include:
 - high short-term volatility
 - weak risk score
 
+## Market Regime
+
+The MVP also generates a separate market regime context with labels such as
+`bull`, `bear`, `sideways`, `high_volatility`, and `rebound`. This currently
+supports human review and is not yet an automatic scoring input.
+
 ## Position Size
 
 Suggested position percentage is intentionally conservative. It is a

@@ -16,6 +16,8 @@ from krx_alpha.database.storage import (
     daily_score_file_path,
     ensure_project_dirs,
     final_signal_file_path,
+    market_regime_file_path,
+    market_regime_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_price_file_path,
@@ -32,8 +34,10 @@ from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 from krx_alpha.processors.price_processor import PriceProcessor
+from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
 from krx_alpha.reports.backtest_report import BacktestReportGenerator
 from krx_alpha.reports.daily_report import DailyReportGenerator
+from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scoring.price_scorer import PriceScorer
 from krx_alpha.signals.signal_engine import SignalEngine
@@ -236,6 +240,61 @@ def score_stock(
     console.print(f"Latest total score: {latest['total_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
     console.print(f"Output: {output_path}")
+
+
+@app.command("analyze-regime")
+def analyze_regime(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-03-31",
+) -> None:
+    """Analyze market regime from price features and save a regime report."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    feature_path = price_feature_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not feature_path.exists():
+        raise typer.BadParameter(f"Price feature file does not exist: {feature_path}")
+
+    feature_frame = read_parquet(feature_path)
+    regime_frame = MarketRegimeAnalyzer().analyze(feature_frame)
+    output_path = market_regime_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    report_path = market_regime_report_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(regime_frame, output_path)
+    write_text(MarketRegimeReportGenerator().generate(regime_frame), report_path)
+
+    latest = regime_frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Market regime analyzed.[/bold green]")
+    console.print(f"Latest regime: {latest['regime']}")
+    console.print(f"Regime score: {float(latest['regime_score']):.2f}")
+    console.print(f"Risk level: {latest['risk_level']}")
+    console.print(f"Reason: {latest['regime_reason']}")
+    console.print(f"Output: {output_path}")
+    console.print(f"Report: {report_path}")
 
 
 @app.command("generate-report")

@@ -86,12 +86,31 @@ data/signals/universe_summary_daily/universe_20240101_20240131.csv
 reports/universe/universe_20240101_20240131.md
 ```
 
-## 6. Backtest A Stock Signal
+## 6. Analyze Market Regime
+
+Run this after `run-pipeline` has created price features:
+
+```powershell
+python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
+Output examples:
+
+```text
+data/signals/market_regime_daily/005380_20240101_20240331.parquet
+reports/regime/005380_20240101_20240331.md
+```
+
+The MVP regime analyzer classifies conditions such as `bull`, `bear`,
+`sideways`, `high_volatility`, `rebound`, and `neutral`.
+
+## 7. Backtest A Stock Signal
 
 Run this after `run-pipeline` has created processed prices and final signals:
 
 ```powershell
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 ```
 
@@ -107,7 +126,7 @@ The MVP backtest enters on the next trading day's open after a
 `buy_candidate` signal, exits after the configured holding period, and applies
 simple transaction cost and slippage assumptions.
 
-## 7. Open The Dashboard
+## 8. Open The Dashboard
 
 Install dashboard dependencies if needed:
 

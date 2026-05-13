@@ -17,6 +17,7 @@ flowchart TD
     D --> E["Processed data layer"]
     E --> F["Feature builder"]
     F --> G["Feature store"]
+    G --> R["Market regime analyzer"]
     G --> H["Scoring engine"]
     H --> I["Risk filter"]
     I --> J["Final signal engine"]
@@ -26,6 +27,7 @@ flowchart TD
     J --> N["Backtest engine"]
     E --> N
     N --> O["Backtest report"]
+    R --> P["Regime report"]
 ```
 
 ## Module Responsibilities
@@ -35,6 +37,7 @@ flowchart TD
 | `collectors` | Collect raw source data from APIs or libraries. |
 | `processors` | Clean raw data and create processed datasets. |
 | `features` | Build reusable features for scoring and models. |
+| `regime` | Classify market context before reviewing signals. |
 | `contracts` | Validate schemas, required columns, ranges, and duplicates. |
 | `scoring` | Generate explainable technical and risk scores. |
 | `risk` | Block or reduce signals when risk conditions are weak. |
@@ -51,7 +54,7 @@ The project uses explicit data layers because financial systems need traceable
 inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
-universe -> raw -> processed -> features -> scores -> final signals -> reports/backtest
+universe -> raw -> processed -> features -> regime/scores -> final signals -> reports/backtest
 ```
 
 This separation helps avoid data leakage during backtesting and prepares the

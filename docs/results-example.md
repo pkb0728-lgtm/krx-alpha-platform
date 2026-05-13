@@ -59,7 +59,17 @@ Example command:
 
 ```powershell
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
+```
+
+Example regime output:
+
+```text
+Market regime analyzed.
+Latest regime: neutral
+Regime score: 50.00
+Risk level: medium
 ```
 
 Example output:

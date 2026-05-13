@@ -4,8 +4,8 @@ Explainable Korean stock investment decision-support platform built with Python.
 
 This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
-data validation, feature engineering, explainable scoring, risk filtering,
-backtesting, report generation, and a Streamlit dashboard.
+data validation, feature engineering, market regime analysis, explainable
+scoring, risk filtering, backtesting, report generation, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -17,6 +17,7 @@ backtesting, report generation, and a Streamlit dashboard.
 - Data contracts and validation checks
 - Named universe management for repeatable screening
 - Technical feature engineering
+- Market regime analysis before signal review
 - Explainable rule-based scoring
 - Risk filtering before final signals
 - Simple signal backtesting with costs and slippage
@@ -33,6 +34,7 @@ select named universe
 -> collect price data
 -> process raw data
 -> build price features
+-> analyze market regime
 -> score each stock
 -> apply risk filters
 -> generate final signals
@@ -59,6 +61,7 @@ flowchart LR
     C --> D["processed parquet"]
     D --> E["feature builder"]
     E --> F["feature store"]
+    F --> R["market regime analyzer"]
     F --> G["price scorer"]
     G --> H["daily scores"]
     H --> I["signal engine"]
@@ -73,6 +76,7 @@ flowchart LR
     N --> O["backtest report"]
     P["universe registry"] --> A
     P --> L
+    R --> Q["regime report"]
 ```
 
 ## Project Structure
@@ -82,6 +86,7 @@ src/krx_alpha/
   collectors/    data collection
   processors/    raw to processed ETL
   features/      feature engineering
+  regime/        market regime analysis
   scoring/       explainable scoring
   risk/          risk filters
   signals/       final signal generation
@@ -141,6 +146,7 @@ python main.py run-universe --tickers 005930,000660,005380 --start 2024-01-01 --
 Backtest one stock after running its pipeline:
 
 ```powershell
+python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 ```
 
@@ -167,7 +173,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 24 passed
+pytest: 28 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -181,10 +187,12 @@ data/processed/prices_daily/
 data/features/prices_daily/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
+data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
 data/backtest/trades/
 data/backtest/metrics/
 reports/daily/
+reports/regime/
 reports/universe/
 reports/backtest/
 ```
@@ -211,6 +219,7 @@ only committed environment file.
 - Add dynamic KOSPI200/KOSDAQ150 universe collectors and liquidity filters
 - Add OpenDART financial/disclosure features
 - Add investor flow and short-selling features
+- Apply market regime as a scoring and risk filter
 - Expand backtesting with walk-forward validation and portfolio-level constraints
 - Add ML baselines with walk-forward validation
 - Add MLflow experiment tracking

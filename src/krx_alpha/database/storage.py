@@ -86,6 +86,16 @@ def final_signal_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def market_regime_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "market_regime_daily")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
 def universe_summary_file_path(project_root: Path, start_date: str, end_date: str) -> Path:
     dataset_dir = signals_dataset_dir(project_root, "universe_summary_daily")
     return dataset_dir / f"universe_{start_date}_{end_date}.parquet"
@@ -112,6 +122,15 @@ def daily_report_file_path(project_root: Path, ticker: str, report_date: str) ->
 
 def universe_report_file_path(project_root: Path, start_date: str, end_date: str) -> Path:
     return project_root / "reports" / "universe" / f"universe_{start_date}_{end_date}.md"
+
+
+def market_regime_report_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    return project_root / "reports" / "regime" / f"{ticker}_{start_date}_{end_date}.md"
 
 
 def backtest_report_file_path(
