@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local data and artifacts
+data/raw/*
+data/processed/*
+data/features/*
+data/signals/*
+data/backtest/*
+!data/**/.gitkeep
+logs/*
+!logs/.gitkeep
+models/*
+!models/.gitkeep
+mlruns/
+reports/*
+!reports/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
