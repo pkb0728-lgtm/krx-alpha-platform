@@ -5,6 +5,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
@@ -81,6 +82,13 @@ from krx_alpha.models.probability_baseline import (
     MLProbabilityBaselineTrainer,
 )
 from krx_alpha.models.training_dataset import MLTrainingDatasetBuilder, MLTrainingDatasetConfig
+from krx_alpha.monitoring.api_health import (
+    API_STATUS_FAILED,
+    API_STATUS_MISSING,
+    API_STATUS_OK,
+    ApiCredentials,
+    ApiHealthChecker,
+)
 from krx_alpha.monitoring.drift import (
     DataDriftConfig,
     DataDriftDetector,
@@ -195,6 +203,44 @@ def doctor() -> None:
     console.print(f"Environment: {settings.environment}")
     console.print(f"Project root: {settings.project_root}")
     console.print(f"Data root: {settings.data_dir}")
+
+
+@app.command("check-apis")
+def check_apis(
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", help="HTTP timeout for each API check."),
+    ] = 10.0,
+    include_pykrx: Annotated[
+        bool,
+        typer.Option("--include-pykrx/--skip-pykrx", help="Also check pykrx price collection."),
+    ] = True,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict/--no-strict", help="Exit with code 1 when any check is not OK."),
+    ] = False,
+) -> None:
+    """Check configured API connectivity without printing secret values."""
+    configure_logger(settings.log_level)
+    credentials = ApiCredentials.from_settings(settings)
+    results = ApiHealthChecker(timeout_seconds=timeout_seconds).run(
+        credentials,
+        include_pykrx=include_pykrx,
+    )
+
+    table = Table(title="API Health Check")
+    table.add_column("API")
+    table.add_column("Status")
+    table.add_column("Detail")
+    for result in results:
+        table.add_row(result.name, _format_api_status(result.status), result.detail)
+    console.print(table)
+
+    ok_count = sum(result.ok for result in results)
+    console.print(f"Summary: {ok_count}/{len(results)} OK")
+
+    if strict and ok_count != len(results):
+        raise typer.Exit(code=1)
 
 
 @app.command("init-dirs")
@@ -1899,6 +1945,16 @@ def _parse_optional_columns(columns: str | None) -> list[str] | None:
     if columns is None:
         return None
     return [column.strip() for column in columns.split(",") if column.strip()]
+
+
+def _format_api_status(status: str) -> str:
+    if status == API_STATUS_OK:
+        return "[green]OK[/green]"
+    if status == API_STATUS_MISSING:
+        return "[yellow]MISSING[/yellow]"
+    if status == API_STATUS_FAILED:
+        return "[red]FAILED[/red]"
+    return status
 
 
 def _safe_report_name(value: str) -> str:
