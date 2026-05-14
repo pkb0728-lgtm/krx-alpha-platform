@@ -213,27 +213,63 @@ def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
         lines.append(f"- Status reasons: {status_summary}")
     if passed_frame.empty:
         lines.append("- No candidates passed the screen.")
-        return lines
+    else:
+        ranked = passed_frame.sort_values(
+            ["screen_score", "confidence_score"],
+            ascending=[False, False],
+        ).head(max(top_n, 1))
+        for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
+            lines.append(
+                f"{rank}. {row['ticker']} | {row['final_action']} | "
+                f"priority {_format_optional(row, 'review_priority')} | "
+                f"screen {_format_number(row['screen_score'])} | "
+                f"confidence {_format_number(row['confidence_score'])} | "
+                f"position {_format_plain_percent(row['suggested_position_pct'])}"
+            )
+            evidence = _row_value(row, "evidence_summary")
+            caution = _row_value(row, "caution_summary")
+            if not _is_missing(evidence) and str(evidence):
+                lines.append(f"   evidence: {_truncate_line(str(evidence), limit=120)}")
+            if not _is_missing(caution) and str(caution):
+                lines.append(f"   caution: {_truncate_line(str(caution), limit=120)}")
 
-    ranked = passed_frame.sort_values(
-        ["screen_score", "confidence_score"],
-        ascending=[False, False],
-    ).head(max(top_n, 1))
-    for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
-        lines.append(
-            f"{rank}. {row['ticker']} | {row['final_action']} | "
-            f"priority {_format_optional(row, 'review_priority')} | "
-            f"screen {_format_number(row['screen_score'])} | "
-            f"confidence {_format_number(row['confidence_score'])} | "
-            f"position {_format_plain_percent(row['suggested_position_pct'])}"
-        )
-        evidence = _row_value(row, "evidence_summary")
-        caution = _row_value(row, "caution_summary")
-        if not _is_missing(evidence) and str(evidence):
-            lines.append(f"   evidence: {_truncate_line(str(evidence), limit=120)}")
-        if not _is_missing(caution) and str(caution):
-            lines.append(f"   caution: {_truncate_line(str(caution), limit=120)}")
+    lines.extend(_format_screening_review_queue(frame, top_n))
     return lines
+
+
+def _format_screening_review_queue(frame: pd.DataFrame, top_n: int) -> list[str]:
+    if "passed" not in frame.columns:
+        return []
+
+    review_frame = frame[~_passed_mask(frame["passed"])]
+    if review_frame.empty:
+        return []
+
+    if "review_priority" in review_frame.columns:
+        priority_order = {"high": 0, "medium": 1, "watchlist": 2, "low": 3, "blocked": 4}
+        review_frame = review_frame.copy()
+        review_frame["_priority_order"] = (
+            review_frame["review_priority"].map(priority_order).fillna(99)
+        )
+        review_frame = review_frame.sort_values(
+            ["_priority_order", "screen_score", "confidence_score"],
+            ascending=[True, False, False],
+        ).drop(columns=["_priority_order"])
+
+    lines = ["- Review queue:"]
+    for _, row in review_frame.head(max(top_n, 1)).iterrows():
+        lines.append(
+            f"  - {row['ticker']} | {_format_optional(row, 'review_priority')} | "
+            f"{_format_optional(row, 'screen_status_reason')} | "
+            f"screen {_format_number(row['screen_score'])}"
+        )
+    return lines
+
+
+def _passed_mask(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    return series.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
 
 
 def _screen_status_summary(frame: pd.DataFrame) -> str:

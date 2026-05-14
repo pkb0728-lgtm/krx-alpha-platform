@@ -127,6 +127,8 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "screen 72.50" in message
     assert "evidence: risk filter passed" in message
     assert "caution: confirm latest disclosure" in message
+    assert "Review queue" in message
+    assert "005930 | low | confidence_below_threshold | screen 55.00" in message
     assert "Paper portfolio" in message
     assert "demo | tickers 3/3 | trades 2" in message
     assert "Backtest" in message
