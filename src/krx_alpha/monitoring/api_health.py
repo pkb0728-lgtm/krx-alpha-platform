@@ -103,7 +103,7 @@ class RequestsJsonHttpClient:
             method=method,
             url=url,
             params=params,
-            headers=headers,
+            headers=cast(Any, headers),
             json=cast(Any, json_payload),
             timeout=timeout_seconds,
         )
