@@ -38,7 +38,9 @@ Report: reports/screening/screening_universe_20240101_20240131.md
 
 The output does not mean "buy this stock." It means the stock passed the current
 rule-based screening and risk-filter logic for the selected date range. The
-auto screener is a shortlist for human review, not an order instruction.
+auto screener is a shortlist for human review, not an order instruction. Its
+Markdown report includes candidate review cards with evidence, caution points,
+and manual checklist items.
 
 ## OpenDART Demo Collection
 

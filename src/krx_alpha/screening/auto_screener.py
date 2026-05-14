@@ -27,6 +27,9 @@ SCREENING_COLUMNS = [
     "news_score",
     "macro_score",
     "reasons",
+    "evidence_summary",
+    "caution_summary",
+    "review_checklist",
     "signal_path",
     "screened_at",
 ]
@@ -129,6 +132,14 @@ class AutoScreener:
             "news_score": _optional_float(signal_row.get("news_score")),
             "macro_score": _optional_float(signal_row.get("macro_score")),
             "reasons": ", ".join(reasons),
+            "evidence_summary": _evidence_summary(
+                signal_row,
+                feature_row,
+                reasons,
+                screen_score,
+            ),
+            "caution_summary": _caution_summary(signal_row, feature_row, reasons, passed),
+            "review_checklist": _review_checklist(signal_row, feature_row, passed),
             "signal_path": str(signal_path),
             "screened_at": pd.Timestamp.now(tz="UTC"),
         }
@@ -154,6 +165,9 @@ class AutoScreener:
             "news_score": _optional_float(summary_row.get("latest_news_score")),
             "macro_score": _optional_float(summary_row.get("latest_macro_score")),
             "reasons": "signal_file_missing_or_empty",
+            "evidence_summary": "No signal file was available for review.",
+            "caution_summary": "Do not review this ticker until the final signal artifact exists.",
+            "review_checklist": "rerun_pipeline, confirm_signal_artifact",
             "signal_path": str(signal_path),
             "screened_at": pd.Timestamp.now(tz="UTC"),
         }
@@ -166,12 +180,26 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
         "",
         f"- Checked tickers: {len(result_frame)}",
         f"- Passed: {len(passed)}",
+        f"- Review cards: {min(len(passed), 10)}",
         "",
-        "## Candidates",
+        "## Candidate Review Cards",
         "",
-        "| Ticker | Action | Score | Confidence | Position | Reasons |",
-        "| --- | --- | ---: | ---: | ---: | --- |",
     ]
+    if passed.empty:
+        lines.append("- No candidates passed the screen.")
+    else:
+        for rank, (_, row) in enumerate(passed.head(10).iterrows(), start=1):
+            lines.extend(_candidate_card_lines(rank, row))
+
+    lines.extend(
+        [
+            "",
+            "## Candidates",
+            "",
+            "| Ticker | Action | Score | Confidence | Position | Reasons |",
+            "| --- | --- | ---: | ---: | ---: | --- |",
+        ]
+    )
     if passed.empty:
         lines.append("| N/A | N/A | 0.00 | 0.00 | 0.00% | no_candidates_passed |")
     else:
@@ -198,6 +226,20 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
         ]
     )
     return "\n".join(lines)
+
+
+def _candidate_card_lines(rank: int, row: pd.Series) -> list[str]:
+    return [
+        f"### {rank}. {row['ticker']} - {row['final_action']}",
+        "",
+        f"- Screen score: {float(row['screen_score']):.2f}",
+        f"- Confidence: {float(row['confidence_score']):.2f}",
+        f"- Suggested position: {float(row['suggested_position_pct']):.2f}%",
+        f"- Evidence: {row['evidence_summary']}",
+        f"- Caution: {row['caution_summary']}",
+        f"- Review checklist: {row['review_checklist']}",
+        "",
+    ]
 
 
 def _score_screen_candidate(
@@ -305,3 +347,93 @@ def _as_date_string(value: object) -> str:
 def _add_score_reason(reasons: list[str], reason: str, condition: bool) -> None:
     if condition:
         reasons.append(reason)
+
+
+def _evidence_summary(
+    signal_row: pd.Series,
+    feature_row: pd.Series | None,
+    reasons: list[str],
+    screen_score: float,
+) -> str:
+    evidence = [
+        f"{signal_row['final_action']} action with screen score {screen_score:.2f}",
+        f"confidence {float(signal_row['confidence_score']):.2f}",
+    ]
+    if "risk_filter_passed" in reasons:
+        evidence.append("risk filter passed")
+    if "trading_value_surge" in reasons:
+        evidence.append("trading value surged over the 5-day baseline")
+    elif "trading_value_increase" in reasons:
+        evidence.append("trading value increased over the 5-day baseline")
+    if "rsi_recovery_zone" in reasons:
+        evidence.append("RSI is in a recovery-friendly range")
+    if _optional_float(signal_row.get("financial_score")) >= 60:
+        evidence.append("financial score is supportive")
+    if _optional_float(signal_row.get("flow_score")) >= 60:
+        evidence.append("investor flow score is supportive")
+    if _optional_float(signal_row.get("news_score")) >= 60:
+        evidence.append("news sentiment score is supportive")
+
+    trading_value = _feature_value(feature_row, "trading_value")
+    if pd.notna(trading_value):
+        evidence.append(f"latest trading value {_format_large_number(trading_value)}")
+    return "; ".join(evidence)
+
+
+def _caution_summary(
+    signal_row: pd.Series,
+    feature_row: pd.Series | None,
+    reasons: list[str],
+    passed: bool,
+) -> str:
+    cautions: list[str] = []
+    if not passed:
+        cautions.append("candidate did not pass all screen thresholds")
+    if bool(signal_row["risk_blocked"]):
+        cautions.append("risk filter blocked the signal")
+    if "market_regime_caution" in reasons:
+        cautions.append("market regime is not supportive")
+    if str(signal_row.get("market_regime", "")) in {"unknown", "insufficient_data"}:
+        cautions.append("market regime needs more data")
+    if _optional_float(signal_row.get("financial_score")) < 50:
+        cautions.append("financial score is weak")
+    if _optional_float(signal_row.get("event_score")) < 50:
+        cautions.append("disclosure event score is weak")
+    if _optional_float(signal_row.get("news_score")) < 50:
+        cautions.append("news sentiment is weak or missing")
+    if _feature_value(feature_row, "volatility_5d") > 0.05:
+        cautions.append("short-term volatility is elevated")
+    if "rsi_overheated" in reasons:
+        cautions.append("RSI looks overheated")
+    if not cautions:
+        cautions.append("no hard block, but confirm latest news and disclosures")
+    return "; ".join(cautions)
+
+
+def _review_checklist(
+    signal_row: pd.Series,
+    feature_row: pd.Series | None,
+    passed: bool,
+) -> str:
+    checklist = [
+        "confirm_recent_news",
+        "check_dart_disclosures",
+        "verify_liquidity",
+        "review_position_size",
+    ]
+    if not passed:
+        checklist.insert(0, "identify_failed_threshold")
+    if str(signal_row.get("market_regime", "")) in {"unknown", "insufficient_data"}:
+        checklist.append("extend_price_history_for_regime")
+    if pd.isna(_feature_value(feature_row, "trading_value")):
+        checklist.append("rebuild_price_features")
+    return ", ".join(checklist)
+
+
+def _format_large_number(value: float) -> str:
+    abs_value = abs(value)
+    if abs_value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.2f}B"
+    if abs_value >= 1_000_000:
+        return f"{value / 1_000_000:.2f}M"
+    return f"{value:.2f}"

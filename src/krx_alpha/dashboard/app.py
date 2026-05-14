@@ -145,6 +145,16 @@ def main() -> None:
             screen_cols[3].metric("Top score", _format_score(top_screen["screen_score"]))
             screen_cols[4].metric("Top action", str(top_screen["final_action"]))
             st.caption(f"Latest screening file: {screening_path.name}")
+            if not passed_frame.empty:
+                st.caption("Candidate review cards")
+                for _, row in passed_frame.head(5).iterrows():
+                    with st.expander(
+                        f"{row['ticker']} | {row['final_action']} | "
+                        f"score {_format_score(row['screen_score'])}",
+                    ):
+                        st.write(f"Evidence: {row.get('evidence_summary', 'N/A')}")
+                        st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
+                        st.write(f"Checklist: {row.get('review_checklist', 'N/A')}")
             st.dataframe(
                 screening_frame[_screening_display_columns(screening_frame)],
                 hide_index=True,
@@ -657,6 +667,9 @@ def _screening_display_columns(frame: Any) -> list[str]:
         "rsi_14",
         "volatility_5d",
         "reasons",
+        "evidence_summary",
+        "caution_summary",
+        "review_checklist",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

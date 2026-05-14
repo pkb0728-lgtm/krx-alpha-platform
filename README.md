@@ -39,7 +39,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - CSV-based experiment tracking for backtest and operations runs
 - Data drift and performance drift monitoring
 - Operations health checks for local artifacts and optional API connectivity
-- Markdown reports for single-stock and universe screening
+- Markdown reports for single-stock and universe screening, including candidate review cards
 - Daily job runner for after-market operations
 - Telegram daily brief with drift and operations health status preview, send command, and retry settings
 - Streamlit dashboard for universe, screening, news sentiment, macro, report, backtest, walk-forward, ML, drift, and operations review
@@ -292,7 +292,7 @@ Dashboard:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
-The dashboard includes the latest auto screener shortlist, paper portfolio
+The dashboard includes the latest auto screener shortlist, candidate review cards, paper portfolio
 snapshot, paper portfolio history view built from saved `paper_portfolio_summary`
 files, and the latest operations health result when available.
 

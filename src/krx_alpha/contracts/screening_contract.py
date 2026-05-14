@@ -15,6 +15,9 @@ REQUIRED_SCREENING_COLUMNS = {
     "rsi_14",
     "volatility_5d",
     "reasons",
+    "evidence_summary",
+    "caution_summary",
+    "review_checklist",
     "signal_path",
     "screened_at",
 }

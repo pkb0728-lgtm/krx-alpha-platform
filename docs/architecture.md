@@ -75,14 +75,14 @@ flowchart TD
 | `scoring` | Generate explainable technical and risk scores. |
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
-| `screening` | Convert final signals and feature context into a human-review shortlist. |
+| `screening` | Convert final signals and feature context into a human-review shortlist with candidate evidence cards. |
 | `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
 | `paper_trading` | Simulate paper-only fills, positions, and portfolio summaries without broker orders. |
 | `experiments` | Append run parameters, model version, metrics, and artifact links to a CSV log. |
 | `monitoring` | Detect feature data drift, experiment performance drift, and local operations health. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
-| `dashboard` | Display universe, screening, paper trading, backtest, walk-forward, drift, and operations health results through Streamlit. |
+| `dashboard` | Display universe, screening review cards, paper trading, backtest, walk-forward, drift, and operations health results through Streamlit. |
 | `scheduler` | Orchestrate after-market daily jobs for universe runs, auto screening, paper portfolio checks, reports, and alerts. |
 | `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |

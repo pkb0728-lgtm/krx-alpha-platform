@@ -166,7 +166,8 @@ reports/universe/universe_20240101_20240131.md
 `screen-universe` reads the latest universe summary and each ticker's latest
 final signal file, then creates a human-review shortlist using action,
 confidence, risk-block status, trading value change, RSI, and regime context.
-It never sends orders.
+Each passed candidate also gets a review card with positive evidence, caution
+points, and a manual checklist. It never sends orders.
 
 ## 7. Analyze Market Regime
 

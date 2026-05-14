@@ -547,13 +547,17 @@ trading_value_change_5d
 rsi_14
 volatility_5d
 reasons
+evidence_summary
+caution_summary
+review_checklist
 signal_path
 screened_at
 ```
 
 The screener is a repeatable human-review shortlist. It combines final signal
 state with recent technical context from the feature store. It is not an order
-execution instruction.
+execution instruction. The explanation columns summarize positive evidence,
+remaining caution points, and the manual review checklist for each candidate.
 
 ### Monitoring Outputs
 

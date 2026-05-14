@@ -36,9 +36,14 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
     assert result.loc[0, "screen_score"] >= 65.0
     assert "buy_candidate_signal" in result.loc[0, "reasons"]
     assert "trading_value_surge" in result.loc[0, "reasons"]
+    assert "risk filter passed" in result.loc[0, "evidence_summary"]
+    assert "confirm_recent_news" in result.loc[0, "review_checklist"]
 
     report = format_screening_report(result)
     assert "Auto Screener Report" in report
+    assert "Candidate Review Cards" in report
+    assert "Evidence:" in report
+    assert "Caution:" in report
     assert "005930" in report
 
 
@@ -59,6 +64,7 @@ def test_auto_screener_flags_missing_signal_file(tmp_path: Path) -> None:
     assert bool(result.loc[0, "passed"]) is False
     assert result.loc[0, "screen_score"] == 0.0
     assert result.loc[0, "reasons"] == "signal_file_missing_or_empty"
+    assert result.loc[0, "review_checklist"] == "rerun_pipeline, confirm_signal_artifact"
 
 
 def _final_signal_frame(ticker: str, action: str, confidence: float) -> pd.DataFrame:
