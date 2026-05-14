@@ -275,6 +275,27 @@ def load_screening_result(path: Path) -> Any:
     ).reset_index(drop=True)
 
 
+def filter_screening_result(
+    frame: Any,
+    priorities: list[str] | None = None,
+    status_reasons: list[str] | None = None,
+    passed_only: bool = False,
+) -> Any:
+    result = frame.copy()
+    if passed_only and "passed" in result.columns:
+        result = result[result["passed"]]
+
+    priority_filter = set(priorities or [])
+    if priority_filter and "review_priority" in result.columns:
+        result = result[result["review_priority"].astype(str).isin(priority_filter)]
+
+    status_filter = set(status_reasons or [])
+    if status_filter and "screen_status_reason" in result.columns:
+        result = result[result["screen_status_reason"].astype(str).isin(status_filter)]
+
+    return result.reset_index(drop=True)
+
+
 def load_ml_metrics(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty or "split" not in frame.columns:

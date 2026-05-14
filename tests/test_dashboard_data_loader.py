@@ -4,6 +4,7 @@ import pandas as pd
 
 from krx_alpha.dashboard.data_loader import (
     action_counts,
+    filter_screening_result,
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_macro_features,
@@ -401,6 +402,7 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
             "screen_date": ["2024-01-31", "2024-01-31"],
             "ticker": ["005930", "000660"],
             "passed": [False, True],
+            "screen_status_reason": ["confidence_below_threshold", "passed"],
             "review_priority": ["watchlist", "high"],
             "screen_score": [90.0, 60.0],
             "final_action": ["watch", "buy_candidate"],
@@ -425,6 +427,19 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
     assert frame.loc[0, "ticker"] == "000660"
     assert bool(frame.loc[0, "passed"]) is True
     assert frame.loc[0, "review_priority"] == "high"
+
+    filtered = filter_screening_result(
+        frame,
+        priorities=["watchlist"],
+        status_reasons=["confidence_below_threshold"],
+        passed_only=False,
+    )
+    assert len(filtered) == 1
+    assert filtered.loc[0, "ticker"] == "005930"
+
+    passed_filtered = filter_screening_result(frame, passed_only=True)
+    assert len(passed_filtered) == 1
+    assert passed_filtered.loc[0, "ticker"] == "000660"
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:

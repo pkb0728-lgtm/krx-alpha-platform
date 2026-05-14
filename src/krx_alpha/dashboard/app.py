@@ -7,6 +7,7 @@ import streamlit as st
 
 from krx_alpha.dashboard.data_loader import (
     action_counts,
+    filter_screening_result,
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_macro_features,
@@ -151,9 +152,27 @@ def main() -> None:
             st.caption(
                 f"Status summary: {_format_count_summary(screening_frame, 'screen_status_reason')}"
             )
-            if not passed_frame.empty:
+            filter_cols = st.columns(3)
+            passed_only = filter_cols[0].checkbox("Passed only", value=False)
+            selected_priorities = filter_cols[1].multiselect(
+                "Priority",
+                _sorted_unique_values(screening_frame, "review_priority"),
+            )
+            selected_statuses = filter_cols[2].multiselect(
+                "Status",
+                _sorted_unique_values(screening_frame, "screen_status_reason"),
+            )
+            display_screening_frame = filter_screening_result(
+                screening_frame,
+                priorities=selected_priorities,
+                status_reasons=selected_statuses,
+                passed_only=passed_only,
+            )
+            display_passed_frame = display_screening_frame[display_screening_frame["passed"]]
+            st.caption(f"Displayed rows: {len(display_screening_frame)}")
+            if not display_passed_frame.empty:
                 st.caption("Candidate review cards")
-                for _, row in passed_frame.head(5).iterrows():
+                for _, row in display_passed_frame.head(5).iterrows():
                     with st.expander(
                         f"{row['ticker']} | {row.get('review_priority', 'N/A')} | "
                         f"{row['final_action']} | "
@@ -163,11 +182,14 @@ def main() -> None:
                         st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
                         st.write(f"Risk flags: {row.get('risk_flags', 'none') or 'none'}")
                         st.write(f"Checklist: {row.get('review_checklist', 'N/A')}")
-            st.dataframe(
-                screening_frame[_screening_display_columns(screening_frame)],
-                hide_index=True,
-                use_container_width=True,
-            )
+            if display_screening_frame.empty:
+                st.info("No screening rows match the selected filters.")
+            else:
+                st.dataframe(
+                    display_screening_frame[_screening_display_columns(display_screening_frame)],
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
     st.divider()
 
@@ -690,6 +712,12 @@ def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _sorted_unique_values(frame: pd.DataFrame, column: str) -> list[str]:
+    if frame.empty or column not in frame.columns:
+        return []
+    return sorted(frame[column].dropna().astype(str).unique().tolist())
 
 
 def _select_ml_metric(frame: Any) -> Any:
