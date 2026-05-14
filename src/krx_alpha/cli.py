@@ -58,6 +58,10 @@ from krx_alpha.database.storage import (
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     news_sentiment_feature_file_path,
+    paper_position_file_path,
+    paper_summary_file_path,
+    paper_trade_ledger_file_path,
+    paper_trading_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_investor_flow_file_path,
@@ -108,6 +112,7 @@ from krx_alpha.monitoring.drift import (
     format_data_drift_report,
     format_performance_drift_report,
 )
+from krx_alpha.paper_trading.simulator import PaperTradingConfig, PaperTradingSimulator
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 from krx_alpha.processors.price_processor import PriceProcessor
@@ -115,6 +120,7 @@ from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
 from krx_alpha.reports.backtest_report import BacktestReportGenerator, WalkForwardReportGenerator
 from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.ml_report import MLProbabilityBaselineReportGenerator
+from krx_alpha.reports.paper_trading_report import PaperTradingReportGenerator
 from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scheduler.daily_job import DailyJobConfig, DailyJobRunner
@@ -249,9 +255,7 @@ def _load_macro_feature_frame(
     )
     if not macro_path.exists():
         raise typer.BadParameter(
-            "Macro feature file does not exist. "
-            "Run build-macro-features first: "
-            f"{macro_path}"
+            f"Macro feature file does not exist. Run build-macro-features first: {macro_path}"
         )
     return read_parquet(macro_path)
 
@@ -1806,6 +1810,110 @@ def generate_universe_report(
 
     console.print("[green]Generated universe report[/green]")
     console.print(f"Output: {output_path}")
+
+
+@app.command("paper-trade")
+def paper_trade(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    initial_cash: Annotated[
+        float,
+        typer.Option("--initial-cash", help="Starting virtual cash for paper trading."),
+    ] = 10_000_000.0,
+    max_position_pct: Annotated[
+        float,
+        typer.Option("--max-position-pct", help="Maximum virtual allocation per entry."),
+    ] = 10.0,
+    transaction_cost_bps: Annotated[
+        float,
+        typer.Option("--transaction-cost-bps", help="Virtual transaction cost in bps."),
+    ] = 15.0,
+    slippage_bps: Annotated[
+        float,
+        typer.Option("--slippage-bps", help="Virtual slippage in bps."),
+    ] = 10.0,
+) -> None:
+    """Run paper-only trading simulation from final signals and processed prices."""
+    configure_logger(settings.log_level)
+    request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+
+    price_path = processed_price_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    signal_path = final_signal_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    if not price_path.exists():
+        raise typer.BadParameter(f"Processed price file does not exist: {price_path}")
+    if not signal_path.exists():
+        raise typer.BadParameter(f"Final signal file does not exist: {signal_path}")
+
+    price_frame = read_parquet(price_path)
+    signal_frame = read_parquet(signal_path)
+    config = PaperTradingConfig(
+        initial_cash=initial_cash,
+        max_position_pct=max_position_pct,
+        transaction_cost_bps=transaction_cost_bps,
+        slippage_bps=slippage_bps,
+    )
+    trades, positions, summary = PaperTradingSimulator(config).run(price_frame, signal_frame)
+
+    ledger_path = paper_trade_ledger_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    positions_path = paper_position_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    summary_path = paper_summary_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    report_path = paper_trading_report_file_path(
+        settings.project_root,
+        request.ticker,
+        request.pykrx_start_date,
+        request.pykrx_end_date,
+    )
+    write_parquet(trades, ledger_path)
+    write_parquet(positions, positions_path)
+    write_parquet(summary, summary_path)
+    write_text(PaperTradingReportGenerator().generate(trades, positions, summary), report_path)
+
+    metric = summary.iloc[0]
+    console.print("[bold green]Paper trading simulation completed.[/bold green]")
+    console.print("[yellow]Paper mode only. No broker API or real order was called.[/yellow]")
+    console.print(f"Filled trades: {int(metric['trade_count'])}")
+    console.print(f"Ending equity: {float(metric['ending_equity']):,.0f}")
+    console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
+    console.print(f"Open positions: {len(positions)}")
+    console.print(f"Ledger: {ledger_path}")
+    console.print(f"Positions: {positions_path}")
+    console.print(f"Summary: {summary_path}")
+    console.print(f"Report: {report_path}")
 
 
 @app.command("backtest-stock")

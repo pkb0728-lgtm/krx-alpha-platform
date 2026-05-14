@@ -186,9 +186,14 @@ Run this after `run-pipeline` has created processed prices and final signals:
 ```powershell
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py paper-trade --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
+
+`paper-trade` is a paper-only operation. It does not call Korea Investment,
+Telegram, or any broker endpoint. It only reads local signal/price files and
+creates a virtual ledger, open-position snapshot, summary, and Markdown report.
 
 Prepare a leakage-aware ML dataset for later probability modeling:
 
@@ -218,8 +223,12 @@ Output examples:
 ```text
 data/backtest/trades/005380_20240101_20240331.parquet
 data/backtest/metrics/005380_20240101_20240331.parquet
+data/backtest/paper_trade_ledger/005380_20240101_20240331.parquet
+data/backtest/paper_positions/005380_20240101_20240331.parquet
+data/backtest/paper_summary/005380_20240101_20240331.parquet
 data/backtest/walk_forward_folds/005380_20240101_20240331.parquet
 data/backtest/walk_forward_summary/005380_20240101_20240331.parquet
+reports/paper_trading/005380_20240101_20240331.md
 reports/backtest/005380_20240101_20240331.md
 reports/backtest/walk_forward_005380_20240101_20240331.md
 data/features/ml_training/005380_20240101_20240331_h5.parquet
@@ -255,9 +264,9 @@ http://localhost:8501
 
 The dashboard shows the latest universe summary, action distribution, latest
 news sentiment feature, latest macro feature, backtest metrics, backtest trades,
-walk-forward summary, fold-level validation results, ML probability baseline
-metrics and predictions, latest drift monitoring result, and selected Markdown
-report.
+paper trading summary, paper trade ledger, walk-forward summary, fold-level
+validation results, ML probability baseline metrics and predictions, latest
+drift monitoring result, and selected Markdown report.
 
 ## 10. Preview Or Send Telegram Brief
 

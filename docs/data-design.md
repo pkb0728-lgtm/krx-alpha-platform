@@ -456,6 +456,45 @@ positive_fold_ratio
 worst_max_drawdown
 ```
 
+### Paper Trading Outputs
+
+Paper trade ledger:
+
+```text
+data/backtest/paper_trade_ledger/{ticker}_{start}_{end}.parquet
+```
+
+Open paper positions:
+
+```text
+data/backtest/paper_positions/{ticker}_{start}_{end}.parquet
+```
+
+Paper summary:
+
+```text
+data/backtest/paper_summary/{ticker}_{start}_{end}.parquet
+```
+
+Important paper trading columns:
+
+```text
+side
+status
+shares
+execution_price
+cash_after
+position_qty_after
+equity_after
+realized_pnl
+unrealized_pnl
+cumulative_return
+mode
+```
+
+`mode` is always `paper`. These artifacts are virtual execution records created
+from local final signals and local processed prices. No broker API is called.
+
 ### Monitoring Outputs
 
 Drift result tables:

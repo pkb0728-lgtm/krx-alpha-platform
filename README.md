@@ -7,7 +7,7 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, Naver news collection, Gemini-compatible news sentiment scoring,
-FRED macro environment scoring, market regime analysis, explainable scoring, risk filtering, backtesting,
+FRED macro environment scoring, market regime analysis, explainable scoring, risk filtering, paper trading, backtesting,
 experiment tracking, drift monitoring, report generation, scheduled daily jobs,
 ML training dataset generation, a first explainable ML probability baseline,
 Telegram alerts, and a Streamlit dashboard.
@@ -30,6 +30,7 @@ Telegram alerts, and a Streamlit dashboard.
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
+- Paper trading mode that creates virtual fills, positions, and reports without broker orders
 - Simple signal backtesting with costs and slippage
 - Walk-forward validation for signal robustness review
 - Leakage-aware ML training dataset generation for probability models
@@ -63,6 +64,7 @@ select named universe
    using technical + risk + financial + event + flow + news + macro evidence
 -> apply risk filters
 -> generate final signals
+-> simulate paper-only fills and portfolio state
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> build leakage-aware ML training dataset
@@ -255,9 +257,14 @@ Backtest one stock after running its pipeline:
 
 ```powershell
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py paper-trade --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
+
+`paper-trade` is paper mode only. It reads local final signal files and
+processed prices, then writes virtual ledger, position, summary, and report
+artifacts. It never calls a broker API and never sends real orders.
 
 Leakage-aware ML dataset for future probability models:
 
@@ -362,6 +369,9 @@ data/signals/ml_metrics/
 data/signals/drift/
 data/backtest/trades/
 data/backtest/metrics/
+data/backtest/paper_trade_ledger/
+data/backtest/paper_positions/
+data/backtest/paper_summary/
 data/backtest/walk_forward_folds/
 data/backtest/walk_forward_summary/
 experiments/experiment_log.csv
@@ -369,6 +379,7 @@ reports/daily/
 reports/regime/
 reports/universe/
 reports/backtest/
+reports/paper_trading/
 reports/modeling/
 reports/monitoring/
 ```

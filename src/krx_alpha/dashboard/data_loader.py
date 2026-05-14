@@ -31,6 +31,15 @@ def find_latest_walk_forward_summary(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_paper_summary(project_root: Path) -> Path | None:
+    summary_dir = project_root / "data" / "backtest" / "paper_summary"
+    if not summary_dir.exists():
+        return None
+
+    files = sorted(summary_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def find_latest_drift_result(project_root: Path) -> Path | None:
     drift_dir = project_root / "data" / "signals" / "drift"
     if not drift_dir.exists():
@@ -118,6 +127,26 @@ def load_walk_forward_folds(summary_path: Path) -> Any:
         return frame
 
     return frame.sort_values("fold").reset_index(drop=True)
+
+
+def load_paper_summary(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values("generated_at", ascending=False).reset_index(drop=True)
+
+
+def load_paper_trades(summary_path: Path) -> Any:
+    ledger_path = summary_path.parents[1] / "paper_trade_ledger" / summary_path.name
+    if not ledger_path.exists():
+        return pd.DataFrame()
+
+    frame = pd.read_parquet(ledger_path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values(["date", "side"]).reset_index(drop=True)
 
 
 def load_drift_result(path: Path) -> Any:

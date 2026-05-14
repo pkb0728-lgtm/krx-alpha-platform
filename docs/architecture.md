@@ -32,8 +32,11 @@ flowchart TD
     I --> J["Final signal engine"]
     J --> K["Reports"]
     J --> L["Universe summary"]
+    J --> PT["Paper trading simulator"]
     L --> DJ["Daily job runner"]
     L --> M["Streamlit dashboard"]
+    PT --> M
+    PT --> K
     DJ --> M
     L --> T["Telegram brief"]
     J --> N["Backtest engine"]
@@ -65,11 +68,12 @@ flowchart TD
 | `risk` | Block or reduce signals when risk conditions are weak. |
 | `signals` | Convert scores into final actions. |
 | `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
+| `paper_trading` | Simulate paper-only fills, positions, and portfolio summaries without broker orders. |
 | `experiments` | Append run parameters, model version, metrics, and artifact links to a CSV log. |
 | `monitoring` | Detect feature data drift and experiment performance drift. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
-| `dashboard` | Display universe, backtest, and walk-forward validation results through Streamlit. |
+| `dashboard` | Display universe, paper trading, backtest, and walk-forward validation results through Streamlit. |
 | `scheduler` | Orchestrate after-market daily jobs for universe runs, reports, and alerts. |
 | `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
@@ -80,7 +84,7 @@ The project uses explicit data layers because financial systems need traceable
 inputs and outputs. Each layer is saved separately so bugs can be isolated:
 
 ```text
-universe -> raw -> processed -> features -> regime/scores -> final signals -> reports/backtest
+universe -> raw -> processed -> features -> regime/scores -> final signals -> reports/paper/backtest
 OpenDART raw -> financial/event features -> multi-factor scoring
 ```
 

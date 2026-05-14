@@ -9,6 +9,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
+    find_latest_paper_summary,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -19,6 +20,8 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_paper_summary,
+    load_paper_trades,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -150,6 +153,66 @@ def test_dashboard_data_loader_reads_latest_walk_forward(tmp_path: Path) -> None
     assert summary.loc[0, "ticker"] == "005380"
     assert summary.loc[0, "fold_count"] == 3
     assert folds["fold"].tolist() == [1, 2]
+
+
+def test_dashboard_data_loader_reads_latest_paper_trading(tmp_path: Path) -> None:
+    summary_dir = tmp_path / "data" / "backtest" / "paper_summary"
+    ledger_dir = tmp_path / "data" / "backtest" / "paper_trade_ledger"
+    summary_dir.mkdir(parents=True)
+    ledger_dir.mkdir(parents=True)
+    summary_path = summary_dir / "005930_20240101_20240131.parquet"
+    ledger_path = ledger_dir / "005930_20240101_20240131.parquet"
+
+    pd.DataFrame(
+        {
+            "ticker": ["005930"],
+            "initial_cash": [10_000_000.0],
+            "ending_cash": [9_000_000.0],
+            "ending_position_value": [1_100_000.0],
+            "ending_equity": [10_100_000.0],
+            "cumulative_return": [0.01],
+            "realized_pnl": [0.0],
+            "unrealized_pnl": [100_000.0],
+            "trade_count": [1],
+            "buy_count": [1],
+            "sell_count": [0],
+            "exposure_count": [1],
+            "win_rate": [0.0],
+            "mode": ["paper"],
+            "generated_at": [pd.Timestamp("2026-05-14T00:00:00Z")],
+        }
+    ).to_parquet(summary_path, index=False)
+    pd.DataFrame(
+        {
+            "date": ["2024-01-03"],
+            "execution_date": ["2024-01-04"],
+            "ticker": ["005930"],
+            "side": ["buy"],
+            "status": ["filled"],
+            "shares": [10],
+            "execution_price": [100.0],
+            "gross_amount": [1000.0],
+            "fees": [1.5],
+            "realized_pnl": [0.0],
+            "cash_after": [9998.5],
+            "position_qty_after": [10],
+            "position_value_after": [1000.0],
+            "equity_after": [9998.5],
+            "signal_action": ["buy_candidate"],
+            "confidence_score": [75.0],
+            "reason": ["paper buy"],
+            "mode": ["paper"],
+        }
+    ).to_parquet(ledger_path, index=False)
+
+    latest_path = find_latest_paper_summary(tmp_path)
+    assert latest_path == summary_path
+
+    summary = load_paper_summary(summary_path)
+    trades = load_paper_trades(summary_path)
+
+    assert summary.loc[0, "ending_equity"] == 10_100_000.0
+    assert trades.loc[0, "side"] == "buy"
 
 
 def test_dashboard_data_loader_reads_latest_drift_result(tmp_path: Path) -> None:

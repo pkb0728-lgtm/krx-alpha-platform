@@ -100,6 +100,15 @@ regime columns into final signals and blocks buy candidates during `bear` or
 Suggested position percentage is intentionally conservative. It is a
 decision-support hint, not an order instruction.
 
+## Paper Trading
+
+Paper trading uses final signals and processed prices to create virtual fills.
+It buys only `buy_candidate` signals, exits on `avoid` or `blocked`, applies
+configured cost/slippage assumptions, and records a virtual ledger, open
+positions, summary, and Markdown report.
+
+Paper trading never calls a broker API and never sends real orders.
+
 ## Backtest Link
 
 The current backtest validates only `buy_candidate` final signals. It enters on

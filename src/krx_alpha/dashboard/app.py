@@ -12,6 +12,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
+    find_latest_paper_summary,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -22,6 +23,8 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_paper_summary,
+    load_paper_trades,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -252,6 +255,48 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("Paper Trading")
+    paper_path = find_latest_paper_summary(PROJECT_ROOT)
+    if paper_path is None:
+        st.info("No paper trading summary found.")
+    else:
+        paper_summary = load_paper_summary(paper_path)
+        if paper_summary.empty:
+            st.info("Paper trading summary is empty.")
+        else:
+            paper_metric = paper_summary.iloc[0]
+            paper_cols = st.columns(6)
+            paper_cols[0].metric("Ticker", str(paper_metric["ticker"]))
+            paper_cols[1].metric("Trades", int(paper_metric["trade_count"]))
+            paper_cols[2].metric("Ending equity", _format_money(paper_metric["ending_equity"]))
+            paper_cols[3].metric(
+                "Paper return",
+                _format_percent(paper_metric["cumulative_return"]),
+            )
+            paper_cols[4].metric("Realized PnL", _format_money(paper_metric["realized_pnl"]))
+            paper_cols[5].metric(
+                "Unrealized PnL",
+                _format_money(paper_metric["unrealized_pnl"]),
+            )
+
+            st.caption(f"Latest paper summary file: {paper_path.name}")
+            st.dataframe(
+                paper_summary,
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            paper_trades = load_paper_trades(paper_path)
+            if not paper_trades.empty:
+                st.subheader("Paper Trade Ledger")
+                st.dataframe(
+                    paper_trades[_paper_trade_display_columns(paper_trades)],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
     st.subheader("Walk-Forward Validation")
     walk_forward_path = find_latest_walk_forward_summary(PROJECT_ROOT)
     if walk_forward_path is None:
@@ -401,6 +446,12 @@ def _format_score(value: Any) -> str:
     return f"{float(value):.2f}"
 
 
+def _format_money(value: Any) -> str:
+    if pd.isna(value):
+        return "N/A"
+    return f"{float(value):,.0f}"
+
+
 def _format_optional(value: Any) -> str:
     if pd.isna(value):
         return "N/A"
@@ -473,6 +524,25 @@ def _macro_feature_display_columns(frame: Any) -> list[str]:
         "usdkrw",
         "usdkrw_change_pct_5d",
         "source",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _paper_trade_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "date",
+        "execution_date",
+        "ticker",
+        "side",
+        "status",
+        "shares",
+        "execution_price",
+        "gross_amount",
+        "fees",
+        "realized_pnl",
+        "equity_after",
+        "signal_action",
+        "reason",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 
