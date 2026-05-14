@@ -33,6 +33,7 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
 
     assert len(result) == 1
     assert bool(result.loc[0, "passed"]) is True
+    assert result.loc[0, "screen_status_reason"] == "passed"
     assert result.loc[0, "review_priority"] == "high"
     assert result.loc[0, "risk_flags"] == ""
     assert result.loc[0, "screen_score"] >= 65.0
@@ -44,6 +45,7 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
     report = format_screening_report(result)
     assert "Auto Screener Report" in report
     assert "Candidate Review Cards" in report
+    assert "Status reason: passed" in report
     assert "Priority: high" in report
     assert "Risk flags: none" in report
     assert "Evidence:" in report
@@ -66,6 +68,7 @@ def test_auto_screener_flags_missing_signal_file(tmp_path: Path) -> None:
     result = AutoScreener(tmp_path).screen(universe_summary)
 
     assert bool(result.loc[0, "passed"]) is False
+    assert result.loc[0, "screen_status_reason"] == "signal_file_missing_or_empty"
     assert result.loc[0, "review_priority"] == "blocked"
     assert result.loc[0, "risk_flags"] == "signal_file_missing_or_empty"
     assert result.loc[0, "screen_score"] == 0.0

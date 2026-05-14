@@ -11,6 +11,7 @@ SCREENING_COLUMNS = [
     "screen_date",
     "ticker",
     "passed",
+    "screen_status_reason",
     "review_priority",
     "screen_score",
     "final_action",
@@ -107,6 +108,7 @@ class AutoScreener:
         final_action = str(signal_row["final_action"])
         confidence_score = float(signal_row["confidence_score"])
         risk_blocked = bool(signal_row["risk_blocked"])
+        risk_flags = str(signal_row.get("risk_flags", ""))
         passed = (
             final_action in self.config.allowed_actions
             and confidence_score >= self.config.min_confidence
@@ -118,6 +120,14 @@ class AutoScreener:
             "screen_date": _as_date_string(signal_row["date"]),
             "ticker": str(signal_row["ticker"]).zfill(6),
             "passed": passed,
+            "screen_status_reason": _screen_status_reason(
+                final_action=final_action,
+                confidence_score=confidence_score,
+                screen_score=screen_score,
+                risk_blocked=risk_blocked,
+                risk_flags=risk_flags,
+                config=self.config,
+            ),
             "review_priority": _review_priority(
                 passed=passed,
                 screen_score=screen_score,
@@ -129,7 +139,7 @@ class AutoScreener:
             "confidence_score": confidence_score,
             "market_regime": str(signal_row.get("market_regime", "unknown")),
             "risk_blocked": risk_blocked,
-            "risk_flags": str(signal_row.get("risk_flags", "")),
+            "risk_flags": risk_flags,
             "suggested_position_pct": float(signal_row["suggested_position_pct"]),
             "trading_value": _feature_value(feature_row, "trading_value"),
             "trading_value_change_5d": _feature_value(feature_row, "trading_value_change_5d"),
@@ -158,6 +168,7 @@ class AutoScreener:
             "screen_date": "",
             "ticker": str(summary_row.get("ticker", "")).zfill(6),
             "passed": False,
+            "screen_status_reason": "signal_file_missing_or_empty",
             "review_priority": "blocked",
             "screen_score": 0.0,
             "final_action": str(summary_row.get("latest_action", "")),
@@ -207,17 +218,19 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
             "",
             "## Candidates",
             "",
-            "| Ticker | Priority | Action | Score | Confidence | Position | Risk | Reasons |",
-            "| --- | --- | --- | ---: | ---: | ---: | --- | --- |",
+            "| Ticker | Status | Priority | Action | Score | Confidence | "
+            "Position | Risk | Reasons |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |",
         ]
     )
     if passed.empty:
-        lines.append("| N/A | N/A | N/A | 0.00 | 0.00 | 0.00% | N/A | no_candidates_passed |")
+        lines.append("| N/A | N/A | N/A | N/A | 0.00 | 0.00 | 0.00% | N/A | no_candidates_passed |")
     else:
         for _, row in passed.head(20).iterrows():
             lines.append(
                 "| "
                 f"{row['ticker']} | "
+                f"{row['screen_status_reason']} | "
                 f"{row['review_priority']} | "
                 f"{row['final_action']} | "
                 f"{float(row['screen_score']):.2f} | "
@@ -245,6 +258,7 @@ def _candidate_card_lines(rank: int, row: pd.Series) -> list[str]:
     return [
         f"### {rank}. {row['ticker']} - {row['final_action']}",
         "",
+        f"- Status reason: {row['screen_status_reason']}",
         f"- Priority: {row['review_priority']}",
         f"- Screen score: {float(row['screen_score']):.2f}",
         f"- Confidence: {float(row['confidence_score']):.2f}",
@@ -460,6 +474,30 @@ def _review_priority(
     if screen_score >= 55 and confidence_score >= 55:
         return "watchlist"
     return "low"
+
+
+def _screen_status_reason(
+    final_action: str,
+    confidence_score: float,
+    screen_score: float,
+    risk_blocked: bool,
+    risk_flags: str,
+    config: AutoScreenerConfig,
+) -> str:
+    if final_action not in config.allowed_actions:
+        return "action_not_allowed"
+    if risk_blocked:
+        return f"risk_blocked:{_format_risk_flags(risk_flags)}"
+
+    confidence_failed = confidence_score < config.min_confidence
+    score_failed = screen_score < config.min_screen_score
+    if confidence_failed and score_failed:
+        return "confidence_and_score_below_threshold"
+    if confidence_failed:
+        return "confidence_below_threshold"
+    if score_failed:
+        return "screen_score_below_threshold"
+    return "passed"
 
 
 def _format_large_number(value: float) -> str:

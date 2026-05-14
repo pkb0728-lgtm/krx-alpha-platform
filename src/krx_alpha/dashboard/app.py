@@ -659,6 +659,7 @@ def _screening_display_columns(frame: Any) -> list[str]:
     preferred_columns = [
         "ticker",
         "passed",
+        "screen_status_reason",
         "review_priority",
         "screen_score",
         "final_action",

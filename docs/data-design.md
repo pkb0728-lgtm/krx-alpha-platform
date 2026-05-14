@@ -536,6 +536,7 @@ Important screening columns:
 screen_date
 ticker
 passed
+screen_status_reason
 review_priority
 screen_score
 final_action
