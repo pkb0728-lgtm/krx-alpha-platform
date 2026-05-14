@@ -172,6 +172,7 @@ points, and a manual checklist. It never sends orders.
 Useful terminal filters:
 
 ```powershell
+python main.py screen-universe --compact
 python main.py screen-universe --passed-only
 python main.py screen-universe --priority medium
 python main.py screen-universe --status-reason confidence_below_threshold
