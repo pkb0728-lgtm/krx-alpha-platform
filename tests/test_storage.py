@@ -8,6 +8,7 @@ from krx_alpha.database.storage import (
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
+    data_quality_file_path,
     drift_result_file_path,
     ensure_project_dirs,
     experiment_log_file_path,
@@ -188,6 +189,11 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         drift_result_file_path(tmp_path, "data_drift_demo")
         .as_posix()
         .endswith("data/signals/drift/data_drift_demo.parquet")
+    )
+    assert (
+        data_quality_file_path(tmp_path, "price_quality_demo")
+        .as_posix()
+        .endswith("data/signals/data_quality/price_quality_demo.parquet")
     )
     assert (
         operations_health_file_path(tmp_path, "operations_health_latest")

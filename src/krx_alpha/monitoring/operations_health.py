@@ -105,6 +105,12 @@ DEFAULT_ARTIFACT_SPECS = (
     ),
     ArtifactSpec("Drift result", "monitoring", "data/signals/drift/*.parquet", required=False),
     ArtifactSpec(
+        "Data quality result",
+        "monitoring",
+        "data/signals/data_quality/*.parquet",
+        required=False,
+    ),
+    ArtifactSpec(
         "Experiment log",
         "monitoring",
         "experiments/experiment_log.csv",

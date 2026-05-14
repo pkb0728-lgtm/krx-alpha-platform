@@ -351,6 +351,7 @@ python main.py show-experiments --limit 10
 Drift monitoring and review:
 
 ```powershell
+python main.py check-price-quality --input-path data/processed/prices_daily/005930_20240101_20240131.parquet
 python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
 python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
 python main.py send-telegram-daily --dry-run

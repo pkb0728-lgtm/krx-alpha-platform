@@ -435,7 +435,26 @@ The CSV stores run ID, model version, parameters, metrics, date range, and the
 main artifact path. The file is intentionally ignored by Git because it is a
 local run artifact.
 
-## 14. Detect Drift
+## 14. Check Data Quality
+
+Price data quality checks catch missing columns, empty files, null required
+values, duplicated date/ticker rows, negative market values, OHLC integrity
+violations, large calendar gaps, and suspicious close-to-close returns:
+
+```powershell
+python main.py check-price-quality --input-path data/processed/prices_daily/005930_20240101_20240131.parquet
+```
+
+Outputs:
+
+```text
+data/signals/data_quality/
+reports/monitoring/
+```
+
+Use `--strict` in automation when failed checks should stop the workflow.
+
+## 15. Detect Drift
 
 Data drift compares numeric feature distributions between a reference dataset
 and a current dataset:

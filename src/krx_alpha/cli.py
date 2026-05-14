@@ -47,6 +47,7 @@ from krx_alpha.database.storage import (
     dart_disclosure_file_path,
     dart_financial_feature_file_path,
     dart_financial_file_path,
+    data_quality_file_path,
     drift_result_file_path,
     ensure_project_dirs,
     final_signal_file_path,
@@ -112,6 +113,12 @@ from krx_alpha.monitoring.api_health import (
     ApiHealthChecker,
     api_results_to_frame,
     format_api_health_report,
+)
+from krx_alpha.monitoring.data_quality import (
+    PriceDataQualityChecker,
+    PriceQualityConfig,
+    format_data_quality_report,
+    summarize_quality,
 )
 from krx_alpha.monitoring.drift import (
     DataDriftConfig,
@@ -438,6 +445,79 @@ def check_operations(
     console.print(f"Report: {report_path}")
 
     if strict and summary["ok"] != summary["total"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("check-price-quality")
+def check_price_quality(
+    input_path: Annotated[
+        Path,
+        typer.Option("--input-path", help="Raw or processed price parquet path to check."),
+    ],
+    dataset_name: Annotated[
+        str,
+        typer.Option("--dataset-name", help="Dataset label stored in the quality result."),
+    ] = "price",
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output report name without extension."),
+    ] = None,
+    max_abs_return: Annotated[
+        float,
+        typer.Option("--max-abs-return", help="Warn when absolute close return exceeds this."),
+    ] = 0.30,
+    max_calendar_gap_days: Annotated[
+        int,
+        typer.Option("--max-calendar-gap-days", help="Warn when ticker date gaps exceed this."),
+    ] = 7,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict/--no-strict", help="Exit with code 1 when any check fails."),
+    ] = False,
+) -> None:
+    """Run practical data quality checks for daily price datasets."""
+    if not input_path.exists():
+        raise typer.BadParameter(f"Input file does not exist: {input_path}")
+
+    frame = read_parquet(input_path)
+    result_frame = PriceDataQualityChecker(
+        PriceQualityConfig(
+            max_abs_return=max_abs_return,
+            max_calendar_gap_days=max_calendar_gap_days,
+        )
+    ).check(frame, dataset=dataset_name)
+
+    report_name = _safe_report_name(output_name or f"price_quality_{input_path.stem}")
+    result_path = data_quality_file_path(settings.project_root, report_name)
+    report_path = monitoring_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_text(format_data_quality_report(result_frame), report_path)
+
+    summary = summarize_quality(result_frame)
+    table = Table(title="Price Data Quality")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Rows", justify="right")
+    table.add_column("Affected %", justify="right")
+    table.add_column("Detail")
+    table.add_column("Action")
+    for _, row in result_frame.iterrows():
+        table.add_row(
+            str(row["check_name"]),
+            str(row["status"]),
+            str(int(row["affected_rows"])),
+            f"{float(row['affected_pct']) * 100:.2f}%",
+            str(row["detail"]),
+            str(row["action"]),
+        )
+    console.print(table)
+    console.print(
+        f"Summary: {summary['pass']} pass, {summary['warn']} warning(s), {summary['fail']} fail(s)"
+    )
+    console.print(f"Result: {result_path}")
+    console.print(f"Report: {report_path}")
+
+    if strict and summary["fail"] > 0:
         raise typer.Exit(code=1)
 
 
