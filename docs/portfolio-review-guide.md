@@ -103,7 +103,7 @@ python main.py send-telegram-daily --dry-run
 - The first ML baseline predicts positive forward-return probability and logs test metrics.
 - Experiment tracking records parameters, model version, metrics, and artifacts.
 - Drift monitoring warns when feature distributions or performance metrics change.
-- Telegram brief turns the pipeline output and latest drift status into an operations-ready alert.
+- Telegram brief turns the pipeline output, latest drift status, and operations health into an operations-ready alert.
 - Daily job runner ties the workflow together for scheduled operation.
 - Reports support human-in-the-loop review.
 
@@ -121,7 +121,7 @@ python main.py send-telegram-daily --dry-run
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard with universe, backtest, walk-forward, ML, and drift review
+- Streamlit dashboard with universe, backtest, walk-forward, ML, drift, and operations health review
 - scheduler-ready daily job runner
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration

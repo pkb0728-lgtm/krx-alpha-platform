@@ -30,6 +30,7 @@ from krx_alpha.configs.settings import settings
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
@@ -2332,6 +2333,13 @@ def send_telegram_daily(
             help="Include latest paper portfolio summary when available.",
         ),
     ] = True,
+    include_operations_health: Annotated[
+        bool,
+        typer.Option(
+            "--include-operations-health/--no-operations-health",
+            help="Include latest operations health result when available.",
+        ),
+    ] = True,
     top_n: Annotated[
         int,
         typer.Option("--top-n", help="Number of ranked candidates to include."),
@@ -2368,6 +2376,12 @@ def send_telegram_daily(
     if include_paper_portfolio:
         paper_path = find_latest_paper_portfolio_summary(settings.project_root)
         paper_portfolio_summary = read_parquet(paper_path) if paper_path is not None else None
+    operations_health = None
+    if include_operations_health:
+        operations_health_path = find_latest_operations_health(settings.project_root)
+        operations_health = (
+            read_parquet(operations_health_path) if operations_health_path is not None else None
+        )
 
     message = build_daily_telegram_message(
         universe_summary=universe_summary,
@@ -2375,6 +2389,7 @@ def send_telegram_daily(
         backtest_metrics=backtest_metrics,
         walk_forward_summary=walk_forward_summary,
         drift_result=drift_result,
+        operations_health=operations_health,
         top_n=top_n,
     )
     notifier = TelegramNotifier(
@@ -2501,6 +2516,8 @@ def run_daily_job(
         console.print(f"Paper report: {result.paper_report_path}")
         console.print(f"Paper trades: {result.paper_trade_count}")
         console.print(f"Paper return: {result.paper_cumulative_return * 100:.2f}%")
+    console.print(f"Operations health: {result.operations_health_path}")
+    console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")
     if notify:
         status = "sent" if result.telegram_sent else "dry-run"

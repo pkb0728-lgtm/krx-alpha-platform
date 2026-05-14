@@ -97,6 +97,7 @@ The Streamlit dashboard displays:
 - latest ML probability baseline metrics
 - latest ML prediction table
 - latest drift monitoring result
+- latest operations health result
 - selected stock Markdown report
 
 Run:
@@ -261,6 +262,14 @@ Report: reports/monitoring/operations_health_latest.md
 Use `--include-apis --skip-pykrx` after `.env` credentials are configured to add
 API connectivity checks. The default command checks local files only, so it is
 safe for offline portfolio demos.
+
+The Telegram daily brief includes a compact operations health section:
+
+```text
+Operations health
+- OK 14/14 | warnings 0 | problems 0
+- Status: all checked artifacts are healthy
+```
 
 ## Backtest
 

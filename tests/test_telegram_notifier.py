@@ -78,6 +78,17 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "generated_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
+    operations_health = pd.DataFrame(
+        {
+            "check_name": ["Universe summary", "Optional ML metrics"],
+            "category": ["signals", "models"],
+            "status": ["OK", "WARN"],
+            "severity": [0, 1],
+            "row_count": [3, None],
+            "age_hours": [1.0, None],
+            "detail": ["artifact is present and readable", "optional artifact not found"],
+        }
+    )
 
     message = build_daily_telegram_message(
         summary,
@@ -85,6 +96,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
         backtest_metrics=backtest,
         walk_forward_summary=walk_forward,
         drift_result=drift,
+        operations_health=operations_health,
         generated_at=datetime(2026, 5, 13, 9, 0),
         top_n=1,
     )
@@ -99,6 +111,9 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "Walk-forward" in message
     assert "Data drift: 1/2 features flagged" in message
     assert "rsi_14: mean_shift" in message
+    assert "Operations health" in message
+    assert "OK 1/2 | warnings 1 | problems 0" in message
+    assert "Optional ML metrics: WARN" in message
     assert "Screening aid only" in message
 
 

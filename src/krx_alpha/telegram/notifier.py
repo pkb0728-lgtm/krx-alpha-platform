@@ -131,6 +131,7 @@ def build_daily_telegram_message(
     backtest_metrics: Any | None = None,
     walk_forward_summary: Any | None = None,
     drift_result: Any | None = None,
+    operations_health: Any | None = None,
     generated_at: datetime | None = None,
     top_n: int = 5,
 ) -> str:
@@ -162,6 +163,7 @@ def build_daily_telegram_message(
     lines.extend(_format_backtest_lines(backtest_metrics))
     lines.extend(_format_walk_forward_lines(walk_forward_summary))
     lines.extend(_format_drift_lines(drift_result))
+    lines.extend(_format_operations_health_lines(operations_health))
     lines.extend(
         [
             "",
@@ -283,6 +285,35 @@ def _format_drift_lines(result: Any | None) -> list[str]:
     ]
 
 
+def _format_operations_health_lines(result: Any | None) -> list[str]:
+    if result is None or result.empty or "status" not in result.columns:
+        return ["", "Operations health", "- No latest operations health result."]
+
+    status_values = result["status"].astype(str)
+    ok_count = int((status_values == "OK").sum())
+    warning_count = int(status_values.isin(["WARN", "STALE"]).sum())
+    problem_count = int(status_values.isin(["MISSING", "EMPTY", "FAILED"]).sum())
+    lines = [
+        "",
+        "Operations health",
+        (f"- OK {ok_count}/{len(result)} | warnings {warning_count} | problems {problem_count}"),
+    ]
+
+    non_ok = result[status_values != "OK"].copy()
+    if non_ok.empty:
+        lines.append("- Status: all checked artifacts are healthy")
+        return lines
+
+    if "severity" in non_ok.columns:
+        non_ok = non_ok.sort_values("severity", ascending=False)
+    for _, row in non_ok.head(3).iterrows():
+        check_name = _row_value(row, "check_name")
+        status = _row_value(row, "status")
+        detail = _truncate_line(str(_row_value(row, "detail")), limit=80)
+        lines.append(f"- {check_name}: {status} ({detail})")
+    return lines
+
+
 def _default_transport(telegram_request: request.Request, timeout: float) -> Any:
     context = _default_ssl_context()
     if context is None:
@@ -321,6 +352,12 @@ def _truncate_message(message: str) -> str:
 
     suffix = "\n\n[truncated]"
     return message[: TELEGRAM_MESSAGE_LIMIT - len(suffix)] + suffix
+
+
+def _truncate_line(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+    return value[: max(limit - 3, 0)] + "..."
 
 
 def _format_number(value: Any) -> str:

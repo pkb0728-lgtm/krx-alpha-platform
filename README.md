@@ -40,7 +40,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - Operations health checks for local artifacts and optional API connectivity
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
-- Telegram daily brief with drift status preview, send command, and retry settings
+- Telegram daily brief with drift and operations health status preview, send command, and retry settings
 - Streamlit dashboard for universe, news sentiment, macro, report, backtest, walk-forward, ML, and drift review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
@@ -302,6 +302,10 @@ Telegram daily brief preview:
 python main.py send-telegram-daily --dry-run
 ```
 
+The daily brief includes universe ranking, paper portfolio, latest backtest,
+walk-forward, drift, and operations health summaries when those artifacts are
+available.
+
 After setting `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`, send it:
 
 ```powershell
@@ -323,9 +327,10 @@ python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31
 ```
 
 The daily job runs the universe pipeline, generates the universe report, runs
-paper portfolio simulation, and builds the Telegram brief. Use
-`--no-paper-trading` if you want to skip the paper portfolio step. With
-Telegram credentials configured, use `--telegram-send` for real delivery.
+paper portfolio simulation, refreshes operations health, and builds the
+Telegram brief. Use `--no-paper-trading` if you want to skip the paper
+portfolio step. With Telegram credentials configured, use `--telegram-send` for
+real delivery.
 
 Recent experiment log:
 

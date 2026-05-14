@@ -9,13 +9,20 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_walk_forward_summary,
 )
 from krx_alpha.database.storage import (
+    monitoring_report_file_path,
+    operations_health_file_path,
     read_parquet,
     universe_report_file_path,
+    write_parquet,
     write_text,
 )
 from krx_alpha.experiments.tracker import (
     ExperimentTracker,
     build_daily_job_experiment_record,
+)
+from krx_alpha.monitoring.operations_health import (
+    OperationsHealthChecker,
+    format_operations_health_report,
 )
 from krx_alpha.paper_trading.portfolio import (
     PaperPortfolioConfig,
@@ -74,6 +81,8 @@ class DailyJobResult:
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
+    operations_health_path: Path
+    operations_health_report_path: Path
 
 
 class DailyJobRunner:
@@ -118,8 +127,11 @@ class DailyJobRunner:
             end_date=end_date,
         )
         paper_summary = paper_result.summary if paper_result is not None else None
+        operations_health, operations_health_path, operations_health_report_path = (
+            self._write_operations_health()
+        )
 
-        telegram_result = self._notify(config, summary_frame, paper_summary)
+        telegram_result = self._notify(config, summary_frame, paper_summary, operations_health)
         experiment_log_path = self.experiment_tracker.log(
             build_daily_job_experiment_record(
                 universe=config.universe,
@@ -146,6 +158,8 @@ class DailyJobRunner:
             paper_result=paper_result,
             telegram_result=telegram_result,
             experiment_log_path=experiment_log_path,
+            operations_health_path=operations_health_path,
+            operations_health_report_path=operations_health_report_path,
         )
 
     def _run_paper_portfolio(
@@ -178,6 +192,7 @@ class DailyJobRunner:
         config: DailyJobConfig,
         summary_frame: object,
         paper_portfolio_summary: Any | None,
+        operations_health: Any | None,
     ) -> TelegramSendResult:
         message = build_daily_telegram_message(
             universe_summary=summary_frame,
@@ -185,6 +200,7 @@ class DailyJobRunner:
             backtest_metrics=_load_latest_backtest_metrics(self.project_root),
             walk_forward_summary=_load_latest_walk_forward_summary(self.project_root),
             drift_result=_load_latest_drift_result(self.project_root),
+            operations_health=operations_health,
             top_n=config.telegram_top_n,
         )
 
@@ -198,6 +214,15 @@ class DailyJobRunner:
 
         sender = self.telegram_sender or TelegramNotifier(bot_token=None, chat_id=None)
         return sender.send_message(message, dry_run=config.telegram_dry_run)
+
+    def _write_operations_health(self) -> tuple[Any, Path, Path]:
+        result_frame = OperationsHealthChecker(self.project_root).run()
+        report_name = "operations_health_latest"
+        result_path = operations_health_file_path(self.project_root, report_name)
+        report_path = monitoring_report_file_path(self.project_root, report_name)
+        write_parquet(result_frame, result_path)
+        write_text(format_operations_health_report(result_frame), report_path)
+        return result_frame, result_path, report_path
 
 
 def resolve_daily_job_date_range(config: DailyJobConfig, today: date) -> tuple[str, str]:
@@ -251,6 +276,8 @@ def _build_result(
     paper_result: PaperPortfolioResult | None,
     telegram_result: TelegramSendResult,
     experiment_log_path: Path,
+    operations_health_path: Path,
+    operations_health_report_path: Path,
 ) -> DailyJobResult:
     paper_summary = paper_result.summary if paper_result is not None else None
     return DailyJobResult(
@@ -271,4 +298,6 @@ def _build_result(
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,
         telegram_message=telegram_result.message,
+        operations_health_path=operations_health_path,
+        operations_health_report_path=operations_health_report_path,
     )

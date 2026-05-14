@@ -284,7 +284,8 @@ python main.py send-telegram-daily --dry-run
 ```
 
 The command uses the latest universe summary and, when available, the latest
-backtest, walk-forward validation, and drift monitoring results.
+paper portfolio, backtest, walk-forward validation, drift monitoring, and
+operations health results.
 
 To send the message, set these values in `.env`:
 
@@ -311,7 +312,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> run paper portfolio -> build Telegram brief
+run universe pipeline -> generate universe report -> run paper portfolio -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:

@@ -132,12 +132,15 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.paper_report_path.exists()
     assert result.paper_trade_count == 2
     assert result.paper_cumulative_return > 0
+    assert result.operations_health_path.exists()
+    assert result.operations_health_report_path.exists()
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 | buy_candidate" in result.telegram_message
     assert "Paper portfolio" in result.telegram_message
     assert "trades 2" in result.telegram_message
     assert "Data drift: 1/1 features flagged" in result.telegram_message
+    assert "Operations health" in result.telegram_message
     assert sender.messages == [result.telegram_message]
 
 
