@@ -38,11 +38,13 @@ This creates:
 ```text
 data/raw/prices_daily/
 data/processed/prices_daily/
+data/signals/data_quality/
 data/features/prices_daily/
 data/signals/market_regime_daily/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
 reports/daily/
+reports/monitoring/
 reports/regime/
 ```
 

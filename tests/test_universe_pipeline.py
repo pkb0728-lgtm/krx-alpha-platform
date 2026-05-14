@@ -23,6 +23,8 @@ class FakeDailyPipeline:
         return DailyPipelineResult(
             raw_path=path,
             processed_path=path,
+            data_quality_path=path,
+            data_quality_report_path=report_path,
             feature_path=path,
             regime_path=path,
             regime_report_path=report_path,
@@ -37,6 +39,8 @@ class FakeDailyPipeline:
             latest_news_score=50.0,
             latest_macro_score=50.0,
             latest_market_regime="neutral",
+            data_quality_warning_count=1,
+            data_quality_fail_count=0,
         )
 
 
@@ -57,6 +61,9 @@ def test_universe_pipeline_saves_summary(tmp_path: Path) -> None:
     assert result.failed_count == 1
     assert result.summary_path.exists()
     assert result.summary_csv_path.exists()
+    summary = pd.read_parquet(result.summary_path)
+    assert summary.loc[0, "data_quality_warning_count"] == 1
+    assert summary.loc[0, "data_quality_fail_count"] == 0
 
 
 def test_universe_pipeline_uses_cached_signal_after_collection_failure(tmp_path: Path) -> None:

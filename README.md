@@ -20,7 +20,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - Korean stock data collection with `pykrx`
 - OpenDART company, financial statement, and disclosure collectors
 - ETL data layers: `raw`, `processed`, `features`, `signals`, `backtest`
-- Data contracts and validation checks
+- Data contracts, validation checks, and automated price data quality reports
 - Named universe management for repeatable screening
 - Auto screener that creates a human-review shortlist from final signals
 - Technical and financial feature engineering

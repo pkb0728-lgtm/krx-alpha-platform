@@ -41,6 +41,8 @@ def test_daily_pipeline_runs_with_mock_collector(
 
     assert result.raw_path.exists()
     assert result.processed_path.exists()
+    assert result.data_quality_path.exists()
+    assert result.data_quality_report_path.exists()
     assert result.feature_path.exists()
     assert result.regime_path.exists()
     assert result.regime_report_path.exists()
@@ -48,6 +50,8 @@ def test_daily_pipeline_runs_with_mock_collector(
     assert result.signal_path.exists()
     assert result.report_path.exists()
     assert result.latest_macro_score == 50.0
+    assert result.data_quality_warning_count == 0
+    assert result.data_quality_fail_count == 0
     assert result.latest_action in {"buy_candidate", "watch", "hold", "avoid", "blocked"}
     assert result.latest_market_regime in {
         "bull",

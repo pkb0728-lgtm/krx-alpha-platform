@@ -1865,6 +1865,8 @@ def run_pipeline(
     console.print("[bold green]Daily pipeline completed.[/bold green]")
     console.print(f"Raw: {result.raw_path}")
     console.print(f"Processed: {result.processed_path}")
+    console.print(f"Data quality: {result.data_quality_path}")
+    console.print(f"Data quality report: {result.data_quality_report_path}")
     console.print(f"Features: {result.feature_path}")
     console.print(f"Regime: {result.regime_path}")
     console.print(f"Scores: {result.score_path}")
@@ -1878,6 +1880,10 @@ def run_pipeline(
     console.print(f"News score: {result.latest_news_score:.2f}")
     console.print(f"Macro score: {result.latest_macro_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
+    console.print(
+        "Data quality: "
+        f"{result.data_quality_warning_count} warning(s), {result.data_quality_fail_count} fail(s)"
+    )
 
 
 @app.command("list-universe")

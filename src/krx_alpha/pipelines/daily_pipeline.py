@@ -7,9 +7,11 @@ from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollect
 from krx_alpha.database.storage import (
     daily_report_file_path,
     daily_score_file_path,
+    data_quality_file_path,
     final_signal_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
+    monitoring_report_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_price_file_path,
@@ -18,6 +20,11 @@ from krx_alpha.database.storage import (
     write_text,
 )
 from krx_alpha.features.price_features import PriceFeatureBuilder
+from krx_alpha.monitoring.data_quality import (
+    PriceDataQualityChecker,
+    format_data_quality_report,
+    summarize_quality,
+)
 from krx_alpha.processors.price_processor import PriceProcessor
 from krx_alpha.regime.market_regime import MarketRegimeAnalyzer
 from krx_alpha.reports.daily_report import DailyReportGenerator
@@ -30,6 +37,8 @@ from krx_alpha.signals.signal_engine import SignalEngine
 class DailyPipelineResult:
     raw_path: Path
     processed_path: Path
+    data_quality_path: Path
+    data_quality_report_path: Path
     feature_path: Path
     regime_path: Path
     regime_report_path: Path
@@ -44,6 +53,8 @@ class DailyPipelineResult:
     latest_news_score: float
     latest_macro_score: float
     latest_market_regime: str
+    data_quality_warning_count: int
+    data_quality_fail_count: int
 
 
 class DailyPipeline:
@@ -78,6 +89,22 @@ class DailyPipeline:
             request.pykrx_end_date,
         )
         write_parquet(processed_frame, processed_path)
+
+        quality_frame = PriceDataQualityChecker().check(
+            processed_frame,
+            dataset=f"processed_prices_daily:{request.ticker}",
+        )
+        quality_report_name = (
+            f"price_quality_{request.ticker}_{request.pykrx_start_date}_{request.pykrx_end_date}"
+        )
+        data_quality_path = data_quality_file_path(self.project_root, quality_report_name)
+        data_quality_report_path = monitoring_report_file_path(
+            self.project_root,
+            quality_report_name,
+        )
+        write_parquet(quality_frame, data_quality_path)
+        write_text(format_data_quality_report(quality_frame), data_quality_report_path)
+        quality_summary = summarize_quality(quality_frame)
 
         feature_frame = PriceFeatureBuilder().build(processed_frame)
         feature_path = price_feature_file_path(
@@ -143,6 +170,8 @@ class DailyPipeline:
         return DailyPipelineResult(
             raw_path=raw_path,
             processed_path=processed_path,
+            data_quality_path=data_quality_path,
+            data_quality_report_path=data_quality_report_path,
             feature_path=feature_path,
             regime_path=regime_path,
             regime_report_path=regime_report_path,
@@ -159,4 +188,6 @@ class DailyPipeline:
             latest_news_score=float(score_frame.sort_values("date").iloc[-1]["news_score"]),
             latest_macro_score=float(score_frame.sort_values("date").iloc[-1]["macro_score"]),
             latest_market_regime=str(latest_regime["regime"]),
+            data_quality_warning_count=quality_summary["warn"],
+            data_quality_fail_count=quality_summary["fail"],
         )
