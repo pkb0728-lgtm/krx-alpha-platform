@@ -61,6 +61,9 @@ def test_dashboard_data_loader_reads_latest_summary(tmp_path: Path) -> None:
 
     frame = load_universe_summary(summary_path)
     assert frame.loc[0, "ticker"] == "005380"
+    assert frame.loc[0, "stock_name"] == "현대차"
+    assert frame.loc[0, "latest_action_ko"] == "매수 검토"
+    assert frame.loc[0, "status_ko"] == "성공"
 
     counts = action_counts(frame)
     assert set(counts["latest_action"]) == {"watch", "buy_candidate"}
@@ -227,6 +230,9 @@ def test_dashboard_data_loader_reads_latest_paper_trading(tmp_path: Path) -> Non
 
     assert summary.loc[0, "ending_equity"] == 10_100_000.0
     assert trades.loc[0, "side"] == "buy"
+    assert trades.loc[0, "stock_name"] == "삼성전자"
+    assert trades.loc[0, "side_ko"] == "매수"
+    assert trades.loc[0, "signal_action_ko"] == "매수 검토"
 
 
 def test_dashboard_data_loader_reads_latest_paper_portfolio(tmp_path: Path) -> None:
@@ -295,6 +301,7 @@ def test_dashboard_data_loader_reads_latest_paper_portfolio(tmp_path: Path) -> N
     assert summary.loc[0, "universe"] == "demo"
     assert summary.loc[0, "loaded_ticker_count"] == 2
     assert trades["ticker"].tolist() == ["005380", "005930"]
+    assert trades["stock_name"].tolist() == ["현대차", "삼성전자"]
 
 
 def test_dashboard_data_loader_builds_paper_portfolio_history(tmp_path: Path) -> None:
@@ -394,7 +401,9 @@ def test_dashboard_data_loader_reads_latest_operations_health(tmp_path: Path) ->
 
     frame = load_operations_health(health_path)
     assert frame.loc[0, "check_name"] == "Universe summary"
+    assert frame.loc[0, "status_ko"] == "정상"
     assert frame.loc[1, "status"] == "WARN"
+    assert frame.loc[1, "status_ko"] == "주의"
 
 
 def test_dashboard_data_loader_reads_latest_api_health(tmp_path: Path) -> None:
@@ -419,7 +428,9 @@ def test_dashboard_data_loader_reads_latest_api_health(tmp_path: Path) -> None:
     frame = load_api_health(health_path)
     assert frame.loc[0, "api"] == "Telegram"
     assert frame.loc[0, "status"] == "MISSING"
+    assert frame.loc[0, "status_ko"] == "누락"
     assert frame.loc[1, "api"] == "OpenDART"
+    assert frame.loc[1, "status_ko"] == "정상"
 
 
 def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> None:
@@ -455,8 +466,12 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
 
     frame = load_screening_result(screening_path)
     assert frame.loc[0, "ticker"] == "000660"
+    assert frame.loc[0, "stock_name"] == "SK하이닉스"
     assert bool(frame.loc[0, "passed"]) is True
     assert frame.loc[0, "review_priority"] == "high"
+    assert frame.loc[0, "review_priority_ko"] == "높음"
+    assert frame.loc[0, "screen_status_reason_ko"] == "조건 통과"
+    assert frame.loc[0, "final_action_ko"] == "매수 검토"
 
     filtered = filter_screening_result(
         frame,
@@ -507,7 +522,9 @@ def test_dashboard_data_loader_reads_latest_kis_paper_candidates(tmp_path: Path)
 
     frame = load_kis_paper_candidates(candidate_path)
     assert frame.loc[0, "ticker"] == "005380"
+    assert frame.loc[0, "stock_name"] == "현대차"
     assert frame.loc[0, "candidate_action"] == "review_buy"
+    assert frame.loc[0, "candidate_action_ko"] == "매수 검토"
     assert int(frame["orders_sent"].sum()) == 0
 
 
@@ -555,8 +572,11 @@ def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) 
     predictions = load_ml_predictions(metrics_path)
 
     assert metrics.loc[0, "split"] == "test"
+    assert metrics.loc[0, "split_ko"] == "검증"
     assert metrics.loc[0, "roc_auc"] == 0.652
     assert predictions.loc[0, "probability_positive_forward_return"] == 0.78
+    assert predictions.loc[0, "stock_name"] == "현대차"
+    assert predictions.loc[0, "split_ko"] == "검증"
 
 
 def test_dashboard_data_loader_reads_latest_news_sentiment(tmp_path: Path) -> None:
@@ -587,6 +607,7 @@ def test_dashboard_data_loader_reads_latest_news_sentiment(tmp_path: Path) -> No
 
     frame = load_news_sentiment(news_path)
     assert frame.loc[0, "date"] == "2024-01-31"
+    assert frame.loc[0, "stock_name"] == "삼성전자"
     assert frame.loc[0, "news_score"] == 68.0
 
 
