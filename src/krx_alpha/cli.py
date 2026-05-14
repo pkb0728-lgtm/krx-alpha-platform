@@ -1946,6 +1946,13 @@ def screen_universe(
     console.print(f"Result: {result_path}")
     console.print(f"CSV: {csv_path}")
     console.print(f"Report: {report_path}")
+    if not result_frame.empty:
+        console.print(
+            f"Priority summary: {_format_screening_counts(result_frame, 'review_priority')}"
+        )
+        console.print(
+            f"Status summary: {_format_screening_counts(result_frame, 'screen_status_reason')}"
+        )
     display_columns = [
         "ticker",
         "passed",
@@ -2806,6 +2813,13 @@ def _format_optional_table_value(value: object, decimals: int) -> str:
     if decimals == 0:
         return str(int(cast(Any, value)))
     return f"{float(cast(Any, value)):.{decimals}f}"
+
+
+def _format_screening_counts(frame: pd.DataFrame, column: str) -> str:
+    if column not in frame.columns:
+        return "N/A"
+    counts = frame[column].fillna("unknown").astype(str).value_counts()
+    return ", ".join(f"{name} {count}" for name, count in counts.items())
 
 
 def _safe_report_name(value: str) -> str:
