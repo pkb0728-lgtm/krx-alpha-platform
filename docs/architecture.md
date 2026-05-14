@@ -33,10 +33,13 @@ flowchart TD
     J --> K["Reports"]
     J --> L["Universe summary"]
     J --> PT["Paper trading simulator"]
+    L --> PT
     L --> DJ["Daily job runner"]
     L --> M["Streamlit dashboard"]
+    PT --> PA["Paper portfolio artifacts"]
     PT --> M
     PT --> K
+    PA --> M
     DJ --> M
     L --> T["Telegram brief"]
     J --> N["Backtest engine"]

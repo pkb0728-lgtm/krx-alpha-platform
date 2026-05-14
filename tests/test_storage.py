@@ -19,6 +19,10 @@ from krx_alpha.database.storage import (
     ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
+    paper_portfolio_position_file_path,
+    paper_portfolio_report_file_path,
+    paper_portfolio_summary_file_path,
+    paper_portfolio_trade_ledger_file_path,
     paper_position_file_path,
     paper_summary_file_path,
     paper_trade_ledger_file_path,
@@ -99,6 +103,26 @@ def test_paper_trading_paths(tmp_path: Path) -> None:
         paper_trading_report_file_path(tmp_path, "005930", "20240101", "20240131")
         .as_posix()
         .endswith("reports/paper_trading/005930_20240101_20240131.md")
+    )
+    assert (
+        paper_portfolio_trade_ledger_file_path(tmp_path, "demo", "20240101", "20240131")
+        .as_posix()
+        .endswith("data/backtest/paper_portfolio_trade_ledger/demo_20240101_20240131.parquet")
+    )
+    assert (
+        paper_portfolio_position_file_path(tmp_path, "demo", "20240101", "20240131")
+        .as_posix()
+        .endswith("data/backtest/paper_portfolio_positions/demo_20240101_20240131.parquet")
+    )
+    assert (
+        paper_portfolio_summary_file_path(tmp_path, "demo", "20240101", "20240131")
+        .as_posix()
+        .endswith("data/backtest/paper_portfolio_summary/demo_20240101_20240131.parquet")
+    )
+    assert (
+        paper_portfolio_report_file_path(tmp_path, "demo", "20240101", "20240131")
+        .as_posix()
+        .endswith("reports/paper_trading/portfolio_demo_20240101_20240131.md")
     )
 
 

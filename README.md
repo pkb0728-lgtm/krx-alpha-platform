@@ -65,6 +65,7 @@ select named universe
 -> apply risk filters
 -> generate final signals
 -> simulate paper-only fills and portfolio state
+-> aggregate paper-only portfolio results across a universe
 -> backtest buy-candidate signals
 -> validate signals with walk-forward folds
 -> build leakage-aware ML training dataset
@@ -258,13 +259,15 @@ Backtest one stock after running its pipeline:
 ```powershell
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py paper-trade --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py paper-trade-universe --universe demo --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
-`paper-trade` is paper mode only. It reads local final signal files and
-processed prices, then writes virtual ledger, position, summary, and report
-artifacts. It never calls a broker API and never sends real orders.
+`paper-trade` and `paper-trade-universe` are paper mode only. They read local
+final signal files and processed prices, then write virtual ledger, position,
+summary, and report artifacts. They never call a broker API and never send real
+orders.
 
 Leakage-aware ML dataset for future probability models:
 
@@ -372,6 +375,9 @@ data/backtest/metrics/
 data/backtest/paper_trade_ledger/
 data/backtest/paper_positions/
 data/backtest/paper_summary/
+data/backtest/paper_portfolio_trade_ledger/
+data/backtest/paper_portfolio_positions/
+data/backtest/paper_portfolio_summary/
 data/backtest/walk_forward_folds/
 data/backtest/walk_forward_summary/
 experiments/experiment_log.csv

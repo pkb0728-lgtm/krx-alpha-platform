@@ -12,6 +12,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
+    find_latest_paper_portfolio_summary,
     find_latest_paper_summary,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
@@ -23,6 +24,8 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_paper_portfolio_summary,
+    load_paper_portfolio_trades,
     load_paper_summary,
     load_paper_trades,
     load_universe_summary,
@@ -255,7 +258,56 @@ def main() -> None:
 
     st.divider()
 
-    st.subheader("Paper Trading")
+    st.subheader("Paper Portfolio")
+    portfolio_path = find_latest_paper_portfolio_summary(PROJECT_ROOT)
+    if portfolio_path is None:
+        st.info("No paper portfolio summary found.")
+    else:
+        portfolio_summary = load_paper_portfolio_summary(portfolio_path)
+        if portfolio_summary.empty:
+            st.info("Paper portfolio summary is empty.")
+        else:
+            portfolio_metric = portfolio_summary.iloc[0]
+            portfolio_cols = st.columns(6)
+            portfolio_cols[0].metric("Universe", str(portfolio_metric["universe"]))
+            portfolio_cols[1].metric(
+                "Tickers",
+                f"{int(portfolio_metric['loaded_ticker_count'])}/"
+                f"{int(portfolio_metric['requested_ticker_count'])}",
+            )
+            portfolio_cols[2].metric("Trades", int(portfolio_metric["trade_count"]))
+            portfolio_cols[3].metric(
+                "Ending equity",
+                _format_money(portfolio_metric["ending_equity"]),
+            )
+            portfolio_cols[4].metric(
+                "Paper return",
+                _format_percent(portfolio_metric["cumulative_return"]),
+            )
+            portfolio_cols[5].metric(
+                "Exposure",
+                f"{float(portfolio_metric['gross_exposure_pct']):.2f}%",
+            )
+
+            st.caption(f"Latest paper portfolio file: {portfolio_path.name}")
+            st.dataframe(
+                portfolio_summary[_paper_portfolio_summary_display_columns(portfolio_summary)],
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            portfolio_trades = load_paper_portfolio_trades(portfolio_path)
+            if not portfolio_trades.empty:
+                st.subheader("Paper Portfolio Ledger")
+                st.dataframe(
+                    portfolio_trades[_paper_trade_display_columns(portfolio_trades)],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
+    st.subheader("Single-Stock Paper Trading")
     paper_path = find_latest_paper_summary(PROJECT_ROOT)
     if paper_path is None:
         st.info("No paper trading summary found.")
@@ -524,6 +576,26 @@ def _macro_feature_display_columns(frame: Any) -> list[str]:
         "usdkrw",
         "usdkrw_change_pct_5d",
         "source",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _paper_portfolio_summary_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "universe",
+        "ticker",
+        "requested_ticker_count",
+        "loaded_ticker_count",
+        "skipped_tickers",
+        "ending_equity",
+        "cumulative_return",
+        "realized_pnl",
+        "unrealized_pnl",
+        "trade_count",
+        "active_position_count",
+        "gross_exposure_pct",
+        "cash_pct",
+        "generated_at",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

@@ -58,6 +58,10 @@ from krx_alpha.database.storage import (
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     news_sentiment_feature_file_path,
+    paper_portfolio_position_file_path,
+    paper_portfolio_report_file_path,
+    paper_portfolio_summary_file_path,
+    paper_portfolio_trade_ledger_file_path,
     paper_position_file_path,
     paper_summary_file_path,
     paper_trade_ledger_file_path,
@@ -1780,6 +1784,30 @@ def _parse_tickers(tickers: str) -> list[str]:
     return [ticker.strip().zfill(6) for ticker in tickers.split(",") if ticker.strip()]
 
 
+def _annotate_paper_portfolio_summary(
+    summary: pd.DataFrame,
+    positions: pd.DataFrame,
+    portfolio_name: str,
+    requested_ticker_count: int,
+    loaded_ticker_count: int,
+    skipped_tickers: list[str],
+) -> pd.DataFrame:
+    result = summary.copy()
+    ending_equity = float(result.loc[0, "ending_equity"])
+    ending_cash = float(result.loc[0, "ending_cash"])
+    ending_position_value = float(result.loc[0, "ending_position_value"])
+    result.insert(0, "universe", portfolio_name)
+    result["requested_ticker_count"] = requested_ticker_count
+    result["loaded_ticker_count"] = loaded_ticker_count
+    result["skipped_tickers"] = ",".join(skipped_tickers)
+    result["active_position_count"] = int(len(positions))
+    result["gross_exposure_pct"] = (
+        ending_position_value / ending_equity * 100 if ending_equity else 0.0
+    )
+    result["cash_pct"] = ending_cash / ending_equity * 100 if ending_equity else 0.0
+    return result
+
+
 @app.command("generate-universe-report")
 def generate_universe_report(
     start: Annotated[
@@ -1909,6 +1937,176 @@ def paper_trade(
     console.print(f"Filled trades: {int(metric['trade_count'])}")
     console.print(f"Ending equity: {float(metric['ending_equity']):,.0f}")
     console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
+    console.print(f"Open positions: {len(positions)}")
+    console.print(f"Ledger: {ledger_path}")
+    console.print(f"Positions: {positions_path}")
+    console.print(f"Summary: {summary_path}")
+    console.print(f"Report: {report_path}")
+
+
+@app.command("paper-trade-universe")
+def paper_trade_universe(
+    tickers: Annotated[
+        str | None,
+        typer.Option(
+            "--tickers",
+            "-t",
+            help="Comma-separated tickers. Overrides --universe when provided.",
+        ),
+    ] = None,
+    universe: Annotated[
+        str,
+        typer.Option("--universe", "-u", help="Named universe to run when --tickers is omitted."),
+    ] = "demo",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="End date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    initial_cash: Annotated[
+        float,
+        typer.Option("--initial-cash", help="Starting virtual portfolio cash."),
+    ] = 10_000_000.0,
+    max_position_pct: Annotated[
+        float,
+        typer.Option("--max-position-pct", help="Maximum virtual allocation per entry."),
+    ] = 10.0,
+    transaction_cost_bps: Annotated[
+        float,
+        typer.Option("--transaction-cost-bps", help="Virtual transaction cost in bps."),
+    ] = 15.0,
+    slippage_bps: Annotated[
+        float,
+        typer.Option("--slippage-bps", help="Virtual slippage in bps."),
+    ] = 10.0,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict/--skip-missing",
+            help="Fail on missing ticker inputs or skip unavailable tickers.",
+        ),
+    ] = False,
+) -> None:
+    """Run paper-only portfolio simulation for a named universe or ticker list."""
+    configure_logger(settings.log_level)
+    if tickers:
+        ticker_list = _parse_tickers(tickers)
+        portfolio_name = "custom"
+        portfolio_source = "manual tickers"
+    else:
+        try:
+            definition = UniverseRegistry().get(universe)
+        except KeyError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        ticker_list = definition.tickers()
+        portfolio_name = definition.name
+        portfolio_source = f"universe:{definition.name}"
+
+    start_compact = start.replace("-", "")
+    end_compact = end.replace("-", "")
+    price_frames: list[pd.DataFrame] = []
+    signal_frames: list[pd.DataFrame] = []
+    skipped_tickers: list[str] = []
+    missing_details: list[str] = []
+
+    for ticker in ticker_list:
+        request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+        price_path = processed_price_file_path(
+            settings.project_root,
+            request.ticker,
+            request.pykrx_start_date,
+            request.pykrx_end_date,
+        )
+        signal_path = final_signal_file_path(
+            settings.project_root,
+            request.ticker,
+            request.pykrx_start_date,
+            request.pykrx_end_date,
+        )
+        missing_reasons = []
+        if not price_path.exists():
+            missing_reasons.append(f"processed price missing: {price_path}")
+        if not signal_path.exists():
+            missing_reasons.append(f"final signal missing: {signal_path}")
+        if missing_reasons:
+            skipped_tickers.append(request.ticker)
+            missing_details.append(f"{request.ticker} ({'; '.join(missing_reasons)})")
+            continue
+
+        price_frames.append(read_parquet(price_path))
+        signal_frames.append(read_parquet(signal_path))
+
+    if missing_details and strict:
+        raise typer.BadParameter("Missing paper portfolio inputs: " + " | ".join(missing_details))
+    if not price_frames or not signal_frames:
+        raise typer.BadParameter(
+            "No ticker inputs were available. "
+            "Run run-universe first, then retry paper-trade-universe."
+        )
+
+    config = PaperTradingConfig(
+        initial_cash=initial_cash,
+        max_position_pct=max_position_pct,
+        transaction_cost_bps=transaction_cost_bps,
+        slippage_bps=slippage_bps,
+    )
+    trades, positions, summary = PaperTradingSimulator(config).run(
+        pd.concat(price_frames, ignore_index=True),
+        pd.concat(signal_frames, ignore_index=True),
+    )
+    summary = _annotate_paper_portfolio_summary(
+        summary=summary,
+        positions=positions,
+        portfolio_name=portfolio_name,
+        requested_ticker_count=len(ticker_list),
+        loaded_ticker_count=len(price_frames),
+        skipped_tickers=skipped_tickers,
+    )
+
+    portfolio_slug = _safe_report_name(portfolio_name)
+    ledger_path = paper_portfolio_trade_ledger_file_path(
+        settings.project_root,
+        portfolio_slug,
+        start_compact,
+        end_compact,
+    )
+    positions_path = paper_portfolio_position_file_path(
+        settings.project_root,
+        portfolio_slug,
+        start_compact,
+        end_compact,
+    )
+    summary_path = paper_portfolio_summary_file_path(
+        settings.project_root,
+        portfolio_slug,
+        start_compact,
+        end_compact,
+    )
+    report_path = paper_portfolio_report_file_path(
+        settings.project_root,
+        portfolio_slug,
+        start_compact,
+        end_compact,
+    )
+    write_parquet(trades, ledger_path)
+    write_parquet(positions, positions_path)
+    write_parquet(summary, summary_path)
+    write_text(PaperTradingReportGenerator().generate(trades, positions, summary), report_path)
+
+    metric = summary.iloc[0]
+    console.print("[bold green]Paper portfolio simulation completed.[/bold green]")
+    console.print("[yellow]Paper mode only. No broker API or real order was called.[/yellow]")
+    console.print(f"Source: {portfolio_source}")
+    console.print(f"Requested tickers: {len(ticker_list)}")
+    console.print(f"Loaded tickers: {len(price_frames)}")
+    console.print(f"Skipped tickers: {len(skipped_tickers)}")
+    console.print(f"Filled trades: {int(metric['trade_count'])}")
+    console.print(f"Ending equity: {float(metric['ending_equity']):,.0f}")
+    console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
+    console.print(f"Gross exposure: {float(metric['gross_exposure_pct']):.2f}%")
     console.print(f"Open positions: {len(positions)}")
     console.print(f"Ledger: {ledger_path}")
     console.print(f"Positions: {positions_path}")

@@ -93,3 +93,30 @@ def test_paper_trading_simulator_keeps_open_position_when_no_exit() -> None:
     assert len(positions) == 1
     assert positions.loc[0, "shares"] > 0
     assert summary.loc[0, "unrealized_pnl"] > 0
+
+
+def test_paper_trading_simulator_handles_multi_ticker_portfolio() -> None:
+    second_price_frame = _price_frame().copy()
+    second_price_frame["ticker"] = "005380"
+    second_price_frame[["open", "high", "low", "close"]] = (
+        second_price_frame[["open", "high", "low", "close"]] * 2
+    )
+    second_signal_frame = _signal_frame().head(1).copy()
+    second_signal_frame["ticker"] = "005380"
+    second_signal_frame["confidence_score"] = 72.0
+
+    config = PaperTradingConfig(
+        initial_cash=10_000.0,
+        max_position_pct=25.0,
+        transaction_cost_bps=0.0,
+        slippage_bps=0.0,
+    )
+    trades, positions, summary = PaperTradingSimulator(config).run(
+        pd.concat([_price_frame(), second_price_frame], ignore_index=True),
+        pd.concat([_signal_frame().head(1), second_signal_frame], ignore_index=True),
+    )
+
+    assert trades["ticker"].tolist() == ["005380", "005930"]
+    assert set(positions["ticker"]) == {"005380", "005930"}
+    assert summary.loc[0, "trade_count"] == 2
+    assert summary.loc[0, "ticker"] == "005380,005930"

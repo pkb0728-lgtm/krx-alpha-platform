@@ -187,13 +187,15 @@ Run this after `run-pipeline` has created processed prices and final signals:
 python main.py run-pipeline --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py analyze-regime --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py paper-trade --ticker 005380 --start 2024-01-01 --end 2024-03-31
+python main.py paper-trade-universe --universe demo --start 2024-01-01 --end 2024-03-31
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
-`paper-trade` is a paper-only operation. It does not call Korea Investment,
-Telegram, or any broker endpoint. It only reads local signal/price files and
-creates a virtual ledger, open-position snapshot, summary, and Markdown report.
+`paper-trade` and `paper-trade-universe` are paper-only operations. They do not
+call Korea Investment, Telegram, or any broker endpoint. They only read local
+signal/price files and create virtual ledgers, open-position snapshots,
+summaries, and Markdown reports.
 
 Prepare a leakage-aware ML dataset for later probability modeling:
 
@@ -226,9 +228,13 @@ data/backtest/metrics/005380_20240101_20240331.parquet
 data/backtest/paper_trade_ledger/005380_20240101_20240331.parquet
 data/backtest/paper_positions/005380_20240101_20240331.parquet
 data/backtest/paper_summary/005380_20240101_20240331.parquet
+data/backtest/paper_portfolio_trade_ledger/demo_20240101_20240331.parquet
+data/backtest/paper_portfolio_positions/demo_20240101_20240331.parquet
+data/backtest/paper_portfolio_summary/demo_20240101_20240331.parquet
 data/backtest/walk_forward_folds/005380_20240101_20240331.parquet
 data/backtest/walk_forward_summary/005380_20240101_20240331.parquet
 reports/paper_trading/005380_20240101_20240331.md
+reports/paper_trading/portfolio_demo_20240101_20240331.md
 reports/backtest/005380_20240101_20240331.md
 reports/backtest/walk_forward_005380_20240101_20240331.md
 data/features/ml_training/005380_20240101_20240331_h5.parquet

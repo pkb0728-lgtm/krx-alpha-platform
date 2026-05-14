@@ -58,6 +58,10 @@ def test_paper_trading_report_generator_creates_markdown() -> None:
             "win_rate": [0.0],
             "mode": ["paper"],
             "generated_at": [pd.Timestamp("2026-05-14T00:00:00Z")],
+            "universe": ["demo"],
+            "requested_ticker_count": [3],
+            "loaded_ticker_count": [2],
+            "skipped_tickers": ["000660"],
         }
     )
 
@@ -65,5 +69,7 @@ def test_paper_trading_report_generator_creates_markdown() -> None:
 
     assert "# Paper Trading Report" in report
     assert "No broker API or real order was called" in report
+    assert "- Universe: demo" in report
+    assert "- Skipped tickers: 000660" in report
     assert "| 005930 | 10 |" in report
     assert "paper buy" in report

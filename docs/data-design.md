@@ -476,9 +476,18 @@ Paper summary:
 data/backtest/paper_summary/{ticker}_{start}_{end}.parquet
 ```
 
+Portfolio paper outputs:
+
+```text
+data/backtest/paper_portfolio_trade_ledger/{universe}_{start}_{end}.parquet
+data/backtest/paper_portfolio_positions/{universe}_{start}_{end}.parquet
+data/backtest/paper_portfolio_summary/{universe}_{start}_{end}.parquet
+```
+
 Important paper trading columns:
 
 ```text
+universe
 side
 status
 shares
@@ -489,11 +498,17 @@ equity_after
 realized_pnl
 unrealized_pnl
 cumulative_return
+loaded_ticker_count
+skipped_tickers
+gross_exposure_pct
+cash_pct
 mode
 ```
 
 `mode` is always `paper`. These artifacts are virtual execution records created
-from local final signals and local processed prices. No broker API is called.
+from local final signals and local processed prices. The portfolio variant
+combines multiple ticker signals into one shared virtual cash book. No broker
+API is called.
 
 ### Monitoring Outputs
 

@@ -24,6 +24,7 @@ class PaperTradingReportGenerator:
                 "",
                 "> Paper trading only. No broker API or real order was called.",
                 "",
+                *_optional_portfolio_lines(metric),
                 f"- Ticker: {metric['ticker']}",
                 f"- Initial cash: {_format_money(metric['initial_cash'])}",
                 f"- Ending cash: {_format_money(metric['ending_cash'])}",
@@ -51,6 +52,21 @@ class PaperTradingReportGenerator:
                 "",
             ]
         )
+
+
+def _optional_portfolio_lines(metric: Any) -> list[str]:
+    lines: list[str] = []
+    if "universe" in metric.index:
+        lines.append(f"- Universe: {metric['universe']}")
+    if "requested_ticker_count" in metric.index:
+        lines.append(f"- Requested tickers: {int(metric['requested_ticker_count'])}")
+    if "loaded_ticker_count" in metric.index:
+        lines.append(f"- Loaded tickers: {int(metric['loaded_ticker_count'])}")
+    if "skipped_tickers" in metric.index and str(metric["skipped_tickers"]):
+        lines.append(f"- Skipped tickers: {metric['skipped_tickers']}")
+    if lines:
+        lines.append("")
+    return lines
 
 
 def _format_positions(frame: pd.DataFrame) -> str:

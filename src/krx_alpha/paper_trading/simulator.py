@@ -94,7 +94,7 @@ class PaperTradingSimulator:
         validate_final_signal_frame(signal_frame)
 
         prices = price_frame.copy().sort_values(["ticker", "date"]).reset_index(drop=True)
-        signals = signal_frame.copy().sort_values(["ticker", "date"]).reset_index(drop=True)
+        signals = signal_frame.copy().sort_values(["date", "ticker"]).reset_index(drop=True)
         prices["date"] = pd.to_datetime(prices["date"]).dt.date
         signals["date"] = pd.to_datetime(signals["date"]).dt.date
         prices["ticker"] = prices["ticker"].astype(str).str.zfill(6)

@@ -372,6 +372,36 @@ def paper_summary_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def paper_portfolio_trade_ledger_file_path(
+    project_root: Path,
+    portfolio_name: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "paper_portfolio_trade_ledger")
+    return dataset_dir / f"{portfolio_name}_{start_date}_{end_date}.parquet"
+
+
+def paper_portfolio_position_file_path(
+    project_root: Path,
+    portfolio_name: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "paper_portfolio_positions")
+    return dataset_dir / f"{portfolio_name}_{start_date}_{end_date}.parquet"
+
+
+def paper_portfolio_summary_file_path(
+    project_root: Path,
+    portfolio_name: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = backtest_dataset_dir(project_root, "paper_portfolio_summary")
+    return dataset_dir / f"{portfolio_name}_{start_date}_{end_date}.parquet"
+
+
 def walk_forward_report_file_path(
     project_root: Path,
     ticker: str,
@@ -390,6 +420,20 @@ def paper_trading_report_file_path(
     end_date: str,
 ) -> Path:
     return project_root / "reports" / "paper_trading" / f"{ticker}_{start_date}_{end_date}.md"
+
+
+def paper_portfolio_report_file_path(
+    project_root: Path,
+    portfolio_name: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    return (
+        project_root
+        / "reports"
+        / "paper_trading"
+        / f"portfolio_{portfolio_name}_{start_date}_{end_date}.md"
+    )
 
 
 def drift_result_file_path(project_root: Path, report_name: str) -> Path:

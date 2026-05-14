@@ -107,6 +107,11 @@ It buys only `buy_candidate` signals, exits on `avoid` or `blocked`, applies
 configured cost/slippage assumptions, and records a virtual ledger, open
 positions, summary, and Markdown report.
 
+`paper-trade-universe` combines multiple ticker signal files into one shared
+virtual cash book. This makes the output closer to an operator's portfolio
+view: loaded ticker count, skipped ticker list, open position count, exposure
+percentage, cash percentage, and portfolio-level return.
+
 Paper trading never calls a broker API and never sends real orders.
 
 ## Backtest Link
