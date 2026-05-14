@@ -145,6 +145,12 @@ def main() -> None:
             screen_cols[3].metric("Top score", _format_score(top_screen["screen_score"]))
             screen_cols[4].metric("Top action", str(top_screen["final_action"]))
             st.caption(f"Latest screening file: {screening_path.name}")
+            st.caption(
+                f"Priority summary: {_format_count_summary(screening_frame, 'review_priority')}"
+            )
+            st.caption(
+                f"Status summary: {_format_count_summary(screening_frame, 'screen_status_reason')}"
+            )
             if not passed_frame.empty:
                 st.caption("Candidate review cards")
                 for _, row in passed_frame.head(5).iterrows():
@@ -677,6 +683,13 @@ def _screening_display_columns(frame: Any) -> list[str]:
         "review_checklist",
     ]
     return [column for column in preferred_columns if column in frame.columns]
+
+
+def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
+    if frame.empty or column not in frame.columns:
+        return "N/A"
+    counts = frame[column].fillna("unknown").astype(str).value_counts()
+    return ", ".join(f"{name} {count}" for name, count in counts.items())
 
 
 def _select_ml_metric(frame: Any) -> Any:
