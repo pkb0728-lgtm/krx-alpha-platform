@@ -223,6 +223,12 @@ def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
             f"confidence {_format_number(row['confidence_score'])} | "
             f"position {_format_plain_percent(row['suggested_position_pct'])}"
         )
+        evidence = _row_value(row, "evidence_summary")
+        caution = _row_value(row, "caution_summary")
+        if not _is_missing(evidence) and str(evidence):
+            lines.append(f"   evidence: {_truncate_line(str(evidence), limit=120)}")
+        if not _is_missing(caution) and str(caution):
+            lines.append(f"   caution: {_truncate_line(str(caution), limit=120)}")
     return lines
 
 

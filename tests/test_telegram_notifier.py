@@ -86,6 +86,8 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "final_action": ["buy_candidate", "watch"],
             "confidence_score": [72.83, 63.78],
             "suggested_position_pct": [3.5, 0.0],
+            "evidence_summary": ["risk filter passed; trading value surged", ""],
+            "caution_summary": ["confirm latest disclosure before action", ""],
         }
     )
     operations_health = pd.DataFrame(
@@ -119,6 +121,8 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "Auto screener" in message
     assert "Checked 2 | passed 1" in message
     assert "screen 72.50" in message
+    assert "evidence: risk filter passed" in message
+    assert "caution: confirm latest disclosure" in message
     assert "Paper portfolio" in message
     assert "demo | tickers 3/3 | trades 2" in message
     assert "Backtest" in message
