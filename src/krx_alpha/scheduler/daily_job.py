@@ -213,6 +213,7 @@ class DailyJobRunner:
             summary_frame,
             screening_result.frame if screening_result else None,
             paper_summary,
+            kis_candidate_result.frame if kis_candidate_result else None,
             operations_health,
         )
         experiment_log_path = self.experiment_tracker.log(
@@ -374,12 +375,14 @@ class DailyJobRunner:
         summary_frame: object,
         screening_result: Any | None,
         paper_portfolio_summary: Any | None,
+        kis_paper_candidates: Any | None,
         operations_health: Any | None,
     ) -> TelegramSendResult:
         message = build_daily_telegram_message(
             universe_summary=summary_frame,
             screening_result=screening_result,
             paper_portfolio_summary=paper_portfolio_summary,
+            kis_paper_candidates=kis_paper_candidates,
             backtest_metrics=_load_latest_backtest_metrics(self.project_root),
             walk_forward_summary=_load_latest_walk_forward_summary(self.project_root),
             drift_result=_load_latest_drift_result(self.project_root),

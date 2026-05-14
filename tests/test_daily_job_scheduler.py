@@ -188,12 +188,12 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.operations_health_report_path.exists()
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
-    assert "005380 | buy_candidate" in result.telegram_message
-    assert "Auto screener" in result.telegram_message
-    assert "Paper portfolio" in result.telegram_message
-    assert "trades 2" in result.telegram_message
-    assert "Data drift: 1/1 features flagged" in result.telegram_message
-    assert "Operations health" in result.telegram_message
+    assert "005380 현대차 | 판단: 매수 검토" in result.telegram_message
+    assert "자동 스크리너" in result.telegram_message
+    assert "모의 포트폴리오" in result.telegram_message
+    assert "거래 2회" in result.telegram_message
+    assert "데이터 드리프트: 1개 피처 중 1개 경고" in result.telegram_message
+    assert "운영 상태" in result.telegram_message
     assert sender.messages == [result.telegram_message]
 
 
@@ -235,6 +235,8 @@ def test_daily_job_runner_can_create_kis_paper_candidate_outputs(tmp_path: Path)
     assert result.kis_candidate_count == 2
     assert result.kis_candidate_review_count == 1
     assert result.kis_candidate_manual_price_count == 0
+    assert "KIS 모의투자 후보" in result.telegram_message
+    assert "매수·추가매수 검토: 1개" in result.telegram_message
 
 
 def _write_paper_inputs(

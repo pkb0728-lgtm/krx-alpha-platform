@@ -37,11 +37,13 @@ from krx_alpha.configs.settings import settings
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_kis_paper_candidates,
     find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
+    load_kis_paper_candidates,
     load_screening_result,
 )
 from krx_alpha.database.storage import (
@@ -2847,6 +2849,14 @@ def send_telegram_daily(
     if include_paper_portfolio:
         paper_path = find_latest_paper_portfolio_summary(settings.project_root)
         paper_portfolio_summary = read_parquet(paper_path) if paper_path is not None else None
+    screening_result = None
+    screening_path = find_latest_screening_result(settings.project_root)
+    if screening_path is not None:
+        screening_result = load_screening_result(screening_path)
+    kis_paper_candidates = None
+    kis_path = find_latest_kis_paper_candidates(settings.project_root)
+    if kis_path is not None:
+        kis_paper_candidates = load_kis_paper_candidates(kis_path)
     operations_health = None
     if include_operations_health:
         operations_health_path = find_latest_operations_health(settings.project_root)
@@ -2856,7 +2866,9 @@ def send_telegram_daily(
 
     message = build_daily_telegram_message(
         universe_summary=universe_summary,
+        screening_result=screening_result,
         paper_portfolio_summary=paper_portfolio_summary,
+        kis_paper_candidates=kis_paper_candidates,
         backtest_metrics=backtest_metrics,
         walk_forward_summary=walk_forward_summary,
         drift_result=drift_result,

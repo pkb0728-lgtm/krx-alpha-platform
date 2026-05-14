@@ -78,6 +78,17 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "generated_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
+    kis_candidates = pd.DataFrame(
+        {
+            "ticker": ["005380", "005930"],
+            "candidate_action": ["review_buy", "skip"],
+            "estimated_quantity": [3, 0],
+            "estimated_amount": [300_000.0, 0.0],
+            "target_position_pct": [10.0, 0.0],
+            "confidence_score": [72.0, 58.0],
+            "screen_score": [75.0, 50.0],
+        }
+    )
     screening = pd.DataFrame(
         {
             "ticker": ["005380", "005930"],
@@ -109,6 +120,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
         summary,
         screening_result=screening,
         paper_portfolio_summary=paper_portfolio,
+        kis_paper_candidates=kis_candidates,
         backtest_metrics=backtest,
         walk_forward_summary=walk_forward,
         drift_result=drift,
@@ -117,30 +129,32 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
         top_n=1,
     )
 
-    assert "KRX Alpha Daily Brief" in message
-    assert "1. 005380 | buy_candidate" in message
-    assert "News 45.00" in message
-    assert "Macro 42.00" in message
-    assert "Auto screener" in message
-    assert "Checked 2 | passed 1" in message
-    assert "Status reasons: passed 1, confidence_below_threshold 1" in message
-    assert "priority high" in message
-    assert "screen 72.50" in message
-    assert "evidence: risk filter passed" in message
-    assert "caution: confirm latest disclosure" in message
-    assert "Review queue" in message
-    assert "005930 | low | confidence_below_threshold | screen 55.00" in message
-    assert "Paper portfolio" in message
-    assert "demo | tickers 3/3 | trades 2" in message
-    assert "Backtest" in message
-    assert "Walk-forward" in message
-    assert "Data drift: 1/2 features flagged" in message
+    assert "KRX Alpha 일일 요약" in message
+    assert "1. 005380 현대차 | 판단: 매수 검토" in message
+    assert "뉴스 45.00" in message
+    assert "매크로 42.00" in message
+    assert "자동 스크리너" in message
+    assert "검사 종목: 2개 / 통과: 1개" in message
+    assert "상태 요약: 조건 통과 1개, 신뢰도 부족 1개" in message
+    assert "우선순위: 높음" in message
+    assert "점수 72.50" in message
+    assert "근거: 리스크 필터 통과" in message
+    assert "주의: confirm latest disclosure before action" in message
+    assert "확인 필요 종목" in message
+    assert "005930 삼성전자 | 우선순위: 낮음 | 사유: 신뢰도 부족 | 점수 55.00" in message
+    assert "모의 포트폴리오" in message
+    assert "유니버스: demo | 로드 3/3개 | 거래 2회" in message
+    assert "KIS 모의투자 후보" in message
+    assert "매수·추가매수 검토: 1개" in message
+    assert "백테스트" in message
+    assert "워크포워드 검증" in message
+    assert "데이터 드리프트: 2개 피처 중 1개 경고" in message
     assert "rsi_14: mean_shift" in message
-    assert "Operations health" in message
-    assert "OK 1/2 | warnings 1 | problems 0" in message
-    assert "Optional ML metrics: WARN" in message
+    assert "운영 상태" in message
+    assert "정상 1/2개 | 주의 1개 | 문제 0개" in message
+    assert "Optional ML metrics: 주의" in message
     assert "generate ML baseline" in message
-    assert "Screening aid only" in message
+    assert "투자 판단 보조용" in message
 
 
 def test_telegram_notifier_dry_run_does_not_require_credentials() -> None:
