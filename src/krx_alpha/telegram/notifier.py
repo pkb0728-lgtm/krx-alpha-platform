@@ -219,6 +219,7 @@ def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
     for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
         lines.append(
             f"{rank}. {row['ticker']} | {row['final_action']} | "
+            f"priority {_format_optional(row, 'review_priority')} | "
             f"screen {_format_number(row['screen_score'])} | "
             f"confidence {_format_number(row['confidence_score'])} | "
             f"position {_format_plain_percent(row['suggested_position_pct'])}"

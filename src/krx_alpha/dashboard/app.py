@@ -149,7 +149,8 @@ def main() -> None:
                 st.caption("Candidate review cards")
                 for _, row in passed_frame.head(5).iterrows():
                     with st.expander(
-                        f"{row['ticker']} | {row['final_action']} | "
+                        f"{row['ticker']} | {row.get('review_priority', 'N/A')} | "
+                        f"{row['final_action']} | "
                         f"score {_format_score(row['screen_score'])}",
                     ):
                         st.write(f"Evidence: {row.get('evidence_summary', 'N/A')}")
@@ -657,6 +658,7 @@ def _screening_display_columns(frame: Any) -> list[str]:
     preferred_columns = [
         "ticker",
         "passed",
+        "review_priority",
         "screen_score",
         "final_action",
         "confidence_score",

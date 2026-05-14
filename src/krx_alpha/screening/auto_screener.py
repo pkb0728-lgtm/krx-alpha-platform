@@ -11,6 +11,7 @@ SCREENING_COLUMNS = [
     "screen_date",
     "ticker",
     "passed",
+    "review_priority",
     "screen_score",
     "final_action",
     "confidence_score",
@@ -116,6 +117,12 @@ class AutoScreener:
             "screen_date": _as_date_string(signal_row["date"]),
             "ticker": str(signal_row["ticker"]).zfill(6),
             "passed": passed,
+            "review_priority": _review_priority(
+                passed=passed,
+                screen_score=screen_score,
+                confidence_score=confidence_score,
+                risk_blocked=risk_blocked,
+            ),
             "screen_score": screen_score,
             "final_action": final_action,
             "confidence_score": confidence_score,
@@ -149,6 +156,7 @@ class AutoScreener:
             "screen_date": "",
             "ticker": str(summary_row.get("ticker", "")).zfill(6),
             "passed": False,
+            "review_priority": "blocked",
             "screen_score": 0.0,
             "final_action": str(summary_row.get("latest_action", "")),
             "confidence_score": _optional_float(summary_row.get("latest_confidence_score")),
@@ -196,17 +204,18 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
             "",
             "## Candidates",
             "",
-            "| Ticker | Action | Score | Confidence | Position | Reasons |",
-            "| --- | --- | ---: | ---: | ---: | --- |",
+            "| Ticker | Priority | Action | Score | Confidence | Position | Reasons |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- |",
         ]
     )
     if passed.empty:
-        lines.append("| N/A | N/A | 0.00 | 0.00 | 0.00% | no_candidates_passed |")
+        lines.append("| N/A | N/A | N/A | 0.00 | 0.00 | 0.00% | no_candidates_passed |")
     else:
         for _, row in passed.head(20).iterrows():
             lines.append(
                 "| "
                 f"{row['ticker']} | "
+                f"{row['review_priority']} | "
                 f"{row['final_action']} | "
                 f"{float(row['screen_score']):.2f} | "
                 f"{float(row['confidence_score']):.2f} | "
@@ -232,6 +241,7 @@ def _candidate_card_lines(rank: int, row: pd.Series) -> list[str]:
     return [
         f"### {rank}. {row['ticker']} - {row['final_action']}",
         "",
+        f"- Priority: {row['review_priority']}",
         f"- Screen score: {float(row['screen_score']):.2f}",
         f"- Confidence: {float(row['confidence_score']):.2f}",
         f"- Suggested position: {float(row['suggested_position_pct']):.2f}%",
@@ -428,6 +438,23 @@ def _review_checklist(
     if pd.isna(_feature_value(feature_row, "trading_value")):
         checklist.append("rebuild_price_features")
     return ", ".join(checklist)
+
+
+def _review_priority(
+    passed: bool,
+    screen_score: float,
+    confidence_score: float,
+    risk_blocked: bool,
+) -> str:
+    if risk_blocked:
+        return "blocked"
+    if passed and screen_score >= 70 and confidence_score >= 70:
+        return "high"
+    if passed:
+        return "medium"
+    if screen_score >= 55 and confidence_score >= 55:
+        return "watchlist"
+    return "low"
 
 
 def _format_large_number(value: float) -> str:

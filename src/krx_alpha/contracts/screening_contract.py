@@ -4,6 +4,7 @@ REQUIRED_SCREENING_COLUMNS = {
     "screen_date",
     "ticker",
     "passed",
+    "review_priority",
     "screen_score",
     "final_action",
     "confidence_score",

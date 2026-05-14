@@ -82,6 +82,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
         {
             "ticker": ["005380", "005930"],
             "passed": [True, False],
+            "review_priority": ["high", "low"],
             "screen_score": [72.5, 55.0],
             "final_action": ["buy_candidate", "watch"],
             "confidence_score": [72.83, 63.78],
@@ -120,6 +121,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "Macro 42.00" in message
     assert "Auto screener" in message
     assert "Checked 2 | passed 1" in message
+    assert "priority high" in message
     assert "screen 72.50" in message
     assert "evidence: risk filter passed" in message
     assert "caution: confirm latest disclosure" in message
