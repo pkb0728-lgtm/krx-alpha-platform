@@ -127,6 +127,7 @@ class TelegramNotifier:
 
 def build_daily_telegram_message(
     universe_summary: Any,
+    screening_result: Any | None = None,
     paper_portfolio_summary: Any | None = None,
     backtest_metrics: Any | None = None,
     walk_forward_summary: Any | None = None,
@@ -159,6 +160,7 @@ def build_daily_telegram_message(
         "Top candidates",
     ]
     lines.extend(_format_candidate_lines(success_frame, top_n))
+    lines.extend(_format_screening_lines(screening_result, top_n))
     lines.extend(_format_paper_portfolio_lines(paper_portfolio_summary))
     lines.extend(_format_backtest_lines(backtest_metrics))
     lines.extend(_format_walk_forward_lines(walk_forward_summary))
@@ -191,6 +193,35 @@ def _format_candidate_lines(frame: pd.DataFrame, top_n: int) -> list[str]:
             f"Flow {_format_number(_row_value(row, 'latest_flow_score'))} / "
             f"News {_format_number(_row_value(row, 'latest_news_score'))} / "
             f"Macro {_format_number(_row_value(row, 'latest_macro_score'))}"
+        )
+    return lines
+
+
+def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
+    if result is None or result.empty:
+        return ["", "Auto screener", "- No latest screening result."]
+
+    frame = result.copy()
+    passed_frame = frame[frame["passed"]] if "passed" in frame.columns else frame.iloc[0:0]
+    lines = [
+        "",
+        "Auto screener",
+        f"- Checked {len(frame)} | passed {len(passed_frame)}",
+    ]
+    if passed_frame.empty:
+        lines.append("- No candidates passed the screen.")
+        return lines
+
+    ranked = passed_frame.sort_values(
+        ["screen_score", "confidence_score"],
+        ascending=[False, False],
+    ).head(max(top_n, 1))
+    for rank, (_, row) in enumerate(ranked.iterrows(), start=1):
+        lines.append(
+            f"{rank}. {row['ticker']} | {row['final_action']} | "
+            f"screen {_format_number(row['screen_score'])} | "
+            f"confidence {_format_number(row['confidence_score'])} | "
+            f"position {_format_plain_percent(row['suggested_position_pct'])}"
         )
     return lines
 

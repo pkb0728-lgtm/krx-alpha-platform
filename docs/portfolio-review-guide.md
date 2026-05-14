@@ -67,9 +67,10 @@ python main.py send-telegram-daily --dry-run
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
 ```
 
-This command also runs paper portfolio simulation by default. The paper output
-is virtual only and is included in the Telegram preview so reviewers can see
-the operational loop without any broker order being sent.
+This command also builds the auto-screener shortlist and runs paper portfolio
+simulation by default. The paper output is virtual only and is included in the
+Telegram preview so reviewers can see the operational loop without any broker
+order being sent.
 
 8. Show experiment tracking:
 
@@ -125,6 +126,7 @@ python main.py send-telegram-daily --dry-run
 - CI-ready quality checks
 - Streamlit dashboard with universe, auto screener, backtest, walk-forward, ML, drift, and operations health review
 - scheduler-ready daily job runner
+- daily-job integrated auto screener
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration
 - simple backtest engine with explicit assumptions

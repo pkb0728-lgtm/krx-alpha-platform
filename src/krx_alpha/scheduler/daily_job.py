@@ -12,7 +12,11 @@ from krx_alpha.database.storage import (
     monitoring_report_file_path,
     operations_health_file_path,
     read_parquet,
+    screening_report_file_path,
+    screening_result_csv_path,
+    screening_result_file_path,
     universe_report_file_path,
+    write_csv,
     write_parquet,
     write_text,
 )
@@ -31,6 +35,11 @@ from krx_alpha.paper_trading.portfolio import (
 )
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline, UniversePipelineResult
 from krx_alpha.reports.universe_report import UniverseReportGenerator
+from krx_alpha.screening.auto_screener import (
+    AutoScreener,
+    AutoScreenerConfig,
+    format_screening_report,
+)
 from krx_alpha.telegram.notifier import (
     TelegramNotifier,
     TelegramSendResult,
@@ -60,6 +69,9 @@ class DailyJobConfig:
     paper_transaction_cost_bps: float = 15.0
     paper_slippage_bps: float = 10.0
     paper_skip_missing: bool = True
+    screening: bool = True
+    screening_min_confidence: float = 60.0
+    screening_min_score: float = 60.0
 
 
 @dataclass(frozen=True)
@@ -78,11 +90,26 @@ class DailyJobResult:
     paper_report_path: Path | None
     paper_trade_count: int
     paper_cumulative_return: float
+    screening_result_path: Path | None
+    screening_csv_path: Path | None
+    screening_report_path: Path | None
+    screening_checked_count: int
+    screening_passed_count: int
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
     operations_health_path: Path
     operations_health_report_path: Path
+
+
+@dataclass(frozen=True)
+class DailyJobScreeningResult:
+    result_path: Path
+    csv_path: Path
+    report_path: Path
+    frame: Any
+    checked_count: int
+    passed_count: int
 
 
 class DailyJobRunner:
@@ -120,6 +147,12 @@ class DailyJobRunner:
             report_path,
         )
 
+        screening_result = self._run_screening(
+            config=config,
+            summary_frame=summary_frame,
+            start_date=start_date,
+            end_date=end_date,
+        )
         paper_result = self._run_paper_portfolio(
             config=config,
             tickers=definition.tickers(),
@@ -131,7 +164,13 @@ class DailyJobRunner:
             self._write_operations_health()
         )
 
-        telegram_result = self._notify(config, summary_frame, paper_summary, operations_health)
+        telegram_result = self._notify(
+            config,
+            summary_frame,
+            screening_result.frame if screening_result else None,
+            paper_summary,
+            operations_health,
+        )
         experiment_log_path = self.experiment_tracker.log(
             build_daily_job_experiment_record(
                 universe=config.universe,
@@ -147,6 +186,10 @@ class DailyJobRunner:
                 paper_trade_count=_paper_trade_count(paper_summary),
                 paper_cumulative_return=_paper_cumulative_return(paper_summary),
                 paper_summary_path=paper_result.summary_path if paper_result else None,
+                screening_enabled=config.screening,
+                screening_checked_count=screening_result.checked_count if screening_result else 0,
+                screening_passed_count=screening_result.passed_count if screening_result else 0,
+                screening_result_path=screening_result.result_path if screening_result else None,
             )
         )
         return _build_result(
@@ -155,11 +198,54 @@ class DailyJobRunner:
             end_date=end_date,
             pipeline_result=pipeline_result,
             report_path=report_path,
+            screening_result=screening_result,
             paper_result=paper_result,
             telegram_result=telegram_result,
             experiment_log_path=experiment_log_path,
             operations_health_path=operations_health_path,
             operations_health_report_path=operations_health_report_path,
+        )
+
+    def _run_screening(
+        self,
+        config: DailyJobConfig,
+        summary_frame: Any,
+        start_date: str,
+        end_date: str,
+    ) -> DailyJobScreeningResult | None:
+        if not config.screening:
+            return None
+
+        start_compact = start_date.replace("-", "")
+        end_compact = end_date.replace("-", "")
+        report_name = f"screening_universe_{start_compact}_{end_compact}"
+        result_path = screening_result_file_path(self.project_root, report_name)
+        csv_path = screening_result_csv_path(self.project_root, report_name)
+        report_path = screening_report_file_path(self.project_root, report_name)
+
+        result_frame = AutoScreener(
+            self.project_root,
+            AutoScreenerConfig(
+                min_confidence=config.screening_min_confidence,
+                min_screen_score=config.screening_min_score,
+            ),
+        ).screen(summary_frame)
+        write_parquet(result_frame, result_path)
+        write_csv(result_frame, csv_path)
+        write_text(
+            format_screening_report(
+                result_frame,
+                title=f"Auto Screener Report ({config.universe})",
+            ),
+            report_path,
+        )
+        return DailyJobScreeningResult(
+            result_path=result_path,
+            csv_path=csv_path,
+            report_path=report_path,
+            frame=result_frame,
+            checked_count=len(result_frame),
+            passed_count=int(result_frame["passed"].sum()) if not result_frame.empty else 0,
         )
 
     def _run_paper_portfolio(
@@ -191,11 +277,13 @@ class DailyJobRunner:
         self,
         config: DailyJobConfig,
         summary_frame: object,
+        screening_result: Any | None,
         paper_portfolio_summary: Any | None,
         operations_health: Any | None,
     ) -> TelegramSendResult:
         message = build_daily_telegram_message(
             universe_summary=summary_frame,
+            screening_result=screening_result,
             paper_portfolio_summary=paper_portfolio_summary,
             backtest_metrics=_load_latest_backtest_metrics(self.project_root),
             walk_forward_summary=_load_latest_walk_forward_summary(self.project_root),
@@ -273,6 +361,7 @@ def _build_result(
     end_date: str,
     pipeline_result: UniversePipelineResult,
     report_path: Path,
+    screening_result: DailyJobScreeningResult | None,
     paper_result: PaperPortfolioResult | None,
     telegram_result: TelegramSendResult,
     experiment_log_path: Path,
@@ -295,6 +384,11 @@ def _build_result(
         paper_report_path=paper_result.report_path if paper_result else None,
         paper_trade_count=_paper_trade_count(paper_summary),
         paper_cumulative_return=_paper_cumulative_return(paper_summary),
+        screening_result_path=screening_result.result_path if screening_result else None,
+        screening_csv_path=screening_result.csv_path if screening_result else None,
+        screening_report_path=screening_result.report_path if screening_result else None,
+        screening_checked_count=screening_result.checked_count if screening_result else 0,
+        screening_passed_count=screening_result.passed_count if screening_result else 0,
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,
         telegram_message=telegram_result.message,

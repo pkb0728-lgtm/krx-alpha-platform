@@ -78,6 +78,16 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "generated_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
         }
     )
+    screening = pd.DataFrame(
+        {
+            "ticker": ["005380", "005930"],
+            "passed": [True, False],
+            "screen_score": [72.5, 55.0],
+            "final_action": ["buy_candidate", "watch"],
+            "confidence_score": [72.83, 63.78],
+            "suggested_position_pct": [3.5, 0.0],
+        }
+    )
     operations_health = pd.DataFrame(
         {
             "check_name": ["Universe summary", "Optional ML metrics"],
@@ -92,6 +102,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
 
     message = build_daily_telegram_message(
         summary,
+        screening_result=screening,
         paper_portfolio_summary=paper_portfolio,
         backtest_metrics=backtest,
         walk_forward_summary=walk_forward,
@@ -105,6 +116,9 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "1. 005380 | buy_candidate" in message
     assert "News 45.00" in message
     assert "Macro 42.00" in message
+    assert "Auto screener" in message
+    assert "Checked 2 | passed 1" in message
+    assert "screen 72.50" in message
     assert "Paper portfolio" in message
     assert "demo | tickers 3/3 | trades 2" in message
     assert "Backtest" in message

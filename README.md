@@ -332,11 +332,14 @@ After-market daily job:
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
 ```
 
-The daily job runs the universe pipeline, generates the universe report, runs
-paper portfolio simulation, refreshes operations health, and builds the
-Telegram brief. Use `--no-paper-trading` if you want to skip the paper
-portfolio step. With Telegram credentials configured, use `--telegram-send` for
-real delivery.
+The daily job runs the universe pipeline, generates the universe report, builds
+the auto-screener shortlist, runs paper portfolio simulation, refreshes
+operations health, and builds the Telegram brief. Use `--no-screening` or
+`--no-paper-trading` if you want to skip either optional step. With Telegram
+credentials configured, use `--telegram-send` for real delivery.
+When a collection API is temporarily unavailable, the universe step can reuse
+same-period cached final signals and records the original failure in the
+summary `error` column.
 
 Recent experiment log:
 

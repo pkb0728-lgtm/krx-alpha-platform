@@ -53,6 +53,17 @@ class FakeUniversePipeline:
         )
         start_compact = start_date.replace("-", "")
         end_compact = end_date.replace("-", "")
+        frame["signal_path"] = [
+            str(
+                final_signal_file_path(
+                    self.project_root,
+                    ticker,
+                    start_compact,
+                    end_compact,
+                )
+            )
+            for ticker in frame["ticker"]
+        ]
         summary_path = universe_summary_file_path(self.project_root, start_compact, end_compact)
         summary_csv_path = universe_summary_csv_path(
             self.project_root,
@@ -132,11 +143,19 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.paper_report_path.exists()
     assert result.paper_trade_count == 2
     assert result.paper_cumulative_return > 0
+    assert result.screening_result_path is not None
+    assert result.screening_result_path.exists()
+    assert result.screening_csv_path is not None
+    assert result.screening_csv_path.exists()
+    assert result.screening_report_path is not None
+    assert result.screening_report_path.exists()
+    assert result.screening_checked_count == 2
     assert result.operations_health_path.exists()
     assert result.operations_health_report_path.exists()
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 | buy_candidate" in result.telegram_message
+    assert "Auto screener" in result.telegram_message
     assert "Paper portfolio" in result.telegram_message
     assert "trades 2" in result.telegram_message
     assert "Data drift: 1/1 features flagged" in result.telegram_message

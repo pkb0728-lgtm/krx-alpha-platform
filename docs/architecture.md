@@ -83,7 +83,7 @@ flowchart TD
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
 | `dashboard` | Display universe, screening, paper trading, backtest, walk-forward, drift, and operations health results through Streamlit. |
-| `scheduler` | Orchestrate after-market daily jobs for universe runs, reports, and alerts. |
+| `scheduler` | Orchestrate after-market daily jobs for universe runs, auto screening, paper portfolio checks, reports, and alerts. |
 | `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |
 

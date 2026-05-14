@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pandas as pd
+
 from krx_alpha.collectors.price_collector import PriceRequest
+from krx_alpha.database.storage import final_signal_file_path, write_parquet
 from krx_alpha.pipelines.daily_pipeline import DailyPipelineResult
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 
@@ -54,3 +57,41 @@ def test_universe_pipeline_saves_summary(tmp_path: Path) -> None:
     assert result.failed_count == 1
     assert result.summary_path.exists()
     assert result.summary_csv_path.exists()
+
+
+def test_universe_pipeline_uses_cached_signal_after_collection_failure(tmp_path: Path) -> None:
+    signal_path = final_signal_file_path(tmp_path, "000000", "20240101", "20240131")
+    write_parquet(
+        pd.DataFrame(
+            {
+                "date": ["2024-01-31"],
+                "ticker": ["000000"],
+                "final_action": ["watch"],
+                "confidence_score": [61.5],
+                "financial_score": [50.0],
+                "event_score": [50.0],
+                "flow_score": [55.0],
+                "news_score": [60.0],
+                "macro_score": [50.0],
+                "market_regime": ["neutral"],
+            }
+        ),
+        signal_path,
+    )
+    pipeline = UniversePipeline(
+        project_root=tmp_path,
+        daily_pipeline=FakeDailyPipeline(tmp_path),  # type: ignore[arg-type]
+    )
+
+    result = pipeline.run(
+        tickers=["000000"],
+        start_date="2024-01-01",
+        end_date="2024-01-31",
+    )
+    summary = pd.read_parquet(result.summary_path)
+
+    assert result.success_count == 1
+    assert result.failed_count == 0
+    assert summary.loc[0, "latest_action"] == "watch"
+    assert summary.loc[0, "signal_path"] == str(signal_path)
+    assert "used_cached_signal_after_failure" in summary.loc[0, "error"]

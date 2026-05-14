@@ -2550,8 +2550,23 @@ def run_daily_job(
         float,
         typer.Option("--paper-max-position-pct", help="Maximum virtual allocation per entry."),
     ] = 10.0,
+    screening: Annotated[
+        bool,
+        typer.Option(
+            "--screening/--no-screening",
+            help="Run the auto screener after the universe pipeline.",
+        ),
+    ] = True,
+    screening_min_confidence: Annotated[
+        float,
+        typer.Option("--screen-min-confidence", help="Minimum confidence for screen pass."),
+    ] = 60.0,
+    screening_min_score: Annotated[
+        float,
+        typer.Option("--screen-min-score", help="Minimum composite screen score."),
+    ] = 60.0,
 ) -> None:
-    """Run the after-market daily job: universe, paper portfolio, report, and Telegram."""
+    """Run the after-market daily job: universe, screener, paper portfolio, and Telegram."""
     configure_logger(settings.log_level)
     runner = DailyJobRunner(
         project_root=settings.project_root,
@@ -2576,6 +2591,9 @@ def run_daily_job(
                 paper_trade=paper_trading,
                 paper_initial_cash=paper_initial_cash,
                 paper_max_position_pct=paper_max_position_pct,
+                screening=screening,
+                screening_min_confidence=screening_min_confidence,
+                screening_min_score=screening_min_score,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -2595,6 +2613,13 @@ def run_daily_job(
         console.print(f"Paper report: {result.paper_report_path}")
         console.print(f"Paper trades: {result.paper_trade_count}")
         console.print(f"Paper return: {result.paper_cumulative_return * 100:.2f}%")
+    if result.screening_result_path:
+        console.print(f"Screening result: {result.screening_result_path}")
+        console.print(f"Screening CSV: {result.screening_csv_path}")
+        console.print(f"Screening report: {result.screening_report_path}")
+        console.print(
+            f"Screening passed: {result.screening_passed_count}/{result.screening_checked_count}"
+        )
     console.print(f"Operations health: {result.operations_health_path}")
     console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")

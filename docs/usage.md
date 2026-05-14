@@ -321,7 +321,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> run paper portfolio -> refresh operations health -> build Telegram brief
+run universe pipeline -> generate universe report -> build auto screener -> run paper portfolio -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:
@@ -336,6 +336,19 @@ It can be disabled for a faster operations check:
 ```powershell
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --no-paper-trading --telegram-dry-run
 ```
+
+Auto screening is also enabled by default. It writes a short human-review
+candidate list to `data/signals/screening_daily/` and `reports/screening/`.
+Disable it only when you want a very fast smoke test:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --no-screening --telegram-dry-run
+```
+
+If a price API call fails but a final signal file for the same ticker and date
+range already exists, the universe step falls back to that cached signal. The
+summary marks the row as successful and keeps the original API error in the
+`error` column for troubleshooting.
 
 When `--start` is omitted, the job uses `--lookback-days` and today's date:
 
