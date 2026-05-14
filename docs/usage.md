@@ -3,6 +3,8 @@
 For the daily operating procedure and interpretation checklist, see
 `docs/operations-runbook.md`.
 
+한국어 운영 가이드는 `docs/operations-runbook-ko.md`를 참고하세요.
+
 ## 1. Open The Project
 
 ```powershell
