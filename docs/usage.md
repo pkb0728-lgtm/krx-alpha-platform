@@ -335,7 +335,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> build auto screener -> run paper portfolio -> refresh operations health -> build Telegram brief
+run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:
@@ -357,6 +357,14 @@ Disable it only when you want a very fast smoke test:
 
 ```powershell
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --no-screening --telegram-dry-run
+```
+
+KIS mock-investment review candidates are optional because they require valid
+KIS paper credentials. The command below queries the mock account balance and
+writes review candidates without sending orders:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --kis-paper-candidates --telegram-dry-run
 ```
 
 If a price API call fails but a final signal file for the same ticker and date

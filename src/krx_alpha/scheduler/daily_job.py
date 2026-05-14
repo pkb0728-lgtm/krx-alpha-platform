@@ -3,12 +3,16 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Protocol
 
+from krx_alpha.broker.kis_candidates import format_kis_paper_candidate_report
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_walk_forward_summary,
 )
 from krx_alpha.database.storage import (
+    kis_paper_candidate_csv_path,
+    kis_paper_candidate_file_path,
+    kis_paper_candidate_report_file_path,
     monitoring_report_file_path,
     operations_health_file_path,
     read_parquet,
@@ -54,6 +58,18 @@ class TelegramMessageSender(Protocol):
         ...
 
 
+class KISPaperCandidateSource(Protocol):
+    def build_candidates(
+        self,
+        screening_frame: Any,
+        *,
+        max_candidates: int,
+        cash_buffer_pct: float,
+    ) -> Any:
+        """Build KIS paper review candidates without sending orders."""
+        ...
+
+
 @dataclass(frozen=True)
 class DailyJobConfig:
     universe: str = "demo"
@@ -72,6 +88,9 @@ class DailyJobConfig:
     screening: bool = True
     screening_min_confidence: float = 60.0
     screening_min_score: float = 60.0
+    kis_paper_candidates: bool = False
+    kis_candidate_max_candidates: int = 10
+    kis_candidate_cash_buffer_pct: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -95,6 +114,12 @@ class DailyJobResult:
     screening_report_path: Path | None
     screening_checked_count: int
     screening_passed_count: int
+    kis_candidate_result_path: Path | None
+    kis_candidate_csv_path: Path | None
+    kis_candidate_report_path: Path | None
+    kis_candidate_count: int
+    kis_candidate_review_count: int
+    kis_candidate_manual_price_count: int
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
@@ -112,6 +137,17 @@ class DailyJobScreeningResult:
     passed_count: int
 
 
+@dataclass(frozen=True)
+class DailyJobKISCandidateResult:
+    result_path: Path
+    csv_path: Path
+    report_path: Path
+    frame: Any
+    candidate_count: int
+    review_count: int
+    manual_price_count: int
+
+
 class DailyJobRunner:
     """Run the after-market daily workflow for a named universe."""
 
@@ -120,11 +156,13 @@ class DailyJobRunner:
         project_root: Path,
         universe_pipeline: UniversePipeline | None = None,
         telegram_sender: TelegramMessageSender | None = None,
+        kis_candidate_source: KISPaperCandidateSource | None = None,
         experiment_tracker: ExperimentTracker | None = None,
     ) -> None:
         self.project_root = project_root
         self.universe_pipeline = universe_pipeline or UniversePipeline(project_root)
         self.telegram_sender = telegram_sender
+        self.kis_candidate_source = kis_candidate_source
         self.experiment_tracker = experiment_tracker or ExperimentTracker(project_root)
 
     def run(self, config: DailyJobConfig, today: date | None = None) -> DailyJobResult:
@@ -150,6 +188,12 @@ class DailyJobRunner:
         screening_result = self._run_screening(
             config=config,
             summary_frame=summary_frame,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        kis_candidate_result = self._run_kis_candidates(
+            config=config,
+            screening_result=screening_result,
             start_date=start_date,
             end_date=end_date,
         )
@@ -199,6 +243,7 @@ class DailyJobRunner:
             pipeline_result=pipeline_result,
             report_path=report_path,
             screening_result=screening_result,
+            kis_candidate_result=kis_candidate_result,
             paper_result=paper_result,
             telegram_result=telegram_result,
             experiment_log_path=experiment_log_path,
@@ -271,6 +316,56 @@ class DailyJobRunner:
                 slippage_bps=config.paper_slippage_bps,
                 skip_missing=config.paper_skip_missing,
             ),
+        )
+
+    def _run_kis_candidates(
+        self,
+        config: DailyJobConfig,
+        screening_result: DailyJobScreeningResult | None,
+        start_date: str,
+        end_date: str,
+    ) -> DailyJobKISCandidateResult | None:
+        if not config.kis_paper_candidates:
+            return None
+        if screening_result is None:
+            raise ValueError("KIS paper candidates require screening to be enabled.")
+        if self.kis_candidate_source is None:
+            raise ValueError("KIS paper candidate source is not configured.")
+
+        start_compact = start_date.replace("-", "")
+        end_compact = end_date.replace("-", "")
+        report_name = f"kis_paper_candidates_{config.universe}_{start_compact}_{end_compact}"
+        result_path = kis_paper_candidate_file_path(self.project_root, report_name)
+        csv_path = kis_paper_candidate_csv_path(self.project_root, report_name)
+        report_path = kis_paper_candidate_report_file_path(self.project_root, report_name)
+
+        result_frame = self.kis_candidate_source.build_candidates(
+            screening_result.frame,
+            max_candidates=config.kis_candidate_max_candidates,
+            cash_buffer_pct=config.kis_candidate_cash_buffer_pct,
+        )
+        write_parquet(result_frame, result_path)
+        write_csv(result_frame, csv_path)
+        write_text(format_kis_paper_candidate_report(result_frame), report_path)
+
+        review_count = (
+            int(result_frame["candidate_action"].isin(["review_buy", "review_add"]).sum())
+            if not result_frame.empty
+            else 0
+        )
+        manual_price_count = (
+            int((result_frame["candidate_action"] == "manual_price_required").sum())
+            if not result_frame.empty
+            else 0
+        )
+        return DailyJobKISCandidateResult(
+            result_path=result_path,
+            csv_path=csv_path,
+            report_path=report_path,
+            frame=result_frame,
+            candidate_count=len(result_frame),
+            review_count=review_count,
+            manual_price_count=manual_price_count,
         )
 
     def _notify(
@@ -362,6 +457,7 @@ def _build_result(
     pipeline_result: UniversePipelineResult,
     report_path: Path,
     screening_result: DailyJobScreeningResult | None,
+    kis_candidate_result: DailyJobKISCandidateResult | None,
     paper_result: PaperPortfolioResult | None,
     telegram_result: TelegramSendResult,
     experiment_log_path: Path,
@@ -389,6 +485,20 @@ def _build_result(
         screening_report_path=screening_result.report_path if screening_result else None,
         screening_checked_count=screening_result.checked_count if screening_result else 0,
         screening_passed_count=screening_result.passed_count if screening_result else 0,
+        kis_candidate_result_path=(
+            kis_candidate_result.result_path if kis_candidate_result else None
+        ),
+        kis_candidate_csv_path=kis_candidate_result.csv_path if kis_candidate_result else None,
+        kis_candidate_report_path=(
+            kis_candidate_result.report_path if kis_candidate_result else None
+        ),
+        kis_candidate_count=kis_candidate_result.candidate_count if kis_candidate_result else 0,
+        kis_candidate_review_count=(
+            kis_candidate_result.review_count if kis_candidate_result else 0
+        ),
+        kis_candidate_manual_price_count=(
+            kis_candidate_result.manual_price_count if kis_candidate_result else 0
+        ),
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,
         telegram_message=telegram_result.message,

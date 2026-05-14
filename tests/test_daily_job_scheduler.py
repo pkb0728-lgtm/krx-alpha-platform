@@ -113,6 +113,40 @@ class FakeTelegramSender:
         )
 
 
+class FakeKISPaperCandidateSource:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def build_candidates(
+        self,
+        screening_frame: Any,
+        *,
+        max_candidates: int,
+        cash_buffer_pct: float,
+    ) -> pd.DataFrame:
+        self.calls.append(
+            {
+                "screening_rows": len(screening_frame),
+                "max_candidates": max_candidates,
+                "cash_buffer_pct": cash_buffer_pct,
+            }
+        )
+        return pd.DataFrame(
+            {
+                "ticker": ["005380", "005930"],
+                "candidate_action": ["review_buy", "skip"],
+                "candidate_type": ["new_buy_candidate", "screen_blocked_or_rejected"],
+                "estimated_quantity": [3, 0],
+                "estimated_amount": [300_000.0, 0.0],
+                "target_position_pct": [10.0, 0.0],
+                "confidence_score": [72.0, 58.0],
+                "screen_score": [75.0, 50.0],
+                "reason": ["passed_buy_candidate_signal", "confidence_below_threshold"],
+                "orders_sent": [0, 0],
+            }
+        )
+
+
 def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: Path) -> None:
     pipeline = FakeUniversePipeline(tmp_path)
     sender = FakeTelegramSender()
@@ -161,6 +195,46 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert "Data drift: 1/1 features flagged" in result.telegram_message
     assert "Operations health" in result.telegram_message
     assert sender.messages == [result.telegram_message]
+
+
+def test_daily_job_runner_can_create_kis_paper_candidate_outputs(tmp_path: Path) -> None:
+    pipeline = FakeUniversePipeline(tmp_path)
+    candidate_source = FakeKISPaperCandidateSource()
+    runner = DailyJobRunner(
+        project_root=tmp_path,
+        universe_pipeline=pipeline,  # type: ignore[arg-type]
+        telegram_sender=FakeTelegramSender(),
+        kis_candidate_source=candidate_source,
+    )
+
+    result = runner.run(
+        DailyJobConfig(
+            universe="demo",
+            start_date="2024-01-01",
+            end_date="2024-01-31",
+            telegram_dry_run=True,
+            kis_paper_candidates=True,
+            kis_candidate_max_candidates=5,
+            kis_candidate_cash_buffer_pct=7.5,
+        )
+    )
+
+    assert candidate_source.calls == [
+        {
+            "screening_rows": 2,
+            "max_candidates": 5,
+            "cash_buffer_pct": 7.5,
+        }
+    ]
+    assert result.kis_candidate_result_path is not None
+    assert result.kis_candidate_result_path.exists()
+    assert result.kis_candidate_csv_path is not None
+    assert result.kis_candidate_csv_path.exists()
+    assert result.kis_candidate_report_path is not None
+    assert result.kis_candidate_report_path.exists()
+    assert result.kis_candidate_count == 2
+    assert result.kis_candidate_review_count == 1
+    assert result.kis_candidate_manual_price_count == 0
 
 
 def _write_paper_inputs(

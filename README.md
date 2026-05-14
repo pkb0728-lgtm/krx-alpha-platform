@@ -338,6 +338,9 @@ the auto-screener shortlist, runs paper portfolio simulation, refreshes
 operations health, and builds the Telegram brief. Use `--no-screening` or
 `--no-paper-trading` if you want to skip either optional step. With Telegram
 credentials configured, use `--telegram-send` for real delivery.
+Add `--kis-paper-candidates` when you want the same run to query the KIS
+mock-investment balance and write paper review candidates without sending
+orders.
 When a collection API is temporarily unavailable, the universe step can reuse
 same-period cached final signals and records the original failure in the
 summary `error` column.
@@ -383,7 +386,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 134 passed
+pytest: 135 passed
 ruff: all checks passed
 mypy: no issues found
 ```

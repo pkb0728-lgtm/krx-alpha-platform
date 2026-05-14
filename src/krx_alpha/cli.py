@@ -180,6 +180,36 @@ app = typer.Typer(help="KRX Alpha Platform command line interface")
 console = Console()
 
 
+class _CLIKISPaperCandidateSource:
+    def __init__(
+        self,
+        project_root: Path,
+        credentials: KISPaperCredentials,
+        timeout_seconds: float,
+    ) -> None:
+        self.project_root = project_root
+        self.credentials = credentials
+        self.timeout_seconds = timeout_seconds
+
+    def build_candidates(
+        self,
+        screening_frame: Any,
+        *,
+        max_candidates: int,
+        cash_buffer_pct: float,
+    ) -> Any:
+        enriched_frame = enrich_screening_reference_prices(screening_frame, self.project_root)
+        client = KISPaperClient(self.credentials, timeout_seconds=self.timeout_seconds)
+        token = client.issue_access_token()
+        balance = client.inquire_balance(token)
+        return KISPaperCandidateBuilder(
+            KISPaperCandidateConfig(
+                max_candidates=max_candidates,
+                cash_buffer_pct=cash_buffer_pct,
+            )
+        ).build(enriched_frame, balance)
+
+
 def _load_financial_feature_frame(
     ticker: str,
     corp_code: str | None,
@@ -2899,9 +2929,49 @@ def run_daily_job(
         float,
         typer.Option("--screen-min-score", help="Minimum composite screen score."),
     ] = 60.0,
+    kis_paper_candidates: Annotated[
+        bool,
+        typer.Option(
+            "--kis-paper-candidates/--no-kis-paper-candidates",
+            help="Build KIS mock-account review candidates after screening. No orders are sent.",
+        ),
+    ] = False,
+    kis_candidate_max_candidates: Annotated[
+        int,
+        typer.Option(
+            "--kis-candidate-max-candidates",
+            help="Maximum KIS paper candidate rows to create.",
+        ),
+    ] = 10,
+    kis_candidate_cash_buffer_pct: Annotated[
+        float,
+        typer.Option(
+            "--kis-candidate-cash-buffer-pct",
+            help="Cash percentage reserved from KIS paper candidate sizing.",
+        ),
+    ] = 5.0,
+    kis_timeout_seconds: Annotated[
+        float,
+        typer.Option(
+            "--kis-timeout-seconds",
+            help="HTTP timeout for KIS paper candidate balance inquiry.",
+        ),
+    ] = 10.0,
 ) -> None:
     """Run the after-market daily job: universe, screener, paper portfolio, and Telegram."""
     configure_logger(settings.log_level)
+    kis_candidate_source = None
+    if kis_paper_candidates:
+        try:
+            kis_credentials = KISPaperCredentials.from_settings(settings)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        kis_candidate_source = _CLIKISPaperCandidateSource(
+            project_root=settings.project_root,
+            credentials=kis_credentials,
+            timeout_seconds=kis_timeout_seconds,
+        )
+
     runner = DailyJobRunner(
         project_root=settings.project_root,
         telegram_sender=TelegramNotifier(
@@ -2911,6 +2981,7 @@ def run_daily_job(
             max_retries=settings.telegram_max_retries,
             retry_sleep_seconds=settings.telegram_retry_sleep_seconds,
         ),
+        kis_candidate_source=kis_candidate_source,
     )
     try:
         result = runner.run(
@@ -2928,6 +2999,9 @@ def run_daily_job(
                 screening=screening,
                 screening_min_confidence=screening_min_confidence,
                 screening_min_score=screening_min_score,
+                kis_paper_candidates=kis_paper_candidates,
+                kis_candidate_max_candidates=kis_candidate_max_candidates,
+                kis_candidate_cash_buffer_pct=kis_candidate_cash_buffer_pct,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -2954,6 +3028,16 @@ def run_daily_job(
         console.print(
             f"Screening passed: {result.screening_passed_count}/{result.screening_checked_count}"
         )
+    if result.kis_candidate_result_path:
+        console.print(f"KIS candidates: {result.kis_candidate_result_path}")
+        console.print(f"KIS candidates CSV: {result.kis_candidate_csv_path}")
+        console.print(f"KIS candidates report: {result.kis_candidate_report_path}")
+        console.print(
+            "KIS review candidates: "
+            f"{result.kis_candidate_review_count}/{result.kis_candidate_count}"
+        )
+        console.print(f"KIS manual price checks: {result.kis_candidate_manual_price_count}")
+        console.print("KIS mode: paper candidate review only. No order was sent.")
     console.print(f"Operations health: {result.operations_health_path}")
     console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")
