@@ -48,6 +48,9 @@ def test_operations_health_checker_reports_artifact_statuses(tmp_path: Path) -> 
     assert statuses["Universe summary"] == HEALTH_STATUS_OK
     assert statuses["Optional ML metrics"] == HEALTH_STATUS_WARN
     assert statuses["OpenDART"] == HEALTH_STATUS_OK
+    actions = dict(zip(result["check_name"], result["action"], strict=True))
+    assert actions["Universe summary"] == ""
+    assert actions["OpenDART"] == "ready"
 
     summary = summarize_operations_health(result)
     assert summary == {"total": 3, "ok": 2, "warnings": 1, "problems": 0}
@@ -55,6 +58,7 @@ def test_operations_health_checker_reports_artifact_statuses(tmp_path: Path) -> 
     report = format_operations_health_report(result)
     assert "Operations Health Report" in report
     assert "Optional ML metrics" in report
+    assert "action: ready" in report
 
 
 def test_operations_health_checker_flags_empty_required_artifact(tmp_path: Path) -> None:

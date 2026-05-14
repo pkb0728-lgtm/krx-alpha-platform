@@ -397,6 +397,7 @@ def check_operations(
     table.add_column("Rows", justify="right")
     table.add_column("Age Hours", justify="right")
     table.add_column("Detail")
+    table.add_column("Action")
     for _, row in result_frame.sort_values(["severity", "category", "check_name"]).iterrows():
         table.add_row(
             str(row["check_name"]),
@@ -405,6 +406,7 @@ def check_operations(
             _format_optional_table_value(row["row_count"], decimals=0),
             _format_optional_table_value(row["age_hours"], decimals=2),
             str(row["detail"]),
+            str(row.get("action", "")),
         )
     console.print(table)
     console.print(

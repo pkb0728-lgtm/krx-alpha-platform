@@ -28,6 +28,7 @@ OPERATIONS_HEALTH_COLUMNS = [
     "modified_at",
     "age_hours",
     "detail",
+    "action",
 ]
 
 
@@ -228,6 +229,9 @@ def format_operations_health_report(result_frame: Any) -> str:
         "| --- | --- | --- | ---: | ---: | --- |",
     ]
     for _, row in result_frame.iterrows():
+        detail = str(row["detail"])
+        action = str(row.get("action", "")).strip()
+        detail_with_action = f"{detail}; action: {action}" if action else detail
         rows.append(
             "| "
             f"{row['check_name']} | "
@@ -235,7 +239,7 @@ def format_operations_health_report(result_frame: Any) -> str:
             f"{row['status']} | "
             f"{_format_optional_int(row['row_count'])} | "
             f"{_format_optional_float(row['age_hours'])} | "
-            f"{row['detail']} |"
+            f"{detail_with_action} |"
         )
 
     rows.extend(
@@ -289,6 +293,7 @@ def _api_result_to_row(result: ApiCheckResult) -> dict[str, object]:
         modified_at=None,
         age_hours=None,
         detail=result.detail,
+        action=result.action,
     )
 
 
@@ -302,6 +307,7 @@ def _health_row(
     modified_at: str | None,
     age_hours: float | None,
     detail: str,
+    action: str = "",
 ) -> dict[str, object]:
     return {
         "check_name": check_name,
@@ -313,6 +319,7 @@ def _health_row(
         "modified_at": modified_at,
         "age_hours": age_hours,
         "detail": detail,
+        "action": action,
     }
 
 

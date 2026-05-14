@@ -691,6 +691,7 @@ def _operations_health_display_columns(frame: Any) -> list[str]:
         "row_count",
         "age_hours",
         "detail",
+        "action",
         "path",
     ]
     return [column for column in preferred_columns if column in frame.columns]

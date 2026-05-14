@@ -101,6 +101,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "row_count": [3, None],
             "age_hours": [1.0, None],
             "detail": ["artifact is present and readable", "optional artifact not found"],
+            "action": ["", "generate ML baseline when model monitoring is needed"],
         }
     )
 
@@ -138,6 +139,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "Operations health" in message
     assert "OK 1/2 | warnings 1 | problems 0" in message
     assert "Optional ML metrics: WARN" in message
+    assert "generate ML baseline" in message
     assert "Screening aid only" in message
 
 

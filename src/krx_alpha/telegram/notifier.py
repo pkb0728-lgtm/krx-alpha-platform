@@ -395,6 +395,9 @@ def _format_operations_health_lines(result: Any | None) -> list[str]:
         check_name = _row_value(row, "check_name")
         status = _row_value(row, "status")
         detail = _truncate_line(str(_row_value(row, "detail")), limit=80)
+        action = _row_value(row, "action")
+        if not _is_missing(action) and str(action).strip():
+            detail = f"{detail}; action: {_truncate_line(str(action), limit=80)}"
         lines.append(f"- {check_name}: {status} ({detail})")
     return lines
 
