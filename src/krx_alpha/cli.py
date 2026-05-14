@@ -1927,6 +1927,13 @@ def screen_universe(
             help="Comma-separated review priorities to print, e.g. high,medium.",
         ),
     ] = None,
+    status_reason: Annotated[
+        str | None,
+        typer.Option(
+            "--status-reason",
+            help="Comma-separated screen status reasons to print.",
+        ),
+    ] = None,
 ) -> None:
     """Create a human-review shortlist from the latest universe signal artifacts."""
     configure_logger(settings.log_level)
@@ -1984,6 +1991,11 @@ def screen_universe(
         if priority_filter:
             table_frame = table_frame[
                 table_frame["review_priority"].astype(str).isin(priority_filter)
+            ]
+        status_filter = _parse_console_filter_values(status_reason)
+        if status_filter:
+            table_frame = table_frame[
+                table_frame["screen_status_reason"].astype(str).isin(status_filter)
             ]
         if table_frame.empty:
             console.print("[yellow]No rows matched the terminal display filter.[/yellow]")
