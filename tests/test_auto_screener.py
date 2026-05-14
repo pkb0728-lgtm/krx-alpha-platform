@@ -34,6 +34,7 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
     assert len(result) == 1
     assert bool(result.loc[0, "passed"]) is True
     assert result.loc[0, "review_priority"] == "high"
+    assert result.loc[0, "risk_flags"] == ""
     assert result.loc[0, "screen_score"] >= 65.0
     assert "buy_candidate_signal" in result.loc[0, "reasons"]
     assert "trading_value_surge" in result.loc[0, "reasons"]
@@ -44,6 +45,7 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
     assert "Auto Screener Report" in report
     assert "Candidate Review Cards" in report
     assert "Priority: high" in report
+    assert "Risk flags: none" in report
     assert "Evidence:" in report
     assert "Caution:" in report
     assert "005930" in report
@@ -65,6 +67,7 @@ def test_auto_screener_flags_missing_signal_file(tmp_path: Path) -> None:
 
     assert bool(result.loc[0, "passed"]) is False
     assert result.loc[0, "review_priority"] == "blocked"
+    assert result.loc[0, "risk_flags"] == "signal_file_missing_or_empty"
     assert result.loc[0, "screen_score"] == 0.0
     assert result.loc[0, "reasons"] == "signal_file_missing_or_empty"
     assert result.loc[0, "review_checklist"] == "rerun_pipeline, confirm_signal_artifact"

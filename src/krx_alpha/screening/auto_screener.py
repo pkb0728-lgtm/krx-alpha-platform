@@ -17,6 +17,7 @@ SCREENING_COLUMNS = [
     "confidence_score",
     "market_regime",
     "risk_blocked",
+    "risk_flags",
     "suggested_position_pct",
     "trading_value",
     "trading_value_change_5d",
@@ -128,6 +129,7 @@ class AutoScreener:
             "confidence_score": confidence_score,
             "market_regime": str(signal_row.get("market_regime", "unknown")),
             "risk_blocked": risk_blocked,
+            "risk_flags": str(signal_row.get("risk_flags", "")),
             "suggested_position_pct": float(signal_row["suggested_position_pct"]),
             "trading_value": _feature_value(feature_row, "trading_value"),
             "trading_value_change_5d": _feature_value(feature_row, "trading_value_change_5d"),
@@ -162,6 +164,7 @@ class AutoScreener:
             "confidence_score": _optional_float(summary_row.get("latest_confidence_score")),
             "market_regime": str(summary_row.get("latest_market_regime", "unknown")),
             "risk_blocked": True,
+            "risk_flags": "signal_file_missing_or_empty",
             "suggested_position_pct": 0.0,
             "trading_value": np.nan,
             "trading_value_change_5d": np.nan,
@@ -204,12 +207,12 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
             "",
             "## Candidates",
             "",
-            "| Ticker | Priority | Action | Score | Confidence | Position | Reasons |",
-            "| --- | --- | --- | ---: | ---: | ---: | --- |",
+            "| Ticker | Priority | Action | Score | Confidence | Position | Risk | Reasons |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- | --- |",
         ]
     )
     if passed.empty:
-        lines.append("| N/A | N/A | N/A | 0.00 | 0.00 | 0.00% | no_candidates_passed |")
+        lines.append("| N/A | N/A | N/A | 0.00 | 0.00 | 0.00% | N/A | no_candidates_passed |")
     else:
         for _, row in passed.head(20).iterrows():
             lines.append(
@@ -220,6 +223,7 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
                 f"{float(row['screen_score']):.2f} | "
                 f"{float(row['confidence_score']):.2f} | "
                 f"{float(row['suggested_position_pct']):.2f}% | "
+                f"{_format_risk_flags(row['risk_flags'])} | "
                 f"{row['reasons']} |"
             )
 
@@ -245,6 +249,7 @@ def _candidate_card_lines(rank: int, row: pd.Series) -> list[str]:
         f"- Screen score: {float(row['screen_score']):.2f}",
         f"- Confidence: {float(row['confidence_score']):.2f}",
         f"- Suggested position: {float(row['suggested_position_pct']):.2f}%",
+        f"- Risk flags: {_format_risk_flags(row['risk_flags'])}",
         f"- Evidence: {row['evidence_summary']}",
         f"- Caution: {row['caution_summary']}",
         f"- Review checklist: {row['review_checklist']}",
@@ -464,3 +469,9 @@ def _format_large_number(value: float) -> str:
     if abs_value >= 1_000_000:
         return f"{value / 1_000_000:.2f}M"
     return f"{value:.2f}"
+
+
+def _format_risk_flags(value: object) -> str:
+    if value is None or pd.isna(value) or str(value).strip() == "":
+        return "none"
+    return str(value)

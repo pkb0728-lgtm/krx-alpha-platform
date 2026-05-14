@@ -155,6 +155,7 @@ def main() -> None:
                     ):
                         st.write(f"Evidence: {row.get('evidence_summary', 'N/A')}")
                         st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
+                        st.write(f"Risk flags: {row.get('risk_flags', 'none') or 'none'}")
                         st.write(f"Checklist: {row.get('review_checklist', 'N/A')}")
             st.dataframe(
                 screening_frame[_screening_display_columns(screening_frame)],
@@ -663,6 +664,7 @@ def _screening_display_columns(frame: Any) -> list[str]:
         "final_action",
         "confidence_score",
         "market_regime",
+        "risk_flags",
         "suggested_position_pct",
         "trading_value",
         "trading_value_change_5d",

@@ -10,6 +10,7 @@ REQUIRED_SCREENING_COLUMNS = {
     "confidence_score",
     "market_regime",
     "risk_blocked",
+    "risk_flags",
     "suggested_position_pct",
     "trading_value",
     "trading_value_change_5d",
