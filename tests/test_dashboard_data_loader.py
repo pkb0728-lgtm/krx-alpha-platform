@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from krx_alpha.dashboard.app import _koreanize_columns
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     filter_screening_result,
@@ -577,6 +578,11 @@ def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) 
     assert predictions.loc[0, "probability_positive_forward_return"] == 0.78
     assert predictions.loc[0, "stock_name"] == "현대차"
     assert predictions.loc[0, "split_ko"] == "검증"
+
+    display_metrics = _koreanize_columns(metrics)
+    assert "데이터 구분" in display_metrics.columns
+    assert "split" not in display_metrics.columns
+    assert display_metrics.columns.is_unique
 
 
 def test_dashboard_data_loader_reads_latest_news_sentiment(tmp_path: Path) -> None:

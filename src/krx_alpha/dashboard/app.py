@@ -1021,6 +1021,20 @@ KOREAN_COLUMN_LABELS = {
     "path": "경로",
 }
 
+LOCALIZED_COLUMN_PAIRS = (
+    ("status", "status_ko"),
+    ("latest_action", "latest_action_ko"),
+    ("final_action", "final_action_ko"),
+    ("signal_action", "signal_action_ko"),
+    ("candidate_action", "candidate_action_ko"),
+    ("screen_status_reason", "screen_status_reason_ko"),
+    ("review_priority", "review_priority_ko"),
+    ("market_regime", "market_regime_ko"),
+    ("latest_market_regime", "latest_market_regime_ko"),
+    ("side", "side_ko"),
+    ("split", "split_ko"),
+)
+
 
 def _stock_label(row: Any) -> str:
     if row is None:
@@ -1048,7 +1062,15 @@ def _reverse_values(values: list[str], mapping_name: str) -> list[str]:
 
 
 def _koreanize_columns(frame: Any) -> Any:
-    return frame.rename(columns=KOREAN_COLUMN_LABELS)
+    display_frame = frame.copy()
+    drop_columns = [
+        raw_column
+        for raw_column, localized_column in LOCALIZED_COLUMN_PAIRS
+        if raw_column in display_frame.columns and localized_column in display_frame.columns
+    ]
+    if drop_columns:
+        display_frame = display_frame.drop(columns=drop_columns)
+    return display_frame.rename(columns=KOREAN_COLUMN_LABELS)
 
 
 def _drift_display_columns(frame: Any) -> list[str]:
