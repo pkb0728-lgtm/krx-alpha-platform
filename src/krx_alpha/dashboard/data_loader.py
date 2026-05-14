@@ -75,6 +75,15 @@ def find_latest_operations_health(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_api_health(project_root: Path) -> Path | None:
+    health_dir = project_root / "data" / "signals" / "api_health"
+    if not health_dir.exists():
+        return None
+
+    files = sorted(health_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def find_latest_screening_result(project_root: Path) -> Path | None:
     screening_dir = project_root / "data" / "signals" / "screening_daily"
     if not screening_dir.exists():
@@ -250,6 +259,18 @@ def load_operations_health(path: Path) -> Any:
         return frame
 
     return frame.sort_values(["severity", "category", "check_name"]).reset_index(drop=True)
+
+
+def load_api_health(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "ok" not in frame.columns:
+        return frame
+
+    result = frame.copy()
+    result["_ok_order"] = result["ok"].map({False: 0, True: 1}).fillna(2)
+    return (
+        result.sort_values(["_ok_order", "api"]).drop(columns=["_ok_order"]).reset_index(drop=True)
+    )
 
 
 def load_screening_result(path: Path) -> Any:

@@ -292,9 +292,9 @@ auto screener result, news sentiment feature, latest macro feature, backtest
 metrics, backtest trades, paper trading summary, paper trade ledger, paper
 portfolio history, walk-forward summary, fold-level validation results, ML
 probability baseline metrics and predictions, latest drift monitoring result,
-latest operations health result, and selected Markdown report. The Auto
-Screener section supports `Passed only`, `Priority`, and `Status` filters for
-faster review.
+latest API health result, latest operations health result, and selected Markdown
+report. The Auto Screener section supports `Passed only`, `Priority`, and
+`Status` filters for faster review.
 
 ## 10. Preview Or Send Telegram Brief
 

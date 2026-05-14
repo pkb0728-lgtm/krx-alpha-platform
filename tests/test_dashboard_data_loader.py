@@ -5,6 +5,7 @@ import pandas as pd
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     filter_screening_result,
+    find_latest_api_health,
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_macro_features,
@@ -16,6 +17,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
+    load_api_health,
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
@@ -391,6 +393,31 @@ def test_dashboard_data_loader_reads_latest_operations_health(tmp_path: Path) ->
     frame = load_operations_health(health_path)
     assert frame.loc[0, "check_name"] == "Universe summary"
     assert frame.loc[1, "status"] == "WARN"
+
+
+def test_dashboard_data_loader_reads_latest_api_health(tmp_path: Path) -> None:
+    health_dir = tmp_path / "data" / "signals" / "api_health"
+    health_dir.mkdir(parents=True)
+    health_path = health_dir / "api_health_latest.parquet"
+
+    pd.DataFrame(
+        {
+            "checked_at": ["2026-05-14T00:00:00+00:00"] * 2,
+            "api": ["OpenDART", "Telegram"],
+            "status": ["OK", "MISSING"],
+            "ok": [True, False],
+            "detail": ["company endpoint returned status 000", "TELEGRAM_BOT_TOKEN"],
+            "action": ["ready", "set TELEGRAM_BOT_TOKEN in .env if this feature is needed"],
+        }
+    ).to_parquet(health_path, index=False)
+
+    latest_path = find_latest_api_health(tmp_path)
+    assert latest_path == health_path
+
+    frame = load_api_health(health_path)
+    assert frame.loc[0, "api"] == "Telegram"
+    assert frame.loc[0, "status"] == "MISSING"
+    assert frame.loc[1, "api"] == "OpenDART"
 
 
 def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> None:

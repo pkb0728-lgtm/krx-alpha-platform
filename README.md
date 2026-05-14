@@ -294,8 +294,8 @@ streamlit run src/krx_alpha/dashboard/app.py
 
 The dashboard includes the latest auto screener shortlist, candidate review cards,
 priority/status filters, paper portfolio snapshot, paper portfolio history view
-built from saved `paper_portfolio_summary` files, and the latest operations
-health result when available.
+built from saved `paper_portfolio_summary` files, latest API health result, and
+latest operations health result when available.
 
 Open:
 

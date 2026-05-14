@@ -8,6 +8,7 @@ import streamlit as st
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     filter_screening_result,
+    find_latest_api_health,
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_macro_features,
@@ -19,6 +20,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
+    load_api_health,
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
@@ -604,6 +606,31 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("API Health")
+    api_health_path = find_latest_api_health(PROJECT_ROOT)
+    if api_health_path is None:
+        st.info("No API health result found.")
+    else:
+        api_health_frame = load_api_health(api_health_path)
+        if api_health_frame.empty:
+            st.info("API health result is empty.")
+        else:
+            status_values = api_health_frame["status"].astype(str)
+            api_cols = st.columns(5)
+            api_cols[0].metric("Latest file", api_health_path.stem)
+            api_cols[1].metric("Checks", len(api_health_frame))
+            api_cols[2].metric("OK", int((status_values == "OK").sum()))
+            api_cols[3].metric("Missing", int((status_values == "MISSING").sum()))
+            api_cols[4].metric("Failed", int((status_values == "FAILED").sum()))
+            st.caption(f"Latest API health file: {api_health_path.name}")
+            st.dataframe(
+                api_health_frame[_api_health_display_columns(api_health_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
+
+    st.divider()
+
     st.subheader("Operations Health")
     health_path = find_latest_operations_health(PROJECT_ROOT)
     if health_path is None:
@@ -693,6 +720,17 @@ def _operations_health_display_columns(frame: Any) -> list[str]:
         "detail",
         "action",
         "path",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _api_health_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "checked_at",
+        "api",
+        "status",
+        "detail",
+        "action",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 
