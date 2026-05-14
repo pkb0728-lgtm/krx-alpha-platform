@@ -66,6 +66,10 @@ python main.py send-telegram-daily --dry-run
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
 ```
 
+This command also runs paper portfolio simulation by default. The paper output
+is virtual only and is included in the Telegram preview so reviewers can see
+the operational loop without any broker order being sent.
+
 8. Show experiment tracking:
 
 ```powershell

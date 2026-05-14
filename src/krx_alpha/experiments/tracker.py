@@ -177,18 +177,26 @@ def build_daily_job_experiment_record(
     report_path: Path,
     telegram_sent: bool,
     telegram_dry_run: bool,
+    paper_trade_enabled: bool = False,
+    paper_trade_count: int = 0,
+    paper_cumulative_return: float = 0.0,
+    paper_summary_path: Path | None = None,
     created_at: datetime | None = None,
     run_id: str | None = None,
 ) -> ExperimentRecord:
     params = {
         "telegram_sent": telegram_sent,
         "telegram_dry_run": telegram_dry_run,
+        "paper_trade_enabled": paper_trade_enabled,
+        "paper_summary_path": str(paper_summary_path) if paper_summary_path else "",
     }
     metrics = {
         "total_count": total_count,
         "success_count": success_count,
         "failed_count": failed_count,
         "success_rate": success_count / total_count if total_count else 0.0,
+        "paper_trade_count": paper_trade_count,
+        "paper_cumulative_return": paper_cumulative_return,
     }
     return _build_record(
         experiment_name="daily_job",

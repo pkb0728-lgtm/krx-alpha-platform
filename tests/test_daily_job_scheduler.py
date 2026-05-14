@@ -7,6 +7,8 @@ import pytest
 
 from krx_alpha.database.storage import (
     drift_result_file_path,
+    final_signal_file_path,
+    processed_price_file_path,
     universe_summary_csv_path,
     universe_summary_file_path,
     write_csv,
@@ -69,6 +71,14 @@ class FakeUniversePipeline:
             ),
             drift_result_file_path(self.project_root, "latest_drift"),
         )
+        for ticker in ["005930", "005380"]:
+            _write_paper_inputs(
+                self.project_root,
+                ticker=ticker,
+                start_date=start_compact,
+                end_date=end_compact,
+                buy_candidate=ticker == "005380",
+            )
         return UniversePipelineResult(
             summary_path=summary_path,
             summary_csv_path=summary_csv_path,
@@ -116,11 +126,86 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.summary_csv_path.exists()
     assert result.report_path.exists()
     assert result.experiment_log_path.exists()
+    assert result.paper_summary_path is not None
+    assert result.paper_summary_path.exists()
+    assert result.paper_report_path is not None
+    assert result.paper_report_path.exists()
+    assert result.paper_trade_count == 2
+    assert result.paper_cumulative_return > 0
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 | buy_candidate" in result.telegram_message
+    assert "Paper portfolio" in result.telegram_message
+    assert "trades 2" in result.telegram_message
     assert "Data drift: 1/1 features flagged" in result.telegram_message
     assert sender.messages == [result.telegram_message]
+
+
+def _write_paper_inputs(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    buy_candidate: bool,
+) -> None:
+    price_path = processed_price_file_path(project_root, ticker, start_date, end_date)
+    signal_path = final_signal_file_path(project_root, ticker, start_date, end_date)
+    write_parquet(_processed_price_frame(ticker), price_path)
+    write_parquet(_final_signal_frame(ticker, buy_candidate), signal_path)
+
+
+def _processed_price_frame(ticker: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "date": pd.date_range("2024-01-02", periods=8, freq="D").date,
+            "as_of_date": pd.date_range("2024-01-02", periods=8, freq="D").date,
+            "ticker": [ticker] * 8,
+            "open": [100, 101, 102, 103, 104, 105, 106, 107],
+            "high": [101, 102, 103, 104, 105, 106, 107, 108],
+            "low": [99, 100, 101, 102, 103, 104, 105, 106],
+            "close": [100, 102, 104, 106, 108, 110, 112, 114],
+            "volume": [1000] * 8,
+            "trading_value": [100000] * 8,
+            "trading_value_is_estimated": [False] * 8,
+            "return_1d": [float("nan")] + [0.01] * 7,
+            "log_return_1d": [float("nan")] + [0.00995] * 7,
+            "range_pct": [0.02] * 8,
+            "change_rate": [0.0] * 8,
+            "source": ["test"] * 8,
+            "collected_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 8,
+            "processed_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 8,
+        }
+    )
+
+
+def _final_signal_frame(ticker: str, buy_candidate: bool) -> pd.DataFrame:
+    actions = ["buy_candidate", "avoid"] if buy_candidate else ["watch", "watch"]
+    return pd.DataFrame(
+        {
+            "date": ["2024-01-03", "2024-01-06"],
+            "as_of_date": ["2024-01-03", "2024-01-06"],
+            "ticker": [ticker, ticker],
+            "source_signal_label": actions,
+            "financial_score": [50.0, 50.0],
+            "financial_reason": ["neutral", "neutral"],
+            "event_score": [50.0, 50.0],
+            "event_risk_flag": [False, False],
+            "event_reason": ["neutral", "neutral"],
+            "flow_score": [50.0, 50.0],
+            "flow_reason": ["neutral", "neutral"],
+            "news_score": [50.0, 50.0],
+            "news_reason": ["neutral", "neutral"],
+            "macro_score": [50.0, 50.0],
+            "macro_reason": ["neutral", "neutral"],
+            "final_action": actions,
+            "confidence_score": [75.0, 35.0],
+            "risk_blocked": [False, False],
+            "risk_flags": ["", ""],
+            "suggested_position_pct": [10.0, 0.0],
+            "signal_reason": ["paper buy", "paper exit"],
+            "generated_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 2,
+        }
+    )
 
 
 def test_daily_job_date_range_defaults_to_today_with_lookback() -> None:

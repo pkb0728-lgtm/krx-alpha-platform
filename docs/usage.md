@@ -310,13 +310,20 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> build Telegram brief
+run universe pipeline -> generate universe report -> run paper portfolio -> build Telegram brief
 ```
 
 Run it safely in preview mode:
 
 ```powershell
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+```
+
+Paper portfolio simulation is enabled by default and never sends real orders.
+It can be disabled for a faster operations check:
+
+```powershell
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --no-paper-trading --telegram-dry-run
 ```
 
 When `--start` is omitted, the job uses `--lookback-days` and today's date:

@@ -30,6 +30,7 @@ from krx_alpha.configs.settings import settings
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_paper_portfolio_summary,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
 )
@@ -58,10 +59,6 @@ from krx_alpha.database.storage import (
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     news_sentiment_feature_file_path,
-    paper_portfolio_position_file_path,
-    paper_portfolio_report_file_path,
-    paper_portfolio_summary_file_path,
-    paper_portfolio_trade_ledger_file_path,
     paper_position_file_path,
     paper_summary_file_path,
     paper_trade_ledger_file_path,
@@ -116,6 +113,7 @@ from krx_alpha.monitoring.drift import (
     format_data_drift_report,
     format_performance_drift_report,
 )
+from krx_alpha.paper_trading.portfolio import PaperPortfolioConfig, run_paper_portfolio
 from krx_alpha.paper_trading.simulator import PaperTradingConfig, PaperTradingSimulator
 from krx_alpha.pipelines.daily_pipeline import DailyPipeline
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline
@@ -1784,30 +1782,6 @@ def _parse_tickers(tickers: str) -> list[str]:
     return [ticker.strip().zfill(6) for ticker in tickers.split(",") if ticker.strip()]
 
 
-def _annotate_paper_portfolio_summary(
-    summary: pd.DataFrame,
-    positions: pd.DataFrame,
-    portfolio_name: str,
-    requested_ticker_count: int,
-    loaded_ticker_count: int,
-    skipped_tickers: list[str],
-) -> pd.DataFrame:
-    result = summary.copy()
-    ending_equity = float(result.loc[0, "ending_equity"])
-    ending_cash = float(result.loc[0, "ending_cash"])
-    ending_position_value = float(result.loc[0, "ending_position_value"])
-    result.insert(0, "universe", portfolio_name)
-    result["requested_ticker_count"] = requested_ticker_count
-    result["loaded_ticker_count"] = loaded_ticker_count
-    result["skipped_tickers"] = ",".join(skipped_tickers)
-    result["active_position_count"] = int(len(positions))
-    result["gross_exposure_pct"] = (
-        ending_position_value / ending_equity * 100 if ending_equity else 0.0
-    )
-    result["cash_pct"] = ending_cash / ending_equity * 100 if ending_equity else 0.0
-    return result
-
-
 @app.command("generate-universe-report")
 def generate_universe_report(
     start: Annotated[
@@ -2005,113 +1979,40 @@ def paper_trade_universe(
         portfolio_name = definition.name
         portfolio_source = f"universe:{definition.name}"
 
-    start_compact = start.replace("-", "")
-    end_compact = end.replace("-", "")
-    price_frames: list[pd.DataFrame] = []
-    signal_frames: list[pd.DataFrame] = []
-    skipped_tickers: list[str] = []
-    missing_details: list[str] = []
-
-    for ticker in ticker_list:
-        request = PriceRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
-        price_path = processed_price_file_path(
+    try:
+        result = run_paper_portfolio(
             settings.project_root,
-            request.ticker,
-            request.pykrx_start_date,
-            request.pykrx_end_date,
+            PaperPortfolioConfig(
+                name=portfolio_name,
+                tickers=tuple(ticker_list),
+                start_date=start,
+                end_date=end,
+                initial_cash=initial_cash,
+                max_position_pct=max_position_pct,
+                transaction_cost_bps=transaction_cost_bps,
+                slippage_bps=slippage_bps,
+                skip_missing=not strict,
+            ),
         )
-        signal_path = final_signal_file_path(
-            settings.project_root,
-            request.ticker,
-            request.pykrx_start_date,
-            request.pykrx_end_date,
-        )
-        missing_reasons = []
-        if not price_path.exists():
-            missing_reasons.append(f"processed price missing: {price_path}")
-        if not signal_path.exists():
-            missing_reasons.append(f"final signal missing: {signal_path}")
-        if missing_reasons:
-            skipped_tickers.append(request.ticker)
-            missing_details.append(f"{request.ticker} ({'; '.join(missing_reasons)})")
-            continue
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
-        price_frames.append(read_parquet(price_path))
-        signal_frames.append(read_parquet(signal_path))
-
-    if missing_details and strict:
-        raise typer.BadParameter("Missing paper portfolio inputs: " + " | ".join(missing_details))
-    if not price_frames or not signal_frames:
-        raise typer.BadParameter(
-            "No ticker inputs were available. "
-            "Run run-universe first, then retry paper-trade-universe."
-        )
-
-    config = PaperTradingConfig(
-        initial_cash=initial_cash,
-        max_position_pct=max_position_pct,
-        transaction_cost_bps=transaction_cost_bps,
-        slippage_bps=slippage_bps,
-    )
-    trades, positions, summary = PaperTradingSimulator(config).run(
-        pd.concat(price_frames, ignore_index=True),
-        pd.concat(signal_frames, ignore_index=True),
-    )
-    summary = _annotate_paper_portfolio_summary(
-        summary=summary,
-        positions=positions,
-        portfolio_name=portfolio_name,
-        requested_ticker_count=len(ticker_list),
-        loaded_ticker_count=len(price_frames),
-        skipped_tickers=skipped_tickers,
-    )
-
-    portfolio_slug = _safe_report_name(portfolio_name)
-    ledger_path = paper_portfolio_trade_ledger_file_path(
-        settings.project_root,
-        portfolio_slug,
-        start_compact,
-        end_compact,
-    )
-    positions_path = paper_portfolio_position_file_path(
-        settings.project_root,
-        portfolio_slug,
-        start_compact,
-        end_compact,
-    )
-    summary_path = paper_portfolio_summary_file_path(
-        settings.project_root,
-        portfolio_slug,
-        start_compact,
-        end_compact,
-    )
-    report_path = paper_portfolio_report_file_path(
-        settings.project_root,
-        portfolio_slug,
-        start_compact,
-        end_compact,
-    )
-    write_parquet(trades, ledger_path)
-    write_parquet(positions, positions_path)
-    write_parquet(summary, summary_path)
-    write_text(PaperTradingReportGenerator().generate(trades, positions, summary), report_path)
-
-    metric = summary.iloc[0]
+    metric = result.summary.iloc[0]
     console.print("[bold green]Paper portfolio simulation completed.[/bold green]")
     console.print("[yellow]Paper mode only. No broker API or real order was called.[/yellow]")
     console.print(f"Source: {portfolio_source}")
-    console.print(f"Requested tickers: {len(ticker_list)}")
-    console.print(f"Loaded tickers: {len(price_frames)}")
-    console.print(f"Skipped tickers: {len(skipped_tickers)}")
+    console.print(f"Requested tickers: {result.requested_ticker_count}")
+    console.print(f"Loaded tickers: {result.loaded_ticker_count}")
+    console.print(f"Skipped tickers: {len(result.skipped_tickers)}")
     console.print(f"Filled trades: {int(metric['trade_count'])}")
     console.print(f"Ending equity: {float(metric['ending_equity']):,.0f}")
     console.print(f"Cumulative return: {float(metric['cumulative_return']) * 100:.2f}%")
     console.print(f"Gross exposure: {float(metric['gross_exposure_pct']):.2f}%")
-    console.print(f"Open positions: {len(positions)}")
-    console.print(f"Ledger: {ledger_path}")
-    console.print(f"Positions: {positions_path}")
-    console.print(f"Summary: {summary_path}")
-    console.print(f"Report: {report_path}")
+    console.print(f"Open positions: {len(result.positions)}")
+    console.print(f"Ledger: {result.ledger_path}")
+    console.print(f"Positions: {result.positions_path}")
+    console.print(f"Summary: {result.summary_path}")
+    console.print(f"Report: {result.report_path}")
 
 
 @app.command("backtest-stock")
@@ -2327,6 +2228,13 @@ def send_telegram_daily(
             help="Include latest walk-forward validation summary when available.",
         ),
     ] = True,
+    include_paper_portfolio: Annotated[
+        bool,
+        typer.Option(
+            "--include-paper-portfolio/--no-paper-portfolio",
+            help="Include latest paper portfolio summary when available.",
+        ),
+    ] = True,
     top_n: Annotated[
         int,
         typer.Option("--top-n", help="Number of ranked candidates to include."),
@@ -2359,9 +2267,14 @@ def send_telegram_daily(
         )
     drift_path = find_latest_drift_result(settings.project_root)
     drift_result = read_parquet(drift_path) if drift_path is not None else None
+    paper_portfolio_summary = None
+    if include_paper_portfolio:
+        paper_path = find_latest_paper_portfolio_summary(settings.project_root)
+        paper_portfolio_summary = read_parquet(paper_path) if paper_path is not None else None
 
     message = build_daily_telegram_message(
         universe_summary=universe_summary,
+        paper_portfolio_summary=paper_portfolio_summary,
         backtest_metrics=backtest_metrics,
         walk_forward_summary=walk_forward_summary,
         drift_result=drift_result,
@@ -2431,8 +2344,23 @@ def run_daily_job(
         int,
         typer.Option("--top-n", help="Number of ranked candidates in Telegram brief."),
     ] = 5,
+    paper_trading: Annotated[
+        bool,
+        typer.Option(
+            "--paper-trading/--no-paper-trading",
+            help="Run paper portfolio simulation after universe pipeline.",
+        ),
+    ] = True,
+    paper_initial_cash: Annotated[
+        float,
+        typer.Option("--paper-initial-cash", help="Starting virtual portfolio cash."),
+    ] = 10_000_000.0,
+    paper_max_position_pct: Annotated[
+        float,
+        typer.Option("--paper-max-position-pct", help="Maximum virtual allocation per entry."),
+    ] = 10.0,
 ) -> None:
-    """Run the after-market daily job: universe pipeline, report, and Telegram brief."""
+    """Run the after-market daily job: universe, paper portfolio, report, and Telegram."""
     configure_logger(settings.log_level)
     runner = DailyJobRunner(
         project_root=settings.project_root,
@@ -2454,6 +2382,9 @@ def run_daily_job(
                 notify=notify,
                 telegram_dry_run=telegram_dry_run,
                 telegram_top_n=top_n,
+                paper_trade=paper_trading,
+                paper_initial_cash=paper_initial_cash,
+                paper_max_position_pct=paper_max_position_pct,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -2468,6 +2399,11 @@ def run_daily_job(
     console.print(f"Summary: {result.summary_path}")
     console.print(f"CSV: {result.summary_csv_path}")
     console.print(f"Report: {result.report_path}")
+    if result.paper_summary_path:
+        console.print(f"Paper summary: {result.paper_summary_path}")
+        console.print(f"Paper report: {result.paper_report_path}")
+        console.print(f"Paper trades: {result.paper_trade_count}")
+        console.print(f"Paper return: {result.paper_cumulative_return * 100:.2f}%")
     console.print(f"Experiment log: {result.experiment_log_path}")
     if notify:
         status = "sent" if result.telegram_sent else "dry-run"

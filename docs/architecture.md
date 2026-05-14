@@ -35,6 +35,7 @@ flowchart TD
     J --> PT["Paper trading simulator"]
     L --> PT
     L --> DJ["Daily job runner"]
+    DJ --> PT
     L --> M["Streamlit dashboard"]
     PT --> PA["Paper portfolio artifacts"]
     PT --> M

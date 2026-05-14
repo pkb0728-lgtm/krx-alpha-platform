@@ -127,6 +127,7 @@ class TelegramNotifier:
 
 def build_daily_telegram_message(
     universe_summary: Any,
+    paper_portfolio_summary: Any | None = None,
     backtest_metrics: Any | None = None,
     walk_forward_summary: Any | None = None,
     drift_result: Any | None = None,
@@ -157,6 +158,7 @@ def build_daily_telegram_message(
         "Top candidates",
     ]
     lines.extend(_format_candidate_lines(success_frame, top_n))
+    lines.extend(_format_paper_portfolio_lines(paper_portfolio_summary))
     lines.extend(_format_backtest_lines(backtest_metrics))
     lines.extend(_format_walk_forward_lines(walk_forward_summary))
     lines.extend(_format_drift_lines(drift_result))
@@ -188,6 +190,29 @@ def _format_candidate_lines(frame: pd.DataFrame, top_n: int) -> list[str]:
             f"News {_format_number(_row_value(row, 'latest_news_score'))} / "
             f"Macro {_format_number(_row_value(row, 'latest_macro_score'))}"
         )
+    return lines
+
+
+def _format_paper_portfolio_lines(summary: Any | None) -> list[str]:
+    if summary is None or summary.empty:
+        return ["", "Paper portfolio", "- No latest paper portfolio summary."]
+
+    metric = summary.sort_values("generated_at", ascending=False).iloc[0]
+    lines = [
+        "",
+        "Paper portfolio",
+        (
+            f"- {metric['universe']} | tickers "
+            f"{int(metric['loaded_ticker_count'])}/{int(metric['requested_ticker_count'])} | "
+            f"trades {int(metric['trade_count'])} | "
+            f"return {_format_percent(metric['cumulative_return'])} | "
+            f"exposure {_format_plain_percent(metric['gross_exposure_pct'])} | "
+            f"cash {_format_plain_percent(metric['cash_pct'])}"
+        ),
+    ]
+    skipped_tickers = _row_value(metric, "skipped_tickers")
+    if not _is_missing(skipped_tickers) and str(skipped_tickers):
+        lines.append(f"- skipped: {skipped_tickers}")
     return lines
 
 
@@ -308,6 +333,12 @@ def _format_percent(value: Any) -> str:
     if _is_missing(value):
         return "N/A"
     return f"{float(value) * 100:.2f}%"
+
+
+def _format_plain_percent(value: Any) -> str:
+    if _is_missing(value):
+        return "N/A"
+    return f"{float(value):.2f}%"
 
 
 def _format_optional(row: pd.Series, column: str) -> str:

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
@@ -16,6 +16,11 @@ from krx_alpha.database.storage import (
 from krx_alpha.experiments.tracker import (
     ExperimentTracker,
     build_daily_job_experiment_record,
+)
+from krx_alpha.paper_trading.portfolio import (
+    PaperPortfolioConfig,
+    PaperPortfolioResult,
+    run_paper_portfolio,
 )
 from krx_alpha.pipelines.universe_pipeline import UniversePipeline, UniversePipelineResult
 from krx_alpha.reports.universe_report import UniverseReportGenerator
@@ -42,6 +47,12 @@ class DailyJobConfig:
     notify: bool = True
     telegram_dry_run: bool = True
     telegram_top_n: int = 5
+    paper_trade: bool = True
+    paper_initial_cash: float = 10_000_000.0
+    paper_max_position_pct: float = 10.0
+    paper_transaction_cost_bps: float = 15.0
+    paper_slippage_bps: float = 10.0
+    paper_skip_missing: bool = True
 
 
 @dataclass(frozen=True)
@@ -56,6 +67,10 @@ class DailyJobResult:
     total_count: int
     success_count: int
     failed_count: int
+    paper_summary_path: Path | None
+    paper_report_path: Path | None
+    paper_trade_count: int
+    paper_cumulative_return: float
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
@@ -96,7 +111,15 @@ class DailyJobRunner:
             report_path,
         )
 
-        telegram_result = self._notify(config, summary_frame)
+        paper_result = self._run_paper_portfolio(
+            config=config,
+            tickers=definition.tickers(),
+            start_date=start_date,
+            end_date=end_date,
+        )
+        paper_summary = paper_result.summary if paper_result is not None else None
+
+        telegram_result = self._notify(config, summary_frame, paper_summary)
         experiment_log_path = self.experiment_tracker.log(
             build_daily_job_experiment_record(
                 universe=config.universe,
@@ -108,6 +131,10 @@ class DailyJobRunner:
                 report_path=report_path,
                 telegram_sent=telegram_result.sent,
                 telegram_dry_run=telegram_result.dry_run,
+                paper_trade_enabled=config.paper_trade,
+                paper_trade_count=_paper_trade_count(paper_summary),
+                paper_cumulative_return=_paper_cumulative_return(paper_summary),
+                paper_summary_path=paper_result.summary_path if paper_result else None,
             )
         )
         return _build_result(
@@ -116,13 +143,45 @@ class DailyJobRunner:
             end_date=end_date,
             pipeline_result=pipeline_result,
             report_path=report_path,
+            paper_result=paper_result,
             telegram_result=telegram_result,
             experiment_log_path=experiment_log_path,
         )
 
-    def _notify(self, config: DailyJobConfig, summary_frame: object) -> TelegramSendResult:
+    def _run_paper_portfolio(
+        self,
+        config: DailyJobConfig,
+        tickers: list[str],
+        start_date: str,
+        end_date: str,
+    ) -> PaperPortfolioResult | None:
+        if not config.paper_trade:
+            return None
+
+        return run_paper_portfolio(
+            self.project_root,
+            PaperPortfolioConfig(
+                name=config.universe,
+                tickers=tuple(tickers),
+                start_date=start_date,
+                end_date=end_date,
+                initial_cash=config.paper_initial_cash,
+                max_position_pct=config.paper_max_position_pct,
+                transaction_cost_bps=config.paper_transaction_cost_bps,
+                slippage_bps=config.paper_slippage_bps,
+                skip_missing=config.paper_skip_missing,
+            ),
+        )
+
+    def _notify(
+        self,
+        config: DailyJobConfig,
+        summary_frame: object,
+        paper_portfolio_summary: Any | None,
+    ) -> TelegramSendResult:
         message = build_daily_telegram_message(
             universe_summary=summary_frame,
+            paper_portfolio_summary=paper_portfolio_summary,
             backtest_metrics=_load_latest_backtest_metrics(self.project_root),
             walk_forward_summary=_load_latest_walk_forward_summary(self.project_root),
             drift_result=_load_latest_drift_result(self.project_root),
@@ -171,15 +230,29 @@ def _load_latest_drift_result(project_root: Path) -> object | None:
     return read_parquet(drift_path) if drift_path is not None else None
 
 
+def _paper_trade_count(summary: Any | None) -> int:
+    if summary is None or summary.empty:
+        return 0
+    return int(summary.iloc[0]["trade_count"])
+
+
+def _paper_cumulative_return(summary: Any | None) -> float:
+    if summary is None or summary.empty:
+        return 0.0
+    return float(summary.iloc[0]["cumulative_return"])
+
+
 def _build_result(
     config: DailyJobConfig,
     start_date: str,
     end_date: str,
     pipeline_result: UniversePipelineResult,
     report_path: Path,
+    paper_result: PaperPortfolioResult | None,
     telegram_result: TelegramSendResult,
     experiment_log_path: Path,
 ) -> DailyJobResult:
+    paper_summary = paper_result.summary if paper_result is not None else None
     return DailyJobResult(
         universe=config.universe,
         start_date=start_date,
@@ -191,6 +264,10 @@ def _build_result(
         total_count=pipeline_result.total_count,
         success_count=pipeline_result.success_count,
         failed_count=pipeline_result.failed_count,
+        paper_summary_path=paper_result.summary_path if paper_result else None,
+        paper_report_path=paper_result.report_path if paper_result else None,
+        paper_trade_count=_paper_trade_count(paper_summary),
+        paper_cumulative_return=_paper_cumulative_return(paper_summary),
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,
         telegram_message=telegram_result.message,

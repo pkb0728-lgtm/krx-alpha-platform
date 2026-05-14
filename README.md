@@ -314,7 +314,10 @@ After-market daily job:
 python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
 ```
 
-With Telegram credentials configured, use `--telegram-send` for real delivery.
+The daily job runs the universe pipeline, generates the universe report, runs
+paper portfolio simulation, and builds the Telegram brief. Use
+`--no-paper-trading` if you want to skip the paper portfolio step. With
+Telegram credentials configured, use `--telegram-send` for real delivery.
 
 Recent experiment log:
 

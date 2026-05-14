@@ -151,6 +151,10 @@ Period: 2024-01-01 to 2024-01-31
 Total: 3
 Success: 3
 Failed: 0
+Paper summary: data/backtest/paper_portfolio_summary/demo_20240101_20240131.parquet
+Paper report: reports/paper_trading/portfolio_demo_20240101_20240131.md
+Paper trades: 0
+Paper return: 0.00%
 Experiment log: experiments/experiment_log.csv
 Telegram: dry-run
 ```

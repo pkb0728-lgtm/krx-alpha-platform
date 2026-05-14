@@ -65,9 +65,23 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "drift_reason": ["mean_shift", "stable"],
         }
     )
+    paper_portfolio = pd.DataFrame(
+        {
+            "universe": ["demo"],
+            "requested_ticker_count": [3],
+            "loaded_ticker_count": [3],
+            "trade_count": [2],
+            "cumulative_return": [0.0123],
+            "gross_exposure_pct": [12.5],
+            "cash_pct": [87.5],
+            "skipped_tickers": [""],
+            "generated_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
 
     message = build_daily_telegram_message(
         summary,
+        paper_portfolio_summary=paper_portfolio,
         backtest_metrics=backtest,
         walk_forward_summary=walk_forward,
         drift_result=drift,
@@ -79,6 +93,8 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     assert "1. 005380 | buy_candidate" in message
     assert "News 45.00" in message
     assert "Macro 42.00" in message
+    assert "Paper portfolio" in message
+    assert "demo | tickers 3/3 | trades 2" in message
     assert "Backtest" in message
     assert "Walk-forward" in message
     assert "Data drift: 1/2 features flagged" in message
