@@ -21,6 +21,8 @@ FINAL_SIGNAL_COLUMNS = [
     "event_reason",
     "flow_score",
     "flow_reason",
+    "news_score",
+    "news_reason",
     "market_regime",
     "market_regime_score",
     "market_regime_risk_level",
@@ -50,6 +52,7 @@ class SignalEngine:
         validate_price_feature_frame(feature_frame)
 
         scores = score_frame.copy()
+        scores = _ensure_optional_score_columns(scores)
         features = feature_frame.copy()
         scores["date"] = pd.to_datetime(scores["date"]).dt.date
         features["date"] = pd.to_datetime(features["date"]).dt.date
@@ -105,6 +108,15 @@ def _merge_regime(frame: Any, regime_frame: Any | None) -> Any:
     merged["market_regime_score"] = merged["regime_score"].fillna(50.0)
     merged["market_regime_risk_level"] = merged["risk_level"].fillna("medium")
     return merged
+
+
+def _ensure_optional_score_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    frame = frame.copy()
+    if "news_score" not in frame.columns:
+        frame["news_score"] = 50.0
+    if "news_reason" not in frame.columns:
+        frame["news_reason"] = "no_news_sentiment_available"
+    return frame
 
 
 def _final_action(row: pd.Series) -> str:

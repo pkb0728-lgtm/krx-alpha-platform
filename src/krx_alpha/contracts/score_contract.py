@@ -40,8 +40,11 @@ def validate_daily_score_frame(frame: Any) -> None:
         "financial_score",
         "event_score",
         "flow_score",
+        "news_score",
         "total_score",
     ]
     for column in score_columns:
+        if column not in frame.columns:
+            continue
         if frame[column].dropna().between(0, 100).all() is False:
             raise ValueError(f"{column} values must be between 0 and 100.")

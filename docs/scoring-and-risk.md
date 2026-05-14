@@ -14,12 +14,14 @@ financial_score
 event_score
 event_risk_flag
 flow_score
+news_score
 total_score
 signal_label
 score_reason
 financial_reason
 event_reason
 flow_reason
+news_reason
 ```
 
 OpenDART financial statements can also be converted into a separate
@@ -30,11 +32,13 @@ OpenDART disclosure event features can also be attached. Risky disclosure
 events are given a lower `event_score` and can set `event_risk_flag`.
 Investor flow features can also be attached. Foreign and institutional net-buy
 strength becomes `flow_score` and `flow_reason`.
+News sentiment features can also be attached. Naver news and rule/Gemini-based
+sentiment analysis become `news_score` and `news_reason`.
 
 Current MVP weighting:
 
 ```text
-total_score = technical_score * 0.40 + risk_score * 0.20 + financial_score * 0.20 + event_score * 0.10 + flow_score * 0.10
+total_score = technical_score * 0.35 + risk_score * 0.20 + financial_score * 0.15 + event_score * 0.10 + flow_score * 0.10 + news_score * 0.10
 ```
 
 ## Technical Score

@@ -6,10 +6,11 @@ This project is not a simple stock price prediction script. It is a small but
 operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
-scoring, market regime analysis, explainable scoring, risk filtering,
-backtesting, experiment tracking, drift monitoring, report generation,
-scheduled daily jobs, ML training dataset generation, a first explainable ML
-probability baseline, Telegram alerts, and a Streamlit dashboard.
+scoring, Naver news collection, Gemini-compatible news sentiment scoring,
+market regime analysis, explainable scoring, risk filtering, backtesting,
+experiment tracking, drift monitoring, report generation, scheduled daily jobs,
+ML training dataset generation, a first explainable ML probability baseline,
+Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -24,6 +25,7 @@ probability baseline, Telegram alerts, and a Streamlit dashboard.
 - Technical and financial feature engineering
 - Disclosure event feature engineering
 - Foreign/institution investor flow feature engineering
+- Naver news collection and rule/Gemini-based news sentiment features
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -53,9 +55,10 @@ select named universe
 -> build investor flow features
 -> build OpenDART financial features
 -> build OpenDART disclosure event features
+-> collect news and build news sentiment features
 -> analyze market regime
 -> score each stock
-   using technical + risk + financial + event + flow evidence
+   using technical + risk + financial + event + flow + news evidence
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
@@ -86,6 +89,9 @@ flowchart LR
     A["pykrx collector"] --> B["raw parquet"]
     A --> W["investor flow raw parquet"]
     X["OpenDART collector"] --> Y["DART raw parquet"]
+    NW["Naver news collector"] --> NR["news raw parquet"]
+    NR --> NS["news sentiment builder"]
+    NS --> F
     Y --> Z["financial feature builder"]
     Z --> F
     W --> S["investor flow feature builder"]
@@ -197,10 +203,21 @@ python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 20
 python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
-Blend OpenDART financial, disclosure event, and investor flow scores:
+News sentiment demo data:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
+python main.py collect-news --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-news-sentiment --ticker 005930 --start 2024-01-01 --end 2024-01-31 --rule-based
+```
+
+Use `--gemini` after `GEMINI_API_KEY` is configured to request Gemini-based
+news summarization and sentiment scoring. The default `--rule-based` path is
+deterministic and works offline for demos.
+
+Blend OpenDART financial, disclosure event, investor flow, and news scores:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31
 ```
 
 Multiple stocks:

@@ -76,7 +76,14 @@ def _format_success_table(frame: pd.DataFrame) -> str:
     has_financial = "latest_financial_score" in frame.columns
     has_event = "latest_event_score" in frame.columns
     has_flow = "latest_flow_score" in frame.columns
-    if has_regime and has_financial and has_event and has_flow:
+    has_news = "latest_news_score" in frame.columns
+    if has_regime and has_financial and has_event and has_flow and has_news:
+        rows = [
+            "| Rank | Ticker | Action | Confidence | Financial | Event | Flow | "
+            "News | Regime | Report |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        ]
+    elif has_regime and has_financial and has_event and has_flow:
         rows = [
             "| Rank | Ticker | Action | Confidence | Financial | Event | Flow | Regime | Report |",
             "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
@@ -102,7 +109,21 @@ def _format_success_table(frame: pd.DataFrame) -> str:
             "| --- | --- | --- | ---: | --- |",
         ]
     for rank, (_, row) in enumerate(frame.iterrows(), start=1):
-        if has_regime and has_financial and has_event and has_flow:
+        if has_regime and has_financial and has_event and has_flow and has_news:
+            rows.append(
+                "| "
+                f"{rank} | "
+                f"{row['ticker']} | "
+                f"{row['latest_action']} | "
+                f"{float(row['latest_confidence_score']):.2f} | "
+                f"{float(row['latest_financial_score']):.2f} | "
+                f"{float(row['latest_event_score']):.2f} | "
+                f"{float(row['latest_flow_score']):.2f} | "
+                f"{float(row['latest_news_score']):.2f} | "
+                f"{row['latest_market_regime']} | "
+                f"{row['report_path']} |"
+            )
+        elif has_regime and has_financial and has_event and has_flow:
             rows.append(
                 "| "
                 f"{rank} | "

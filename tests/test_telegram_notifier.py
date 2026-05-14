@@ -33,6 +33,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
             "latest_financial_score": [50.0, 80.0],
             "latest_event_score": [50.0, 55.0],
             "latest_flow_score": [85.0, 70.0],
+            "latest_news_score": [65.0, 45.0],
             "latest_market_regime": ["neutral", "bull"],
         }
     )
@@ -75,6 +76,7 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
 
     assert "KRX Alpha Daily Brief" in message
     assert "1. 005380 | buy_candidate" in message
+    assert "News 45.00" in message
     assert "Backtest" in message
     assert "Walk-forward" in message
     assert "Data drift: 1/2 features flagged" in message

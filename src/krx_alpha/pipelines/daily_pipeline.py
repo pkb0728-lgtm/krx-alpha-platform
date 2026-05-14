@@ -41,6 +41,7 @@ class DailyPipelineResult:
     latest_financial_score: float
     latest_event_score: float
     latest_flow_score: float
+    latest_news_score: float
     latest_market_regime: str
 
 
@@ -56,6 +57,7 @@ class DailyPipeline:
         financial_feature_frame: pd.DataFrame | None = None,
         event_feature_frame: pd.DataFrame | None = None,
         flow_feature_frame: pd.DataFrame | None = None,
+        news_feature_frame: pd.DataFrame | None = None,
     ) -> DailyPipelineResult:
         raw_frame = PykrxPriceCollector().collect(request)
         raw_path = raw_price_file_path(
@@ -105,6 +107,7 @@ class DailyPipeline:
             financial_feature_frame,
             event_feature_frame,
             flow_feature_frame,
+            news_feature_frame,
         )
         score_path = daily_score_file_path(
             self.project_root,
@@ -150,5 +153,6 @@ class DailyPipeline:
             ),
             latest_event_score=float(score_frame.sort_values("date").iloc[-1]["event_score"]),
             latest_flow_score=float(score_frame.sort_values("date").iloc[-1]["flow_score"]),
+            latest_news_score=float(score_frame.sort_values("date").iloc[-1]["news_score"]),
             latest_market_regime=str(latest_regime["regime"]),
         )

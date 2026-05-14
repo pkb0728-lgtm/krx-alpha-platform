@@ -56,6 +56,11 @@ def raw_investor_flow_file_path(
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def raw_news_file_path(project_root: Path, ticker: str, start_date: str, end_date: str) -> Path:
+    dataset_dir = raw_dataset_dir(project_root, "news_daily")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
 def dart_company_file_path(project_root: Path, corp_code: str) -> Path:
     dataset_dir = raw_dataset_dir(project_root, "dart_company")
     return dataset_dir / f"{corp_code}.parquet"
@@ -178,6 +183,16 @@ def investor_flow_feature_file_path(
     end_date: str,
 ) -> Path:
     dataset_dir = features_dataset_dir(project_root, "investor_flow_daily")
+    return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
+def news_sentiment_feature_file_path(
+    project_root: Path,
+    ticker: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    dataset_dir = features_dataset_dir(project_root, "news_sentiment_daily")
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 

@@ -31,6 +31,7 @@ class FakeDailyPipeline:
             latest_financial_score=50.0,
             latest_event_score=50.0,
             latest_flow_score=50.0,
+            latest_news_score=50.0,
             latest_market_regime="neutral",
         )
 

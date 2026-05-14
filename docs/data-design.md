@@ -286,6 +286,39 @@ flow_reason
 value. The MVP scores recent inflow/outflow conservatively and keeps the reason
 codes explainable.
 
+### News Sentiment Features
+
+Raw path:
+
+```text
+data/raw/news_daily/{ticker}_{start}_{end}.parquet
+```
+
+Feature path:
+
+```text
+data/features/news_sentiment_daily/{ticker}_{start}_{end}.parquet
+```
+
+Important feature columns:
+
+```text
+news_count
+positive_news_count
+negative_news_count
+sentiment_score
+news_score
+news_reason
+top_headline
+summary
+```
+
+The raw collector supports Naver news search in live mode and deterministic
+demo news in demo mode. The sentiment builder can use either a deterministic
+rule-based analyzer or Gemini-compatible JSON output. The score remains
+human-readable through reason codes such as `news_sentiment_positive`,
+`news_sentiment_negative`, and `news_volume_elevated`.
+
 ### Daily Scores
 
 Path:
@@ -303,12 +336,14 @@ financial_score
 event_score
 event_risk_flag
 flow_score
+news_score
 total_score
 signal_label
 score_reason
 financial_reason
 event_reason
 flow_reason
+news_reason
 ```
 
 ### Market Regime

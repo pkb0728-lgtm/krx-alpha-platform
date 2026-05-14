@@ -45,6 +45,11 @@ REASON_DESCRIPTIONS = {
     "strong_smart_money_outflow": "Foreign and institutional outflow is strong.",
     "smart_money_outflow": "Foreign and institutional flow is negative.",
     "investor_flow_neutral": "Investor flow evidence is neutral.",
+    "no_news_sentiment_available": "No news sentiment feature file was attached.",
+    "news_sentiment_positive": "News tone is positive.",
+    "news_sentiment_negative": "News tone is negative.",
+    "news_sentiment_neutral": "News tone is mixed or neutral.",
+    "news_volume_elevated": "News volume is elevated and deserves human review.",
 }
 
 SIGNAL_DESCRIPTIONS = {
@@ -74,6 +79,9 @@ class DailyReportGenerator:
         financial_reasons = _format_reasons(str(latest_score["financial_reason"]))
         event_reasons = _format_reasons(str(latest_score["event_reason"]))
         flow_reasons = _format_reasons(str(latest_score["flow_reason"]))
+        news_reasons = _format_reasons(
+            str(latest_score.get("news_reason", "no_news_sentiment_available"))
+        )
         signal = str(latest_score["signal_label"])
         signal_description = SIGNAL_DESCRIPTIONS.get(signal, "Unknown signal.")
 
@@ -90,6 +98,7 @@ class DailyReportGenerator:
                 f"- Financial score: {_format_number(latest_score['financial_score'])}",
                 f"- Event score: {_format_number(latest_score['event_score'])}",
                 f"- Investor flow score: {_format_number(latest_score['flow_score'])}",
+                f"- News sentiment score: {_format_number(latest_score.get('news_score', 50.0))}",
                 f"- Event risk flag: {bool(latest_score['event_risk_flag'])}",
                 "",
                 "## Key Metrics",
@@ -117,6 +126,10 @@ class DailyReportGenerator:
                 "## Investor Flow Evidence",
                 "",
                 flow_reasons,
+                "",
+                "## News Sentiment Evidence",
+                "",
+                news_reasons,
                 "",
                 "## Risk Note",
                 "",

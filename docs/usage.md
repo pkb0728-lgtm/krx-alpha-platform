@@ -54,6 +54,18 @@ python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 20
 python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
+Optional news sentiment features can also be prepared. The default demo/rule
+path works without API keys:
+
+```powershell
+python main.py collect-news --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-news-sentiment --ticker 005930 --start 2024-01-01 --end 2024-01-31 --rule-based
+```
+
+After `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, and `GEMINI_API_KEY` are set in
+`.env`, replace `--demo` with `--live` for Naver collection and use `--gemini`
+for Gemini-based summarization and sentiment scoring.
+
 ## 4. List A Named Universe
 
 List available universes:
@@ -103,12 +115,12 @@ ratio, ROE, a 0-100 financial score, and reason labels for explainability.
 Use the financial and disclosure event feature files in the daily pipeline:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31
 ```
 
 When these options are provided, the score blends technical, risk, financial,
-event, and investor flow evidence. Without those options, the pipeline uses
-neutral financial, event, and flow scores of `50.0`.
+event, investor flow, and news sentiment evidence. Without those options, the
+pipeline uses neutral financial, event, flow, and news scores of `50.0`.
 
 To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 `--demo` with `--live`.

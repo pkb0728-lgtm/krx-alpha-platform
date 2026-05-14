@@ -20,6 +20,10 @@ from krx_alpha.collectors.investor_flow_collector import (
     InvestorFlowRequest,
     PykrxInvestorFlowCollector,
 )
+from krx_alpha.collectors.news_collector import (
+    NaverNewsCollector,
+    NewsSearchRequest,
+)
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 from krx_alpha.configs.settings import settings
 from krx_alpha.dashboard.data_loader import (
@@ -51,9 +55,11 @@ from krx_alpha.database.storage import (
     ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
+    news_sentiment_feature_file_path,
     price_feature_file_path,
     processed_price_file_path,
     raw_investor_flow_file_path,
+    raw_news_file_path,
     raw_price_file_path,
     read_parquet,
     universe_csv_path,
@@ -76,6 +82,7 @@ from krx_alpha.experiments.tracker import (
 from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
+from krx_alpha.features.news_sentiment import NewsSentimentConfig, NewsSentimentFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.models.probability_baseline import (
     MLProbabilityBaselineConfig,
@@ -191,6 +198,30 @@ def _load_investor_flow_feature_frame(
             f"{flow_path}"
         )
     return read_parquet(flow_path)
+
+
+def _load_news_sentiment_feature_frame(
+    ticker: str,
+    news_start: str | None,
+    news_end: str,
+) -> pd.DataFrame | None:
+    if news_start is None:
+        return None
+
+    normalized_ticker = ticker.zfill(6)
+    news_path = news_sentiment_feature_file_path(
+        settings.project_root,
+        normalized_ticker,
+        news_start.replace("-", ""),
+        news_end.replace("-", ""),
+    )
+    if not news_path.exists():
+        raise typer.BadParameter(
+            "News sentiment feature file does not exist. "
+            "Run build-news-sentiment first: "
+            f"{news_path}"
+        )
+    return read_parquet(news_path)
 
 
 @app.command()
@@ -342,6 +373,70 @@ def collect_investor_flow(
     console.print(f"Rows: {len(frame)}")
     console.print(f"Latest foreign net buy value: {latest['foreign_net_buy_value']:,.0f}")
     console.print(f"Latest institution net buy value: {latest['institution_net_buy_value']:,.0f}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-news")
+def collect_news(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="News window start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="News window end date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    query: Annotated[
+        str | None,
+        typer.Option("--query", help="News search query. Defaults to a ticker-aware query."),
+    ] = None,
+    display: Annotated[
+        int,
+        typer.Option("--display", help="Number of Naver news search items to request."),
+    ] = 10,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo news instead of live Naver API."),
+    ] = True,
+) -> None:
+    """Collect Naver news search results and save raw news data."""
+    configure_logger(settings.log_level)
+    request = NewsSearchRequest.from_strings(
+        ticker=ticker,
+        start_date=start,
+        end_date=end,
+        query=query,
+        display=display,
+        demo=demo,
+    )
+
+    try:
+        frame = NaverNewsCollector(
+            client_id=settings.naver_client_id,
+            client_secret=settings.naver_client_secret,
+        ).collect(request)
+    except (RuntimeError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    output_path = raw_news_file_path(
+        settings.project_root,
+        request.ticker,
+        request.compact_start_date,
+        request.compact_end_date,
+    )
+    write_parquet(frame, output_path)
+
+    latest = frame.sort_values("published_at").iloc[-1]
+    console.print("[bold green]Collected news data.[/bold green]")
+    console.print(f"Ticker: {request.ticker}")
+    console.print(f"Query: {request.query}")
+    console.print(f"Rows: {len(frame)}")
+    console.print(f"Latest headline: {latest['title']}")
+    console.print(f"Source: {latest['source']}")
     console.print(f"Output: {output_path}")
 
 
@@ -933,6 +1028,81 @@ def build_investor_flow_features(
     console.print(f"Output: {output_path}")
 
 
+@app.command("build-news-sentiment")
+def build_news_sentiment(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", "-t", help="Korean stock ticker. Example: 005930"),
+    ] = "005930",
+    start: Annotated[
+        str,
+        typer.Option("--start", help="News window start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="News window end date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    use_gemini: Annotated[
+        bool,
+        typer.Option(
+            "--gemini/--rule-based",
+            help="Use Gemini for summarization, or deterministic rule-based scoring.",
+        ),
+    ] = False,
+    allow_rule_fallback: Annotated[
+        bool,
+        typer.Option(
+            "--allow-rule-fallback/--no-rule-fallback",
+            help="Fall back to rule-based scoring if Gemini fails.",
+        ),
+    ] = True,
+    gemini_model: Annotated[
+        str,
+        typer.Option("--gemini-model", help="Gemini model for news sentiment analysis."),
+    ] = "auto",
+) -> None:
+    """Build reusable news sentiment features from raw news data."""
+    configure_logger(settings.log_level)
+    request = NewsSearchRequest.from_strings(ticker=ticker, start_date=start, end_date=end)
+    input_path = raw_news_file_path(
+        settings.project_root,
+        request.ticker,
+        request.compact_start_date,
+        request.compact_end_date,
+    )
+    if not input_path.exists():
+        raise typer.BadParameter(f"Raw news file does not exist: {input_path}")
+
+    news_frame = read_parquet(input_path)
+    try:
+        feature_frame = NewsSentimentFeatureBuilder(
+            api_key=settings.gemini_api_key,
+            config=NewsSentimentConfig(
+                use_gemini=use_gemini,
+                allow_rule_fallback=allow_rule_fallback,
+                gemini_model=gemini_model,
+            ),
+        ).build(news_frame)
+    except (RuntimeError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    output_path = news_sentiment_feature_file_path(
+        settings.project_root,
+        request.ticker,
+        request.compact_start_date,
+        request.compact_end_date,
+    )
+    write_parquet(feature_frame, output_path)
+
+    latest = feature_frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Built news sentiment features.[/bold green]")
+    console.print(f"Ticker: {latest['ticker']}")
+    console.print(f"Rows: {len(feature_frame)}")
+    console.print(f"Latest news score: {float(latest['news_score']):.2f}")
+    console.print(f"Latest news reason: {latest['news_reason']}")
+    console.print(f"Latest summary: {latest['summary']}")
+    console.print(f"Output: {output_path}")
+
+
 @app.command("score-stock")
 def score_stock(
     ticker: Annotated[
@@ -979,6 +1149,14 @@ def score_stock(
         str | None,
         typer.Option("--flow-end", help="Investor flow feature end date."),
     ] = None,
+    news_start: Annotated[
+        str | None,
+        typer.Option("--news-start", help="News sentiment feature start date."),
+    ] = None,
+    news_end: Annotated[
+        str | None,
+        typer.Option("--news-end", help="News sentiment feature end date."),
+    ] = None,
 ) -> None:
     """Score a stock from feature data and save daily explainable scores."""
     configure_logger(settings.log_level)
@@ -1011,7 +1189,18 @@ def score_stock(
         flow_start,
         flow_end or end,
     )
-    score_frame = PriceScorer().score(feature_frame, financial_frame, event_frame, flow_frame)
+    news_frame = _load_news_sentiment_feature_frame(
+        request.ticker,
+        news_start,
+        news_end or end,
+    )
+    score_frame = PriceScorer().score(
+        feature_frame,
+        financial_frame,
+        event_frame,
+        flow_frame,
+        news_frame,
+    )
     output_path = daily_score_file_path(
         settings.project_root,
         request.ticker,
@@ -1027,10 +1216,12 @@ def score_stock(
     console.print(f"Latest financial score: {latest['financial_score']:.2f}")
     console.print(f"Latest event score: {latest['event_score']:.2f}")
     console.print(f"Latest flow score: {latest['flow_score']:.2f}")
+    console.print(f"Latest news score: {latest['news_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
     console.print(f"Financial reason: {latest['financial_reason']}")
     console.print(f"Event reason: {latest['event_reason']}")
     console.print(f"Flow reason: {latest['flow_reason']}")
+    console.print(f"News reason: {latest['news_reason']}")
     console.print(f"Output: {output_path}")
 
 
@@ -1250,6 +1441,14 @@ def run_pipeline(
         str | None,
         typer.Option("--flow-end", help="Investor flow feature end date."),
     ] = None,
+    news_start: Annotated[
+        str | None,
+        typer.Option("--news-start", help="News sentiment feature start date."),
+    ] = None,
+    news_end: Annotated[
+        str | None,
+        typer.Option("--news-end", help="News sentiment feature end date."),
+    ] = None,
 ) -> None:
     """Run collect, process, feature, score, signal, and report steps at once."""
     configure_logger(settings.log_level)
@@ -1271,11 +1470,17 @@ def run_pipeline(
         flow_start,
         flow_end or end,
     )
+    news_frame = _load_news_sentiment_feature_frame(
+        request.ticker,
+        news_start,
+        news_end or end,
+    )
     result = DailyPipeline(settings.project_root).run(
         request,
         financial_frame,
         event_frame,
         flow_frame,
+        news_frame,
     )
 
     console.print("[bold green]Daily pipeline completed.[/bold green]")
@@ -1291,6 +1496,7 @@ def run_pipeline(
     console.print(f"Financial score: {result.latest_financial_score:.2f}")
     console.print(f"Event score: {result.latest_event_score:.2f}")
     console.print(f"Flow score: {result.latest_flow_score:.2f}")
+    console.print(f"News score: {result.latest_news_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
 
 
