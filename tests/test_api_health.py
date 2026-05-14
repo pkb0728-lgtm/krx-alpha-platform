@@ -69,6 +69,7 @@ def test_api_health_checker_reports_ok_for_configured_services() -> None:
         "KIS Paper": API_STATUS_OK,
         "FRED": API_STATUS_OK,
     }
+    assert all(result.action == "ready" for result in results)
 
 
 def test_api_health_checker_reports_missing_without_network_call() -> None:
@@ -77,6 +78,7 @@ def test_api_health_checker_reports_missing_without_network_call() -> None:
     results = ApiHealthChecker(fake_client).run(ApiCredentials(), include_pykrx=False)
 
     assert all(result.status == API_STATUS_MISSING for result in results)
+    assert results[0].action == "set DART_API_KEY in .env if this feature is needed"
     assert fake_client.calls == []
 
 
@@ -92,3 +94,7 @@ def test_api_health_checker_redacts_secret_values_from_errors() -> None:
     assert open_dart.status == API_STATUS_FAILED
     assert secret not in open_dart.detail
     assert "[REDACTED]" in open_dart.detail
+    assert (
+        open_dart.action
+        == "verify credentials, network access, and API quota, then rerun check-apis"
+    )

@@ -323,8 +323,9 @@ def check_apis(
     table.add_column("API")
     table.add_column("Status")
     table.add_column("Detail")
+    table.add_column("Action")
     for result in results:
-        table.add_row(result.name, _format_api_status(result.status), result.detail)
+        table.add_row(result.name, _format_api_status(result.status), result.detail, result.action)
     console.print(table)
 
     ok_count = sum(result.ok for result in results)

@@ -80,6 +80,10 @@ class ApiCheckResult:
     def ok(self) -> bool:
         return self.status == API_STATUS_OK
 
+    @property
+    def action(self) -> str:
+        return _recommended_action(self)
+
 
 class RequestsJsonHttpClient:
     def request_json(
@@ -383,6 +387,22 @@ def _missing_fields(fields: dict[str, str | None]) -> list[str]:
 
 def _missing_result(name: str, missing: list[str]) -> ApiCheckResult:
     return ApiCheckResult(name=name, status=API_STATUS_MISSING, detail=", ".join(missing))
+
+
+def _recommended_action(result: ApiCheckResult) -> str:
+    if result.status == API_STATUS_OK:
+        return "ready"
+    if result.status == API_STATUS_MISSING:
+        return f"set {result.detail} in .env if this feature is needed"
+    if result.name == "Telegram":
+        return "confirm bot token, chat id, and that the bot has received your first message"
+    if result.name == "KIS Paper":
+        return "confirm KIS mock-investment app key/secret and paper endpoint access"
+    if result.name == "pykrx":
+        return "check internet access and retry later if the public data source is unavailable"
+    if "CERTIFICATE_VERIFY_FAILED" in result.detail or "certificate" in result.detail.lower():
+        return "check antivirus/proxy SSL inspection, then rerun with normal certificate validation"
+    return "verify credentials, network access, and API quota, then rerun check-apis"
 
 
 def _redact(message: str, secrets: list[str]) -> str:
