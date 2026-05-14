@@ -34,6 +34,7 @@ from krx_alpha.dashboard.data_loader import (
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
+    screening_review_queue,
 )
 
 
@@ -440,6 +441,17 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
     passed_filtered = filter_screening_result(frame, passed_only=True)
     assert len(passed_filtered) == 1
     assert passed_filtered.loc[0, "ticker"] == "000660"
+
+    review_queue = screening_review_queue(frame)
+    assert len(review_queue) == 1
+    assert review_queue.loc[0, "ticker"] == "005930"
+    assert review_queue.loc[0, "screen_status_reason"] == "confidence_below_threshold"
+
+    string_passed_frame = frame.copy()
+    string_passed_frame["passed"] = string_passed_frame["passed"].astype(str)
+    string_review_queue = screening_review_queue(string_passed_frame)
+    assert len(string_review_queue) == 1
+    assert string_review_queue.loc[0, "ticker"] == "005930"
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:

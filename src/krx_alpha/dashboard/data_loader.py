@@ -296,6 +296,34 @@ def filter_screening_result(
     return result.reset_index(drop=True)
 
 
+def screening_review_queue(frame: Any, limit: int = 5) -> Any:
+    if frame.empty or "passed" not in frame.columns:
+        return frame.head(0)
+
+    result = frame.copy()
+    passed_mask = _screening_passed_mask(result["passed"])
+    result = result[~passed_mask]
+    if result.empty:
+        return result.reset_index(drop=True)
+
+    if "review_priority" in result.columns:
+        result["_priority_order"] = (
+            result["review_priority"].map(SCREENING_PRIORITY_ORDER).fillna(99)
+        )
+        result = result.sort_values(
+            ["_priority_order", "screen_score", "confidence_score"],
+            ascending=[True, False, False],
+        ).drop(columns=["_priority_order"])
+
+    return result.head(limit).reset_index(drop=True)
+
+
+def _screening_passed_mask(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    return series.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
+
+
 def load_ml_metrics(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty or "split" not in frame.columns:

@@ -37,6 +37,7 @@ from krx_alpha.dashboard.data_loader import (
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
+    screening_review_queue,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -181,6 +182,18 @@ def main() -> None:
                         st.write(f"Evidence: {row.get('evidence_summary', 'N/A')}")
                         st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
                         st.write(f"Risk flags: {row.get('risk_flags', 'none') or 'none'}")
+                        st.write(f"Checklist: {row.get('review_checklist', 'N/A')}")
+            review_queue_frame = screening_review_queue(display_screening_frame)
+            if not review_queue_frame.empty:
+                st.caption("Review queue")
+                for _, row in review_queue_frame.iterrows():
+                    with st.expander(
+                        f"{row['ticker']} | {row.get('review_priority', 'N/A')} | "
+                        f"{row.get('screen_status_reason', 'N/A')}",
+                    ):
+                        st.write(f"Score: {_format_score(row.get('screen_score', 0.0))}")
+                        st.write(f"Confidence: {_format_score(row.get('confidence_score', 0.0))}")
+                        st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
                         st.write(f"Checklist: {row.get('review_checklist', 'N/A')}")
             if display_screening_frame.empty:
                 st.info("No screening rows match the selected filters.")
