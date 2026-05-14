@@ -1920,6 +1920,13 @@ def screen_universe(
             help="Print only passed candidates in the terminal table.",
         ),
     ] = False,
+    priority: Annotated[
+        str | None,
+        typer.Option(
+            "--priority",
+            help="Comma-separated review priorities to print, e.g. high,medium.",
+        ),
+    ] = None,
 ) -> None:
     """Create a human-review shortlist from the latest universe signal artifacts."""
     configure_logger(settings.log_level)
@@ -1973,6 +1980,11 @@ def screen_universe(
     ]
     if not result_frame.empty:
         table_frame = result_frame[result_frame["passed"]] if passed_only else result_frame
+        priority_filter = _parse_console_filter_values(priority)
+        if priority_filter:
+            table_frame = table_frame[
+                table_frame["review_priority"].astype(str).isin(priority_filter)
+            ]
         if table_frame.empty:
             console.print("[yellow]No rows matched the terminal display filter.[/yellow]")
             return
@@ -2840,6 +2852,12 @@ def _short_console_text(value: object, limit: int = 72) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 3] + "..."
+
+
+def _parse_console_filter_values(value: str | None) -> set[str]:
+    if value is None:
+        return set()
+    return {item.strip().lower() for item in value.split(",") if item.strip()}
 
 
 def _safe_report_name(value: str) -> str:
