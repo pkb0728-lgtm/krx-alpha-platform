@@ -1913,6 +1913,13 @@ def screen_universe(
         int,
         typer.Option("--top-n", help="Number of rows to print."),
     ] = 20,
+    passed_only: Annotated[
+        bool,
+        typer.Option(
+            "--passed-only/--all",
+            help="Print only passed candidates in the terminal table.",
+        ),
+    ] = False,
 ) -> None:
     """Create a human-review shortlist from the latest universe signal artifacts."""
     configure_logger(settings.log_level)
@@ -1965,7 +1972,11 @@ def screen_universe(
         "reasons",
     ]
     if not result_frame.empty:
-        display_frame = result_frame.head(top_n)[display_columns].copy()
+        table_frame = result_frame[result_frame["passed"]] if passed_only else result_frame
+        if table_frame.empty:
+            console.print("[yellow]No rows matched the terminal display filter.[/yellow]")
+            return
+        display_frame = table_frame.head(top_n)[display_columns].copy()
         display_frame["reasons"] = display_frame["reasons"].map(_short_console_text)
         console.print(display_frame.to_string(index=False))
 
