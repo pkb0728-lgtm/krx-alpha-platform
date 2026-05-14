@@ -550,6 +550,57 @@ def kis_paper_token_check(
     console.print("Mode: paper trading only. No order was sent.")
 
 
+@app.command("kis-paper-balance")
+def kis_paper_balance(
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", help="HTTP timeout for the KIS paper balance check."),
+    ] = 10.0,
+) -> None:
+    """Read KIS mock-investment account balance without sending any order."""
+    configure_logger(settings.log_level)
+    try:
+        credentials = KISPaperCredentials.from_settings(settings)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    token = client.issue_access_token()
+    balance = client.inquire_balance(token)
+
+    console.print("[bold green]KIS paper balance loaded.[/bold green]")
+    console.print(f"Account: {balance.account}")
+    console.print(f"Cash: {balance.cash_amount:,.0f}")
+    console.print(f"Stock evaluation: {balance.stock_evaluation_amount:,.0f}")
+    console.print(f"Total evaluation: {balance.total_evaluation_amount:,.0f}")
+    console.print(f"P/L: {balance.profit_loss_amount:,.0f} ({balance.profit_loss_rate:.2f}%)")
+
+    table = Table(title="KIS Paper Holdings")
+    table.add_column("Ticker")
+    table.add_column("Name")
+    table.add_column("Qty", justify="right")
+    table.add_column("Orderable", justify="right")
+    table.add_column("Avg", justify="right")
+    table.add_column("Price", justify="right")
+    table.add_column("Eval", justify="right")
+    table.add_column("P/L", justify="right")
+    table.add_column("P/L %", justify="right")
+    for holding in balance.holdings:
+        table.add_row(
+            holding.ticker,
+            holding.name,
+            f"{holding.quantity:,}",
+            f"{holding.orderable_quantity:,}",
+            f"{holding.average_price:,.0f}",
+            f"{holding.current_price:,.0f}",
+            f"{holding.evaluation_amount:,.0f}",
+            f"{holding.profit_loss_amount:,.0f}",
+            f"{holding.profit_loss_rate:.2f}",
+        )
+    console.print(table)
+    console.print("Mode: paper trading only. No order was sent.")
+
+
 @app.command("init-dirs")
 def init_dirs(project_root: Path | None = None) -> None:
     """Create local data, model, and log directories."""

@@ -3,6 +3,8 @@ from typing import Any, Protocol, cast
 
 KIS_PAPER_BASE_URL = "https://openapivts.koreainvestment.com:29443"
 KIS_TOKEN_PATH = "/oauth2/tokenP"
+KIS_DOMESTIC_BALANCE_PATH = "/uapi/domestic-stock/v1/trading/inquire-balance"
+KIS_PAPER_BALANCE_TR_ID = "VTTC8434R"
 
 
 class KISHttpClient(Protocol):
@@ -11,6 +13,7 @@ class KISHttpClient(Protocol):
         method: str,
         url: str,
         *,
+        params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         json_payload: dict[str, str] | None = None,
         timeout_seconds: float,
@@ -78,12 +81,38 @@ class KISPaperToken:
         return f"{self.access_token[:4]}...[REDACTED]...{self.access_token[-4:]}"
 
 
+@dataclass(frozen=True)
+class KISPaperHolding:
+    ticker: str
+    name: str
+    quantity: int
+    orderable_quantity: int
+    average_price: float
+    current_price: float
+    evaluation_amount: float
+    profit_loss_amount: float
+    profit_loss_rate: float
+
+
+@dataclass(frozen=True)
+class KISPaperBalance:
+    account: str
+    cash_amount: float
+    total_evaluation_amount: float
+    stock_evaluation_amount: float
+    purchase_amount: float
+    profit_loss_amount: float
+    profit_loss_rate: float
+    holdings: list[KISPaperHolding]
+
+
 class RequestsKISHttpClient:
     def request_json(
         self,
         method: str,
         url: str,
         *,
+        params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         json_payload: dict[str, str] | None = None,
         timeout_seconds: float,
@@ -98,6 +127,7 @@ class RequestsKISHttpClient:
         response = requests.request(
             method=method,
             url=url,
+            params=params,
             headers=cast(Any, headers),
             json=cast(Any, json_payload),
             timeout=timeout_seconds,
@@ -156,6 +186,43 @@ class KISPaperClient:
             expires_in_seconds=_optional_int(payload.get("expires_in")),
         )
 
+    def inquire_balance(self, token: KISPaperToken) -> KISPaperBalance:
+        status_code, payload = self.http_client.request_json(
+            "GET",
+            f"{self.base_url}{KIS_DOMESTIC_BALANCE_PATH}",
+            params={
+                "CANO": self.credentials.account_id.cano,
+                "ACNT_PRDT_CD": self.credentials.account_id.product_code,
+                "AFHR_FLPR_YN": "N",
+                "OFL_YN": "",
+                "INQR_DVSN": "01",
+                "UNPR_DVSN": "01",
+                "FUND_STTL_ICLD_YN": "N",
+                "FNCG_AMT_AUTO_RDPT_YN": "N",
+                "PRCS_DVSN": "01",
+                "CTX_AREA_FK100": "",
+                "CTX_AREA_NK100": "",
+            },
+            headers={
+                "content-type": "application/json; charset=utf-8",
+                "authorization": f"{token.token_type} {token.access_token}",
+                "appkey": self.credentials.app_key,
+                "appsecret": self.credentials.app_secret,
+                "tr_id": KIS_PAPER_BALANCE_TR_ID,
+                "custtype": "P",
+            },
+            timeout_seconds=self.timeout_seconds,
+        )
+
+        if status_code != 200 or str(payload.get("rt_cd", "0")) not in {"0", ""}:
+            message = str(payload.get("msg1") or payload.get("error_description") or "")
+            detail = f"KIS paper balance request failed: HTTP {status_code}"
+            if message:
+                detail = f"{detail}, {_redact(message, self.credentials.secret_values())}"
+            raise RuntimeError(detail)
+
+        return _parse_balance_payload(payload, self.credentials.account_id.normalized)
+
 
 def _optional_int(value: object) -> int | None:
     if value is None:
@@ -164,6 +231,62 @@ def _optional_int(value: object) -> int | None:
         return int(cast(Any, value))
     except (TypeError, ValueError):
         return None
+
+
+def _parse_balance_payload(payload: dict[str, Any], account: str) -> KISPaperBalance:
+    holdings_payload = payload.get("output1")
+    summary_payload = payload.get("output2")
+    holdings_rows = holdings_payload if isinstance(holdings_payload, list) else []
+    summary_rows = summary_payload if isinstance(summary_payload, list) else []
+    summary = summary_rows[0] if summary_rows and isinstance(summary_rows[0], dict) else {}
+
+    holdings = [
+        KISPaperHolding(
+            ticker=str(row.get("pdno") or "").zfill(6),
+            name=str(row.get("prdt_name") or ""),
+            quantity=_safe_int(row.get("hldg_qty")),
+            orderable_quantity=_safe_int(row.get("ord_psbl_qty")),
+            average_price=_safe_float(row.get("pchs_avg_pric")),
+            current_price=_safe_float(row.get("prpr")),
+            evaluation_amount=_safe_float(row.get("evlu_amt")),
+            profit_loss_amount=_safe_float(row.get("evlu_pfls_amt")),
+            profit_loss_rate=_safe_float(row.get("evlu_pfls_rt")),
+        )
+        for row in holdings_rows
+        if isinstance(row, dict) and _safe_int(row.get("hldg_qty")) > 0
+    ]
+
+    return KISPaperBalance(
+        account=account,
+        cash_amount=_first_float(summary, ["dnca_tot_amt", "nass_amt"]),
+        total_evaluation_amount=_first_float(summary, ["tot_evlu_amt", "asst_icdc_amt"]),
+        stock_evaluation_amount=_first_float(summary, ["scts_evlu_amt"]),
+        purchase_amount=_first_float(summary, ["pchs_amt_smtl_amt"]),
+        profit_loss_amount=_first_float(summary, ["evlu_pfls_smtl_amt"]),
+        profit_loss_rate=_first_float(summary, ["asst_icdc_erng_rt", "evlu_pfls_rt"]),
+        holdings=holdings,
+    )
+
+
+def _first_float(row: dict[str, Any], keys: list[str]) -> float:
+    for key in keys:
+        if key in row:
+            return _safe_float(row.get(key))
+    return 0.0
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return int(float(str(value).replace(",", "")))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _safe_float(value: object) -> float:
+    try:
+        return float(str(value).replace(",", ""))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _redact(message: str, secrets: list[str]) -> str:

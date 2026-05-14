@@ -362,6 +362,7 @@ Operations health review:
 ```powershell
 python main.py check-apis --skip-pykrx --save
 python main.py kis-paper-token-check
+python main.py kis-paper-balance
 python main.py check-operations --skip-apis
 python main.py check-operations --include-apis --skip-pykrx
 ```

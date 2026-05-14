@@ -423,9 +423,11 @@ KIS mock-investment credentials can be checked without sending any order:
 
 ```powershell
 python main.py kis-paper-token-check
+python main.py kis-paper-balance
 ```
 
-The command uses only the KIS paper endpoint and prints a redacted token.
+These commands use only the KIS paper endpoint. They do not send orders, and the
+token check prints only a redacted token.
 
 ## 13. Review Experiment Logs
 
