@@ -42,7 +42,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - Markdown reports for single-stock and universe screening, including candidate review cards
 - Daily job runner for after-market operations
 - Telegram daily brief with drift and operations health status preview, send command, and retry settings
-- Streamlit dashboard for universe, screening, news sentiment, macro, report, backtest, walk-forward, ML, drift, and operations review
+- Streamlit dashboard for universe, screening, KIS paper candidates, news sentiment, macro, report, backtest, walk-forward, ML, drift, and operations review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -383,7 +383,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 133 passed
+pytest: 134 passed
 ruff: all checks passed
 mypy: no issues found
 ```

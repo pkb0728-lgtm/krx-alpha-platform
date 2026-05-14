@@ -11,6 +11,14 @@ SCREENING_PRIORITY_ORDER = {
     "blocked": 4,
 }
 
+KIS_CANDIDATE_ACTION_ORDER = {
+    "review_buy": 0,
+    "review_add": 1,
+    "manual_price_required": 2,
+    "hold_review": 3,
+    "skip": 4,
+}
+
 
 def find_latest_universe_summary(project_root: Path) -> Path | None:
     summary_dir = project_root / "data" / "signals" / "universe_summary_daily"
@@ -90,6 +98,15 @@ def find_latest_screening_result(project_root: Path) -> Path | None:
         return None
 
     files = sorted(screening_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
+def find_latest_kis_paper_candidates(project_root: Path) -> Path | None:
+    candidate_dir = project_root / "data" / "signals" / "kis_paper_candidates"
+    if not candidate_dir.exists():
+        return None
+
+    files = sorted(candidate_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
     return files[-1] if files else None
 
 
@@ -294,6 +311,27 @@ def load_screening_result(path: Path) -> Any:
         ["passed", "screen_score", "confidence_score"],
         ascending=[False, False, False],
     ).reset_index(drop=True)
+
+
+def load_kis_paper_candidates(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "candidate_action" not in frame.columns:
+        return frame
+
+    result = frame.copy()
+    result["_action_order"] = result["candidate_action"].map(KIS_CANDIDATE_ACTION_ORDER).fillna(99)
+    for column in ("estimated_amount", "confidence_score", "screen_score"):
+        if column not in result.columns:
+            result[column] = 0.0
+
+    return (
+        result.sort_values(
+            ["_action_order", "estimated_amount", "confidence_score", "screen_score"],
+            ascending=[True, False, False, False],
+        )
+        .drop(columns=["_action_order"])
+        .reset_index(drop=True)
+    )
 
 
 def filter_screening_result(

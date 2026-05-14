@@ -8,6 +8,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_api_health,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_kis_paper_candidates,
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
@@ -21,6 +22,7 @@ from krx_alpha.dashboard.data_loader import (
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
+    load_kis_paper_candidates,
     load_macro_features,
     load_markdown,
     load_ml_metrics,
@@ -479,6 +481,34 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
     string_review_queue = screening_review_queue(string_passed_frame)
     assert len(string_review_queue) == 1
     assert string_review_queue.loc[0, "ticker"] == "005930"
+
+
+def test_dashboard_data_loader_reads_latest_kis_paper_candidates(tmp_path: Path) -> None:
+    candidate_dir = tmp_path / "data" / "signals" / "kis_paper_candidates"
+    candidate_dir.mkdir(parents=True)
+    candidate_path = candidate_dir / "kis_paper_candidates_demo.parquet"
+
+    pd.DataFrame(
+        {
+            "generated_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 3,
+            "ticker": ["005930", "005380", "000660"],
+            "candidate_action": ["skip", "review_buy", "hold_review"],
+            "estimated_amount": [0.0, 300_000.0, 0.0],
+            "estimated_quantity": [0, 3, 0],
+            "confidence_score": [58.0, 72.0, 63.0],
+            "screen_score": [55.0, 75.0, 60.0],
+            "orders_sent": [0, 0, 0],
+            "reason": ["confidence_below_threshold", "passed", "final_action_watch"],
+        }
+    ).to_parquet(candidate_path, index=False)
+
+    latest_path = find_latest_kis_paper_candidates(tmp_path)
+    assert latest_path == candidate_path
+
+    frame = load_kis_paper_candidates(candidate_path)
+    assert frame.loc[0, "ticker"] == "005380"
+    assert frame.loc[0, "candidate_action"] == "review_buy"
+    assert int(frame["orders_sent"].sum()) == 0
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:

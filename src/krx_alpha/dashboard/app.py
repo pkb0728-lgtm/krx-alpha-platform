@@ -11,6 +11,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_api_health,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_kis_paper_candidates,
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
@@ -24,6 +25,7 @@ from krx_alpha.dashboard.data_loader import (
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
+    load_kis_paper_candidates,
     load_macro_features,
     load_markdown,
     load_ml_metrics,
@@ -202,6 +204,79 @@ def main() -> None:
             else:
                 st.dataframe(
                     display_screening_frame[_screening_display_columns(display_screening_frame)],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+    st.divider()
+
+    st.subheader("KIS Paper Review Candidates")
+    kis_candidate_path = find_latest_kis_paper_candidates(PROJECT_ROOT)
+    if kis_candidate_path is None:
+        st.info("No KIS paper candidate result found.")
+    else:
+        kis_candidate_frame = load_kis_paper_candidates(kis_candidate_path)
+        if kis_candidate_frame.empty:
+            st.info("KIS paper candidate result is empty.")
+        else:
+            review_actions = ["review_buy", "review_add"]
+            review_frame = kis_candidate_frame[
+                kis_candidate_frame["candidate_action"].isin(review_actions)
+            ]
+            manual_frame = kis_candidate_frame[
+                kis_candidate_frame["candidate_action"] == "manual_price_required"
+            ]
+            order_count = (
+                int(kis_candidate_frame["orders_sent"].sum())
+                if "orders_sent" in kis_candidate_frame.columns
+                else 0
+            )
+            candidate_cols = st.columns(5)
+            candidate_cols[0].metric("Candidates", len(kis_candidate_frame))
+            candidate_cols[1].metric("Review buy/add", len(review_frame))
+            candidate_cols[2].metric("Manual price", len(manual_frame))
+            candidate_cols[3].metric(
+                "Est. amount",
+                f"{float(review_frame['estimated_amount'].sum()):,.0f}"
+                if "estimated_amount" in review_frame.columns
+                else "0",
+            )
+            candidate_cols[4].metric("Orders sent", order_count)
+            st.caption(f"Latest KIS candidate file: {kis_candidate_path.name}")
+
+            available_actions = _sorted_unique_values(kis_candidate_frame, "candidate_action")
+            default_actions = [action for action in review_actions if action in available_actions]
+            action_filter = st.multiselect(
+                "Candidate action",
+                available_actions,
+                default=default_actions,
+            )
+            display_candidate_frame = kis_candidate_frame
+            if action_filter:
+                display_candidate_frame = display_candidate_frame[
+                    display_candidate_frame["candidate_action"].astype(str).isin(action_filter)
+                ]
+
+            if not review_frame.empty:
+                st.caption("Review candidates")
+                for _, row in review_frame.head(5).iterrows():
+                    with st.expander(
+                        f"{row['ticker']} | {row['candidate_action']} | "
+                        f"{int(row.get('estimated_quantity', 0))} shares | "
+                        f"{float(row.get('estimated_amount', 0.0)):,.0f}",
+                    ):
+                        st.write(f"Reason: {row.get('reason', 'N/A')}")
+                        st.write(f"Evidence: {row.get('evidence_summary', 'N/A')}")
+                        st.write(f"Caution: {row.get('caution_summary', 'N/A')}")
+                        st.write(f"Risk flags: {row.get('risk_flags', 'none') or 'none'}")
+
+            if display_candidate_frame.empty:
+                st.info("No KIS candidate rows match the selected filters.")
+            else:
+                st.dataframe(
+                    display_candidate_frame[
+                        _kis_candidate_display_columns(display_candidate_frame)
+                    ],
                     hide_index=True,
                     use_container_width=True,
                 )
@@ -755,6 +830,28 @@ def _screening_display_columns(frame: Any) -> list[str]:
         "evidence_summary",
         "caution_summary",
         "review_checklist",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _kis_candidate_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "ticker",
+        "candidate_action",
+        "candidate_type",
+        "estimated_quantity",
+        "estimated_amount",
+        "target_position_pct",
+        "current_quantity",
+        "current_value",
+        "reference_price",
+        "reference_price_source",
+        "confidence_score",
+        "screen_score",
+        "final_action",
+        "reason",
+        "risk_flags",
+        "orders_sent",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 
