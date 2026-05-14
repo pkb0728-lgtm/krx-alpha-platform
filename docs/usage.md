@@ -169,6 +169,14 @@ confidence, risk-block status, trading value change, RSI, and regime context.
 Each passed candidate also gets a review card with positive evidence, caution
 points, and a manual checklist. It never sends orders.
 
+Useful terminal filters:
+
+```powershell
+python main.py screen-universe --passed-only
+python main.py screen-universe --priority medium
+python main.py screen-universe --status-reason confidence_below_threshold
+```
+
 ## 7. Analyze Market Regime
 
 `run-pipeline` creates regime outputs automatically. You can also refresh the
