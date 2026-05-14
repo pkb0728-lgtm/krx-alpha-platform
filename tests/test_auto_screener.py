@@ -47,6 +47,8 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
     assert "Priority summary: high 1" in report
     assert "Status summary: passed 1" in report
     assert "Candidate Review Cards" in report
+    assert "Review Queue" in report
+    assert "no_blocked_or_watchlist_rows" in report
     assert "Status reason: passed" in report
     assert "Priority: high" in report
     assert "Risk flags: none" in report
@@ -76,6 +78,11 @@ def test_auto_screener_flags_missing_signal_file(tmp_path: Path) -> None:
     assert result.loc[0, "screen_score"] == 0.0
     assert result.loc[0, "reasons"] == "signal_file_missing_or_empty"
     assert result.loc[0, "review_checklist"] == "rerun_pipeline, confirm_signal_artifact"
+
+    report = format_screening_report(result)
+    assert "Review Queue" in report
+    assert "signal_file_missing_or_empty" in report
+    assert "Do not review this ticker" in report
 
 
 def _final_signal_frame(ticker: str, action: str, confidence: float) -> pd.DataFrame:

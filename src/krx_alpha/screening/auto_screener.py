@@ -220,6 +220,30 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
         for rank, (_, row) in enumerate(passed.head(10).iterrows(), start=1):
             lines.extend(_candidate_card_lines(rank, row))
 
+    review_queue = result_frame[~result_frame["passed"]] if not result_frame.empty else result_frame
+    lines.extend(
+        [
+            "",
+            "## Review Queue",
+            "",
+            "| Ticker | Priority | Status | Score | Confidence | Caution |",
+            "| --- | --- | --- | ---: | ---: | --- |",
+        ]
+    )
+    if review_queue.empty:
+        lines.append("| N/A | N/A | N/A | 0.00 | 0.00 | no_blocked_or_watchlist_rows |")
+    else:
+        for _, row in review_queue.head(10).iterrows():
+            lines.append(
+                "| "
+                f"{row['ticker']} | "
+                f"{row['review_priority']} | "
+                f"{row['screen_status_reason']} | "
+                f"{float(row['screen_score']):.2f} | "
+                f"{float(row['confidence_score']):.2f} | "
+                f"{_shorten_text(row['caution_summary'], max_length=90)} |"
+            )
+
     lines.extend(
         [
             "",
@@ -527,6 +551,13 @@ def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _shorten_text(value: object, max_length: int) -> str:
+    text = str(value).replace("|", "/").strip()
+    if len(text) <= max_length:
+        return text
+    return f"{text[: max_length - 3].rstrip()}..."
 
 
 def _sort_screening_result(frame: pd.DataFrame) -> pd.DataFrame:
