@@ -2,6 +2,7 @@ from pathlib import Path
 
 from krx_alpha.database.storage import (
     DATA_LAYERS,
+    api_health_file_path,
     dart_company_file_path,
     dart_disclosure_event_file_path,
     dart_disclosure_file_path,
@@ -192,6 +193,11 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         operations_health_file_path(tmp_path, "operations_health_latest")
         .as_posix()
         .endswith("data/signals/operations_health/operations_health_latest.parquet")
+    )
+    assert (
+        api_health_file_path(tmp_path, "api_health_latest")
+        .as_posix()
+        .endswith("data/signals/api_health/api_health_latest.parquet")
     )
     assert (
         screening_result_file_path(tmp_path, "screening_universe_demo")

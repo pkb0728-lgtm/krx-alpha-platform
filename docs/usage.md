@@ -408,6 +408,14 @@ python main.py check-operations --include-apis --skip-pykrx
 ```
 
 Use `--include-pykrx` when you also want to verify live pykrx price collection.
+To save a standalone API connectivity audit, run:
+
+```powershell
+python main.py check-apis --skip-pykrx --save
+```
+
+This writes `data/signals/api_health/` and a Markdown report under
+`reports/monitoring/`.
 
 ## 13. Review Experiment Logs
 

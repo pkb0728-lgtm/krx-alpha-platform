@@ -6,6 +6,9 @@ from krx_alpha.monitoring.api_health import (
     API_STATUS_OK,
     ApiCredentials,
     ApiHealthChecker,
+    api_results_to_frame,
+    format_api_health_report,
+    summarize_api_results,
 )
 
 
@@ -70,6 +73,20 @@ def test_api_health_checker_reports_ok_for_configured_services() -> None:
         "FRED": API_STATUS_OK,
     }
     assert all(result.action == "ready" for result in results)
+    assert summarize_api_results(results) == {
+        "total": 6,
+        "ok": 6,
+        "missing": 0,
+        "failed": 0,
+    }
+
+    frame = api_results_to_frame(results)
+    assert frame.loc[0, "api"] == "OpenDART"
+    assert frame.loc[0, "action"] == "ready"
+
+    report = format_api_health_report(results)
+    assert "API Health Report" in report
+    assert "| OpenDART | OK | company endpoint returned status 000 | ready |" in report
 
 
 def test_api_health_checker_reports_missing_without_network_call() -> None:

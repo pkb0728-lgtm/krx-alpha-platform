@@ -2,11 +2,22 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
+import pandas as pd
+
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 
 API_STATUS_OK = "OK"
 API_STATUS_MISSING = "MISSING"
 API_STATUS_FAILED = "FAILED"
+
+API_HEALTH_COLUMNS = [
+    "checked_at",
+    "api",
+    "status",
+    "ok",
+    "detail",
+    "action",
+]
 
 
 class JsonHttpClient(Protocol):
@@ -385,6 +396,75 @@ def _missing_fields(fields: dict[str, str | None]) -> list[str]:
     return [name for name, value in fields.items() if not value]
 
 
+def api_results_to_frame(
+    results: list[ApiCheckResult],
+    checked_at: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    timestamp = pd.Timestamp(checked_at or pd.Timestamp.now(tz="UTC"))
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize("UTC")
+    rows = [
+        {
+            "checked_at": timestamp.isoformat(),
+            "api": result.name,
+            "status": result.status,
+            "ok": result.ok,
+            "detail": result.detail,
+            "action": result.action,
+        }
+        for result in results
+    ]
+    return pd.DataFrame(rows, columns=API_HEALTH_COLUMNS)
+
+
+def summarize_api_results(results: list[ApiCheckResult]) -> dict[str, int]:
+    return {
+        "total": len(results),
+        "ok": sum(result.status == API_STATUS_OK for result in results),
+        "missing": sum(result.status == API_STATUS_MISSING for result in results),
+        "failed": sum(result.status == API_STATUS_FAILED for result in results),
+    }
+
+
+def format_api_health_report(results: list[ApiCheckResult]) -> str:
+    summary = summarize_api_results(results)
+    lines = [
+        "# API Health Report",
+        "",
+        f"- Total checks: {summary['total']}",
+        f"- OK: {summary['ok']}",
+        f"- Missing: {summary['missing']}",
+        f"- Failed: {summary['failed']}",
+        "",
+        "## Checks",
+        "",
+        "| API | Status | Detail | Action |",
+        "| --- | --- | --- | --- |",
+    ]
+    for result in results:
+        lines.append(
+            "| "
+            f"{result.name} | "
+            f"{result.status} | "
+            f"{_escape_markdown_table(result.detail)} | "
+            f"{_escape_markdown_table(result.action)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Reading Guide",
+            "",
+            "- `OK` means the configured credential and endpoint responded as expected.",
+            "- `MISSING` means the feature can stay disabled until `.env` is updated.",
+            "- `FAILED` means credentials, network, quota, or provider status need review.",
+            "- Secret values are redacted before errors are shown.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _missing_result(name: str, missing: list[str]) -> ApiCheckResult:
     return ApiCheckResult(name=name, status=API_STATUS_MISSING, detail=", ".join(missing))
 
@@ -403,6 +483,10 @@ def _recommended_action(result: ApiCheckResult) -> str:
     if "CERTIFICATE_VERIFY_FAILED" in result.detail or "certificate" in result.detail.lower():
         return "check antivirus/proxy SSL inspection, then rerun with normal certificate validation"
     return "verify credentials, network access, and API quota, then rerun check-apis"
+
+
+def _escape_markdown_table(value: object) -> str:
+    return str(value).replace("|", "/")
 
 
 def _redact(message: str, secrets: list[str]) -> str:

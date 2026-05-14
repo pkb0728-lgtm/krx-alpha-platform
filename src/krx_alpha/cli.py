@@ -36,6 +36,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_walk_forward_summary,
 )
 from krx_alpha.database.storage import (
+    api_health_file_path,
     backtest_metrics_file_path,
     backtest_report_file_path,
     backtest_trades_file_path,
@@ -109,6 +110,8 @@ from krx_alpha.monitoring.api_health import (
     API_STATUS_OK,
     ApiCredentials,
     ApiHealthChecker,
+    api_results_to_frame,
+    format_api_health_report,
 )
 from krx_alpha.monitoring.drift import (
     DataDriftConfig,
@@ -310,6 +313,14 @@ def check_apis(
         bool,
         typer.Option("--strict/--no-strict", help="Exit with code 1 when any check is not OK."),
     ] = False,
+    save: Annotated[
+        bool,
+        typer.Option("--save/--no-save", help="Save API health parquet and Markdown report."),
+    ] = False,
+    output_name: Annotated[
+        str,
+        typer.Option("--output-name", help="Output report name without extension when saving."),
+    ] = "api_health_latest",
 ) -> None:
     """Check configured API connectivity without printing secret values."""
     configure_logger(settings.log_level)
@@ -330,6 +341,15 @@ def check_apis(
 
     ok_count = sum(result.ok for result in results)
     console.print(f"Summary: {ok_count}/{len(results)} OK")
+
+    if save:
+        report_name = _safe_report_name(output_name)
+        result_path = api_health_file_path(settings.project_root, report_name)
+        report_path = monitoring_report_file_path(settings.project_root, report_name)
+        write_parquet(api_results_to_frame(results), result_path)
+        write_text(format_api_health_report(results), report_path)
+        console.print(f"Result: {result_path}")
+        console.print(f"Report: {report_path}")
 
     if strict and ok_count != len(results):
         raise typer.Exit(code=1)

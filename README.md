@@ -359,6 +359,7 @@ python main.py send-telegram-daily --dry-run
 Operations health review:
 
 ```powershell
+python main.py check-apis --skip-pykrx --save
 python main.py check-operations --skip-apis
 python main.py check-operations --include-apis --skip-pykrx
 ```
