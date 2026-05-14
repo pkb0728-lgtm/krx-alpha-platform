@@ -14,6 +14,7 @@ dashboard for human review.
 ```powershell
 python main.py list-universe --universe demo
 python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
+python main.py screen-universe
 ```
 
 2. Show the summary output:
@@ -93,6 +94,7 @@ python main.py send-telegram-daily --dry-run
 - DART disclosures are transformed into event scores and risk flags.
 - Foreign and institutional net-buy flow is transformed into flow scores.
 - Named universes make screening repeatable.
+- Auto screener converts final signals into a human-review shortlist.
 - Features are reusable.
 - Market regime can block signals before they become buy candidates.
 - Signals are explainable.
@@ -121,7 +123,7 @@ python main.py send-telegram-daily --dry-run
 - market regime analyzer
 - testable modules
 - CI-ready quality checks
-- Streamlit dashboard with universe, backtest, walk-forward, ML, drift, and operations health review
+- Streamlit dashboard with universe, auto screener, backtest, walk-forward, ML, drift, and operations health review
 - scheduler-ready daily job runner
 - Telegram daily brief with dry-run safety
 - separated pipeline orchestration

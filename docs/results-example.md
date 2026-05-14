@@ -7,6 +7,7 @@ Example command:
 ```powershell
 python main.py list-universe --universe demo
 python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
+python main.py screen-universe
 ```
 
 Example output:
@@ -23,10 +24,21 @@ Ticker  Status   Action         Confidence
 000660  success  watch          59.37
 ```
 
+Example screener output:
+
+```text
+Universe screening completed.
+Checked: 3
+Passed: 1
+Result: data/signals/screening_daily/screening_universe_20240101_20240131.parquet
+Report: reports/screening/screening_universe_20240101_20240131.md
+```
+
 ## Interpretation
 
 The output does not mean "buy this stock." It means the stock passed the current
-rule-based screening and risk-filter logic for the selected date range.
+rule-based screening and risk-filter logic for the selected date range. The
+auto screener is a shortlist for human review, not an order instruction.
 
 ## OpenDART Demo Collection
 
@@ -90,6 +102,7 @@ The Streamlit dashboard displays:
 - success and failed counts
 - ranked candidate table
 - action distribution chart
+- latest auto screener shortlist
 - latest backtest metrics
 - latest backtest trades
 - latest walk-forward summary

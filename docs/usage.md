@@ -142,6 +142,7 @@ To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 
 ```powershell
 python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
+python main.py screen-universe
 python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
 ```
 
@@ -156,8 +157,16 @@ Output examples:
 ```text
 data/signals/universe_summary_daily/universe_20240101_20240131.parquet
 data/signals/universe_summary_daily/universe_20240101_20240131.csv
+data/signals/screening_daily/screening_universe_20240101_20240131.parquet
+data/signals/screening_daily/screening_universe_20240101_20240131.csv
+reports/screening/screening_universe_20240101_20240131.md
 reports/universe/universe_20240101_20240131.md
 ```
+
+`screen-universe` reads the latest universe summary and each ticker's latest
+final signal file, then creates a human-review shortlist using action,
+confidence, risk-block status, trading value change, RSI, and regime context.
+It never sends orders.
 
 ## 7. Analyze Market Regime
 
@@ -269,11 +278,11 @@ http://localhost:8501
 ```
 
 The dashboard shows the latest universe summary, action distribution, latest
-news sentiment feature, latest macro feature, backtest metrics, backtest trades,
-paper trading summary, paper trade ledger, paper portfolio history,
-walk-forward summary, fold-level validation results, ML probability baseline
-metrics and predictions, latest drift monitoring result, latest operations
-health result, and selected Markdown report.
+auto screener result, news sentiment feature, latest macro feature, backtest
+metrics, backtest trades, paper trading summary, paper trade ledger, paper
+portfolio history, walk-forward summary, fold-level validation results, ML
+probability baseline metrics and predictions, latest drift monitoring result,
+latest operations health result, and selected Markdown report.
 
 ## 10. Preview Or Send Telegram Brief
 

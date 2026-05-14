@@ -515,6 +515,46 @@ history table with `run_sequence`, `equity_high_watermark`, `drawdown`, and
 `cumulative_trade_count`. These columns are computed views, not separate stored
 contracts.
 
+### Screening Outputs
+
+Auto screener tables:
+
+```text
+data/signals/screening_daily/{report_name}.parquet
+data/signals/screening_daily/{report_name}.csv
+```
+
+Auto screener Markdown reports:
+
+```text
+reports/screening/{report_name}.md
+```
+
+Important screening columns:
+
+```text
+screen_date
+ticker
+passed
+screen_score
+final_action
+confidence_score
+market_regime
+risk_blocked
+suggested_position_pct
+trading_value
+trading_value_change_5d
+rsi_14
+volatility_5d
+reasons
+signal_path
+screened_at
+```
+
+The screener is a repeatable human-review shortlist. It combines final signal
+state with recent technical context from the feature store. It is not an order
+execution instruction.
+
 ### Monitoring Outputs
 
 Drift result tables:
@@ -591,6 +631,7 @@ The current contracts check:
 - invalid `high < low`
 - score ranges between 0 and 100
 - RSI range between 0 and 100
+- screener scores, confidence, and suggested position sizes within valid ranges
 - ML label horizon must end after each feature `as_of_date`
 - ML target labels must be binary
 - OpenDART corp_code and ticker formats

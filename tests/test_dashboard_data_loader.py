@@ -12,6 +12,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_paper_summary,
+    find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -28,6 +29,7 @@ from krx_alpha.dashboard.data_loader import (
     load_paper_portfolio_trades,
     load_paper_summary,
     load_paper_trades,
+    load_screening_result,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -387,6 +389,40 @@ def test_dashboard_data_loader_reads_latest_operations_health(tmp_path: Path) ->
     frame = load_operations_health(health_path)
     assert frame.loc[0, "check_name"] == "Universe summary"
     assert frame.loc[1, "status"] == "WARN"
+
+
+def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> None:
+    screening_dir = tmp_path / "data" / "signals" / "screening_daily"
+    screening_dir.mkdir(parents=True)
+    screening_path = screening_dir / "screening_universe_demo.parquet"
+
+    pd.DataFrame(
+        {
+            "screen_date": ["2024-01-31", "2024-01-31"],
+            "ticker": ["005930", "000660"],
+            "passed": [False, True],
+            "screen_score": [62.0, 78.0],
+            "final_action": ["watch", "buy_candidate"],
+            "confidence_score": [62.0, 75.0],
+            "market_regime": ["neutral", "bull"],
+            "risk_blocked": [False, False],
+            "suggested_position_pct": [1.0, 3.0],
+            "trading_value": [10_000_000.0, 20_000_000.0],
+            "trading_value_change_5d": [0.02, 0.12],
+            "rsi_14": [50.0, 55.0],
+            "volatility_5d": [0.01, 0.02],
+            "reasons": ["watch_signal", "buy_candidate_signal"],
+            "signal_path": ["a.parquet", "b.parquet"],
+            "screened_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 2,
+        }
+    ).to_parquet(screening_path, index=False)
+
+    latest_path = find_latest_screening_result(tmp_path)
+    assert latest_path == screening_path
+
+    frame = load_screening_result(screening_path)
+    assert frame.loc[0, "ticker"] == "000660"
+    assert bool(frame.loc[0, "passed"]) is True
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:

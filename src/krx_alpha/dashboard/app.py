@@ -15,6 +15,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_paper_summary,
+    find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -31,6 +32,7 @@ from krx_alpha.dashboard.data_loader import (
     load_paper_portfolio_trades,
     load_paper_summary,
     load_paper_trades,
+    load_screening_result,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -122,6 +124,32 @@ def main() -> None:
                 yaxis_title=None,
             )
             st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    st.subheader("Auto Screener")
+    screening_path = find_latest_screening_result(PROJECT_ROOT)
+    if screening_path is None:
+        st.info("No screening result found.")
+    else:
+        screening_frame = load_screening_result(screening_path)
+        if screening_frame.empty:
+            st.info("Screening result is empty.")
+        else:
+            passed_frame = screening_frame[screening_frame["passed"]]
+            top_screen = screening_frame.iloc[0]
+            screen_cols = st.columns(5)
+            screen_cols[0].metric("Checked", len(screening_frame))
+            screen_cols[1].metric("Passed", len(passed_frame))
+            screen_cols[2].metric("Top ticker", str(top_screen["ticker"]))
+            screen_cols[3].metric("Top score", _format_score(top_screen["screen_score"]))
+            screen_cols[4].metric("Top action", str(top_screen["final_action"]))
+            st.caption(f"Latest screening file: {screening_path.name}")
+            st.dataframe(
+                screening_frame[_screening_display_columns(screening_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
 
     st.divider()
 
@@ -611,6 +639,24 @@ def _operations_health_display_columns(frame: Any) -> list[str]:
         "age_hours",
         "detail",
         "path",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _screening_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "ticker",
+        "passed",
+        "screen_score",
+        "final_action",
+        "confidence_score",
+        "market_regime",
+        "suggested_position_pct",
+        "trading_value",
+        "trading_value_change_5d",
+        "rsi_14",
+        "volatility_5d",
+        "reasons",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

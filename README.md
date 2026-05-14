@@ -22,6 +22,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - ETL data layers: `raw`, `processed`, `features`, `signals`, `backtest`
 - Data contracts and validation checks
 - Named universe management for repeatable screening
+- Auto screener that creates a human-review shortlist from final signals
 - Technical and financial feature engineering
 - Disclosure event feature engineering
 - Foreign/institution investor flow feature engineering
@@ -41,7 +42,7 @@ operations health checks, Telegram alerts, and a Streamlit dashboard.
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief with drift and operations health status preview, send command, and retry settings
-- Streamlit dashboard for universe, news sentiment, macro, report, backtest, walk-forward, ML, and drift review
+- Streamlit dashboard for universe, screening, news sentiment, macro, report, backtest, walk-forward, ML, drift, and operations review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -65,6 +66,7 @@ select named universe
    using technical + risk + financial + event + flow + news + macro evidence
 -> apply risk filters
 -> generate final signals
+-> create auto screener shortlist
 -> simulate paper-only fills and portfolio state
 -> aggregate paper-only portfolio results across a universe
 -> backtest buy-candidate signals
@@ -116,11 +118,13 @@ flowchart LR
     H --> I["signal engine"]
     F --> I
     I --> J["final signals"]
+    J --> SC["auto screener"]
     H --> K["daily report"]
     F --> K
     J --> L["universe summary"]
     L --> U["daily job runner"]
     L --> M["Streamlit dashboard"]
+    SC --> M
     U --> M
     U --> T["Telegram brief"]
     J --> N["backtest engine"]
@@ -157,6 +161,7 @@ src/krx_alpha/
   scoring/       explainable scoring
   risk/          risk filters
   signals/       final signal generation
+  screening/     human-review shortlist generation
   backtest/      signal backtesting
   experiments/   CSV experiment tracking
   monitoring/    data, performance drift, and operations health checks
@@ -249,6 +254,7 @@ Multiple stocks:
 python main.py list-universe --universe all
 python main.py list-universe --universe demo
 python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
+python main.py screen-universe
 python main.py generate-universe-report --start 2024-01-01 --end 2024-01-31
 ```
 
@@ -286,9 +292,9 @@ Dashboard:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
-The dashboard includes the latest paper portfolio snapshot, a paper portfolio
-history view built from saved `paper_portfolio_summary` files, and the latest
-operations health result when available.
+The dashboard includes the latest auto screener shortlist, paper portfolio
+snapshot, paper portfolio history view built from saved `paper_portfolio_summary`
+files, and the latest operations health result when available.
 
 Open:
 
@@ -364,7 +370,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 112 passed
+pytest: 115 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -390,6 +396,7 @@ data/signals/scores_daily/
 data/signals/final_signals_daily/
 data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
+data/signals/screening_daily/
 data/signals/ml_predictions/
 data/signals/ml_metrics/
 data/signals/drift/
@@ -408,6 +415,7 @@ experiments/experiment_log.csv
 reports/daily/
 reports/regime/
 reports/universe/
+reports/screening/
 reports/backtest/
 reports/paper_trading/
 reports/modeling/

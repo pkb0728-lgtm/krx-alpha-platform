@@ -72,6 +72,9 @@ from krx_alpha.database.storage import (
     raw_news_file_path,
     raw_price_file_path,
     read_parquet,
+    screening_report_file_path,
+    screening_result_csv_path,
+    screening_result_file_path,
     universe_csv_path,
     universe_file_path,
     universe_report_file_path,
@@ -141,6 +144,11 @@ from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scheduler.daily_job import DailyJobConfig, DailyJobRunner
 from krx_alpha.scoring.price_scorer import PriceScorer
+from krx_alpha.screening.auto_screener import (
+    AutoScreener,
+    AutoScreenerConfig,
+    format_screening_report,
+)
 from krx_alpha.signals.signal_engine import SignalEngine
 from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
 from krx_alpha.universe.static_universe import UniverseRegistry
@@ -1878,6 +1886,77 @@ def run_universe(
 
 def _parse_tickers(tickers: str) -> list[str]:
     return [ticker.strip().zfill(6) for ticker in tickers.split(",") if ticker.strip()]
+
+
+@app.command("screen-universe")
+def screen_universe(
+    summary_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--summary-path",
+            help="Universe summary parquet path. Uses latest if omitted.",
+        ),
+    ] = None,
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output report name without extension."),
+    ] = None,
+    min_confidence: Annotated[
+        float,
+        typer.Option("--min-confidence", help="Minimum final signal confidence."),
+    ] = 60.0,
+    min_screen_score: Annotated[
+        float,
+        typer.Option("--min-screen-score", help="Minimum composite screening score."),
+    ] = 60.0,
+    top_n: Annotated[
+        int,
+        typer.Option("--top-n", help="Number of rows to print."),
+    ] = 20,
+) -> None:
+    """Create a human-review shortlist from the latest universe signal artifacts."""
+    configure_logger(settings.log_level)
+    resolved_summary_path = summary_path or find_latest_universe_summary(settings.project_root)
+    if resolved_summary_path is None or not resolved_summary_path.exists():
+        raise typer.BadParameter(
+            "Universe summary file does not exist. Run run-universe first or pass --summary-path."
+        )
+
+    summary_frame = read_parquet(resolved_summary_path)
+    result_frame = AutoScreener(
+        project_root=settings.project_root,
+        config=AutoScreenerConfig(
+            min_confidence=min_confidence,
+            min_screen_score=min_screen_score,
+        ),
+    ).screen(summary_frame)
+
+    report_name = _safe_report_name(output_name or f"screening_{resolved_summary_path.stem}")
+    result_path = screening_result_file_path(settings.project_root, report_name)
+    csv_path = screening_result_csv_path(settings.project_root, report_name)
+    report_path = screening_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_csv(result_frame, csv_path)
+    write_text(format_screening_report(result_frame), report_path)
+
+    passed_count = int(result_frame["passed"].sum()) if not result_frame.empty else 0
+    console.print("[bold green]Universe screening completed.[/bold green]")
+    console.print(f"Checked: {len(result_frame)}")
+    console.print(f"Passed: {passed_count}")
+    console.print(f"Result: {result_path}")
+    console.print(f"CSV: {csv_path}")
+    console.print(f"Report: {report_path}")
+    display_columns = [
+        "ticker",
+        "passed",
+        "screen_score",
+        "final_action",
+        "confidence_score",
+        "suggested_position_pct",
+        "reasons",
+    ]
+    if not result_frame.empty:
+        console.print(result_frame.head(top_n)[display_columns])
 
 
 @app.command("generate-universe-report")

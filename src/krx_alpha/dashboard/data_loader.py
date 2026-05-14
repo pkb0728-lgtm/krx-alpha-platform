@@ -67,6 +67,15 @@ def find_latest_operations_health(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_screening_result(project_root: Path) -> Path | None:
+    screening_dir = project_root / "data" / "signals" / "screening_daily"
+    if not screening_dir.exists():
+        return None
+
+    files = sorted(screening_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def find_latest_ml_metrics(project_root: Path) -> Path | None:
     metrics_dir = project_root / "data" / "signals" / "ml_metrics"
     if not metrics_dir.exists():
@@ -233,6 +242,17 @@ def load_operations_health(path: Path) -> Any:
         return frame
 
     return frame.sort_values(["severity", "category", "check_name"]).reset_index(drop=True)
+
+
+def load_screening_result(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "screen_score" not in frame.columns:
+        return frame
+
+    return frame.sort_values(
+        ["passed", "screen_score", "confidence_score"],
+        ascending=[False, False, False],
+    ).reset_index(drop=True)
 
 
 def load_ml_metrics(path: Path) -> Any:

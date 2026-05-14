@@ -58,6 +58,12 @@ DEFAULT_ARTIFACT_SPECS = (
         required=False,
         min_rows=None,
     ),
+    ArtifactSpec(
+        "Auto screener result",
+        "signals",
+        "data/signals/screening_daily/*.parquet",
+        required=False,
+    ),
     ArtifactSpec("Backtest metrics", "backtest", "data/backtest/metrics/*.parquet", required=False),
     ArtifactSpec(
         "Walk-forward summary",

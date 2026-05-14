@@ -446,6 +446,20 @@ def operations_health_file_path(project_root: Path, report_name: str) -> Path:
     return dataset_dir / f"{report_name}.parquet"
 
 
+def screening_result_file_path(project_root: Path, report_name: str) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "screening_daily")
+    return dataset_dir / f"{report_name}.parquet"
+
+
+def screening_result_csv_path(project_root: Path, report_name: str) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "screening_daily")
+    return dataset_dir / f"{report_name}.csv"
+
+
+def screening_report_file_path(project_root: Path, report_name: str) -> Path:
+    return project_root / "reports" / "screening" / f"{report_name}.md"
+
+
 def monitoring_report_file_path(project_root: Path, report_name: str) -> Path:
     return project_root / "reports" / "monitoring" / f"{report_name}.md"
 

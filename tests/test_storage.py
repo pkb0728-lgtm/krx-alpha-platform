@@ -29,6 +29,9 @@ from krx_alpha.database.storage import (
     paper_trade_ledger_file_path,
     paper_trading_report_file_path,
     raw_investor_flow_file_path,
+    screening_report_file_path,
+    screening_result_csv_path,
+    screening_result_file_path,
     walk_forward_folds_file_path,
     walk_forward_report_file_path,
     walk_forward_summary_file_path,
@@ -189,6 +192,21 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         operations_health_file_path(tmp_path, "operations_health_latest")
         .as_posix()
         .endswith("data/signals/operations_health/operations_health_latest.parquet")
+    )
+    assert (
+        screening_result_file_path(tmp_path, "screening_universe_demo")
+        .as_posix()
+        .endswith("data/signals/screening_daily/screening_universe_demo.parquet")
+    )
+    assert (
+        screening_result_csv_path(tmp_path, "screening_universe_demo")
+        .as_posix()
+        .endswith("data/signals/screening_daily/screening_universe_demo.csv")
+    )
+    assert (
+        screening_report_file_path(tmp_path, "screening_universe_demo")
+        .as_posix()
+        .endswith("reports/screening/screening_universe_demo.md")
     )
     assert (
         monitoring_report_file_path(tmp_path, "data_drift_demo")
