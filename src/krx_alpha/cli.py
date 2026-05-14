@@ -1965,7 +1965,7 @@ def screen_universe(
         "reasons",
     ]
     if not result_frame.empty:
-        console.print(result_frame.head(top_n)[display_columns])
+        console.print(result_frame.head(top_n)[display_columns].to_string(index=False))
 
 
 @app.command("generate-universe-report")
