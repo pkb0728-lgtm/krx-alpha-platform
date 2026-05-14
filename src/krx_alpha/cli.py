@@ -9,6 +9,12 @@ from rich.table import Table
 
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
+from krx_alpha.broker.kis_candidates import (
+    KISPaperCandidateBuilder,
+    KISPaperCandidateConfig,
+    enrich_screening_reference_prices,
+    format_kis_paper_candidate_report,
+)
 from krx_alpha.broker.kis_paper import KISPaperClient, KISPaperCredentials
 from krx_alpha.collectors.dart_collector import (
     DartCompanyRequest,
@@ -33,8 +39,10 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_drift_result,
     find_latest_operations_health,
     find_latest_paper_portfolio_summary,
+    find_latest_screening_result,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
+    load_screening_result,
 )
 from krx_alpha.database.storage import (
     api_health_file_path,
@@ -53,6 +61,9 @@ from krx_alpha.database.storage import (
     ensure_project_dirs,
     final_signal_file_path,
     investor_flow_feature_file_path,
+    kis_paper_candidate_csv_path,
+    kis_paper_candidate_file_path,
+    kis_paper_candidate_report_file_path,
     macro_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
@@ -599,6 +610,96 @@ def kis_paper_balance(
         )
     console.print(table)
     console.print("Mode: paper trading only. No order was sent.")
+
+
+@app.command("build-kis-paper-candidates")
+def build_kis_paper_candidates(
+    screening_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--screening-path",
+            help="Auto-screener result parquet path. Uses the latest result when omitted.",
+        ),
+    ] = None,
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output artifact name without extension."),
+    ] = None,
+    max_candidates: Annotated[
+        int,
+        typer.Option("--max-candidates", help="Maximum rows to convert into review candidates."),
+    ] = 10,
+    cash_buffer_pct: Annotated[
+        float,
+        typer.Option("--cash-buffer-pct", help="Cash percentage reserved from candidate sizing."),
+    ] = 5.0,
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", help="HTTP timeout for KIS paper balance inquiry."),
+    ] = 10.0,
+) -> None:
+    """Build KIS mock-account review candidates without sending any order."""
+    configure_logger(settings.log_level)
+    resolved_screening_path = screening_path or find_latest_screening_result(settings.project_root)
+    if resolved_screening_path is None or not resolved_screening_path.exists():
+        raise typer.BadParameter(
+            "Screening result file does not exist. "
+            "Run screen-universe first or pass --screening-path."
+        )
+
+    try:
+        credentials = KISPaperCredentials.from_settings(settings)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    screening_frame = load_screening_result(resolved_screening_path)
+    screening_frame = enrich_screening_reference_prices(screening_frame, settings.project_root)
+
+    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    token = client.issue_access_token()
+    balance = client.inquire_balance(token)
+
+    result_frame = KISPaperCandidateBuilder(
+        KISPaperCandidateConfig(
+            max_candidates=max_candidates,
+            cash_buffer_pct=cash_buffer_pct,
+        )
+    ).build(screening_frame, balance)
+
+    report_name = _safe_report_name(
+        output_name or f"kis_paper_candidates_{resolved_screening_path.stem}"
+    )
+    result_path = kis_paper_candidate_file_path(settings.project_root, report_name)
+    csv_path = kis_paper_candidate_csv_path(settings.project_root, report_name)
+    report_path = kis_paper_candidate_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_csv(result_frame, csv_path)
+    write_text(format_kis_paper_candidate_report(result_frame), report_path)
+
+    review_count = int(result_frame["candidate_action"].isin(["review_buy", "review_add"]).sum())
+    manual_count = int((result_frame["candidate_action"] == "manual_price_required").sum())
+    console.print("[bold green]KIS paper review candidates generated.[/bold green]")
+    console.print(f"Screening: {resolved_screening_path}")
+    console.print(f"Account: {balance.account}")
+    console.print(f"Cash: {balance.cash_amount:,.0f}")
+    console.print(f"Total evaluation: {balance.total_evaluation_amount:,.0f}")
+    console.print(f"Review buy/add: {review_count}")
+    console.print(f"Manual price checks: {manual_count}")
+    console.print(f"Result: {result_path}")
+    console.print(f"CSV: {csv_path}")
+    console.print(f"Report: {report_path}")
+    console.print("Mode: paper trading review only. No order was sent.")
+    if not result_frame.empty:
+        display_columns = [
+            "ticker",
+            "candidate_action",
+            "estimated_quantity",
+            "estimated_amount",
+            "target_position_pct",
+            "confidence_score",
+            "reason",
+        ]
+        console.print(result_frame[display_columns].to_string(index=False))
 
 
 @app.command("init-dirs")

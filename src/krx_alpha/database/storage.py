@@ -466,6 +466,20 @@ def screening_result_csv_path(project_root: Path, report_name: str) -> Path:
     return dataset_dir / f"{report_name}.csv"
 
 
+def kis_paper_candidate_file_path(project_root: Path, report_name: str) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "kis_paper_candidates")
+    return dataset_dir / f"{report_name}.parquet"
+
+
+def kis_paper_candidate_csv_path(project_root: Path, report_name: str) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "kis_paper_candidates")
+    return dataset_dir / f"{report_name}.csv"
+
+
+def kis_paper_candidate_report_file_path(project_root: Path, report_name: str) -> Path:
+    return project_root / "reports" / "kis_paper_candidates" / f"{report_name}.md"
+
+
 def screening_report_file_path(project_root: Path, report_name: str) -> Path:
     return project_root / "reports" / "screening" / f"{report_name}.md"
 

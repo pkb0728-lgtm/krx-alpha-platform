@@ -363,9 +363,14 @@ Operations health review:
 python main.py check-apis --skip-pykrx --save
 python main.py kis-paper-token-check
 python main.py kis-paper-balance
+python main.py build-kis-paper-candidates
 python main.py check-operations --skip-apis
 python main.py check-operations --include-apis --skip-pykrx
 ```
+
+`build-kis-paper-candidates` combines the latest auto-screener result with the
+KIS mock-investment balance and writes a human-review candidate file. It does
+not call any KIS order endpoint.
 
 ## Quality Checks
 
@@ -378,7 +383,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 115 passed
+pytest: 133 passed
 ruff: all checks passed
 mypy: no issues found
 ```
