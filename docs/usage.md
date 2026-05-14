@@ -66,6 +66,17 @@ After `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, and `GEMINI_API_KEY` are set in
 `.env`, replace `--demo` with `--live` for Naver collection and use `--gemini`
 for Gemini-based summarization and sentiment scoring.
 
+Optional macro features can be prepared from FRED. The demo path works without
+an API key:
+
+```powershell
+python main.py collect-macro --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-macro-features --start 2024-01-01 --end 2024-01-31
+```
+
+After `FRED_API_KEY` is set in `.env`, replace `--demo` with `--live` to collect
+real FRED observations. The default series are `DGS10`, `DFF`, and `DEXKOUS`.
+
 ## 4. List A Named Universe
 
 List available universes:
@@ -112,15 +123,17 @@ data/features/dart_disclosure_events/00126380_20240101_20240131.parquet
 The financial feature output includes revenue growth, operating margin, debt
 ratio, ROE, a 0-100 financial score, and reason labels for explainability.
 
-Use the financial and disclosure event feature files in the daily pipeline:
+Use the financial, disclosure event, investor flow, news, and macro feature
+files in the daily pipeline:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31 --macro-start 2024-01-01 --macro-end 2024-01-31
 ```
 
 When these options are provided, the score blends technical, risk, financial,
-event, investor flow, and news sentiment evidence. Without those options, the
-pipeline uses neutral financial, event, flow, and news scores of `50.0`.
+event, investor flow, news sentiment, and macro evidence. Without those
+options, the pipeline uses neutral financial, event, flow, news, and macro
+scores of `50.0`.
 
 To use the live OpenDART API, put `DART_API_KEY` in `.env` and replace
 `--demo` with `--live`.
@@ -241,9 +254,10 @@ http://localhost:8501
 ```
 
 The dashboard shows the latest universe summary, action distribution, latest
-news sentiment feature, backtest metrics, backtest trades, walk-forward
-summary, fold-level validation results, ML probability baseline metrics and
-predictions, latest drift monitoring result, and selected Markdown report.
+news sentiment feature, latest macro feature, backtest metrics, backtest trades,
+walk-forward summary, fold-level validation results, ML probability baseline
+metrics and predictions, latest drift monitoring result, and selected Markdown
+report.
 
 ## 10. Preview Or Send Telegram Brief
 

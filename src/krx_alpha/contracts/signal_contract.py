@@ -54,6 +54,12 @@ def validate_final_signal_frame(frame: Any) -> None:
     ):
         raise ValueError("news_score values must be between 0 and 100.")
 
+    if (
+        "macro_score" in frame.columns
+        and frame["macro_score"].dropna().between(0, 100).all() is False
+    ):
+        raise ValueError("macro_score values must be between 0 and 100.")
+
     if frame["suggested_position_pct"].dropna().between(0, 100).all() is False:
         raise ValueError("suggested_position_pct values must be between 0 and 100.")
 

@@ -7,7 +7,7 @@ operational financial data platform that demonstrates data collection, ETL,
 OpenDART financial/disclosure ingestion, data validation, feature engineering,
 financial feature scoring, disclosure event risk scoring, investor flow
 scoring, Naver news collection, Gemini-compatible news sentiment scoring,
-market regime analysis, explainable scoring, risk filtering, backtesting,
+FRED macro environment scoring, market regime analysis, explainable scoring, risk filtering, backtesting,
 experiment tracking, drift monitoring, report generation, scheduled daily jobs,
 ML training dataset generation, a first explainable ML probability baseline,
 Telegram alerts, and a Streamlit dashboard.
@@ -26,6 +26,7 @@ Telegram alerts, and a Streamlit dashboard.
 - Disclosure event feature engineering
 - Foreign/institution investor flow feature engineering
 - Naver news collection and rule/Gemini-based news sentiment features
+- FRED macro features for US rates and USD/KRW risk context
 - Market regime analysis connected to risk filtering
 - Explainable rule-based scoring
 - Risk filtering before final signals
@@ -38,7 +39,7 @@ Telegram alerts, and a Streamlit dashboard.
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief with drift status preview, send command, and retry settings
-- Streamlit dashboard for universe, news sentiment, report, backtest, walk-forward, ML, and drift review
+- Streamlit dashboard for universe, news sentiment, macro, report, backtest, walk-forward, ML, and drift review
 - Tests, linting, type checking, Docker, and GitHub Actions
 
 ## Current MVP
@@ -56,9 +57,10 @@ select named universe
 -> build OpenDART financial features
 -> build OpenDART disclosure event features
 -> collect news and build news sentiment features
+-> collect FRED macro data and build macro features
 -> analyze market regime
 -> score each stock
-   using technical + risk + financial + event + flow + news evidence
+   using technical + risk + financial + event + flow + news + macro evidence
 -> apply risk filters
 -> generate final signals
 -> backtest buy-candidate signals
@@ -92,6 +94,9 @@ flowchart LR
     NW["Naver news collector"] --> NR["news raw parquet"]
     NR --> NS["news sentiment builder"]
     NS --> F
+    FM["FRED macro collector"] --> MR["macro raw parquet"]
+    MR --> MF["macro feature builder"]
+    MF --> F
     Y --> Z["financial feature builder"]
     Z --> F
     W --> S["investor flow feature builder"]
@@ -214,10 +219,21 @@ Use `--gemini` after `GEMINI_API_KEY` is configured to request Gemini-based
 news summarization and sentiment scoring. The default `--rule-based` path is
 deterministic and works offline for demos.
 
-Blend OpenDART financial, disclosure event, investor flow, and news scores:
+Macro/FRED demo data:
 
 ```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31
+python main.py collect-macro --start 2024-01-01 --end 2024-01-31 --demo
+python main.py build-macro-features --start 2024-01-01 --end 2024-01-31
+```
+
+Use `--live` after `FRED_API_KEY` is configured to collect real FRED series.
+The default series are `DGS10`, `DFF`, and `DEXKOUS`, covering US 10-year
+yields, the effective federal funds rate, and USD/KRW.
+
+Blend OpenDART financial, disclosure event, investor flow, news, and macro scores:
+
+```powershell
+python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31 --news-start 2024-01-01 --news-end 2024-01-31 --macro-start 2024-01-01 --macro-end 2024-01-31
 ```
 
 Multiple stocks:
@@ -315,7 +331,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 83 passed
+pytest: 101 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -328,12 +344,14 @@ data/raw/dart_company/
 data/raw/dart_financials/
 data/raw/dart_disclosures/
 data/raw/investor_flow_daily/
+data/raw/macro_fred_daily/
 data/processed/universe/
 data/processed/prices_daily/
 data/features/prices_daily/
 data/features/dart_financials/
 data/features/dart_disclosure_events/
 data/features/investor_flow_daily/
+data/features/macro_fred_daily/
 data/features/ml_training/
 data/signals/scores_daily/
 data/signals/final_signals_daily/
@@ -362,6 +380,7 @@ reports/monitoring/
 - [Data Design](docs/data-design.md)
 - [DART Data Card](docs/data_cards/dart_data_v0.md)
 - [Investor Flow Data Card](docs/data_cards/investor_flow_data_v0.md)
+- [Macro/FRED Data Card](docs/data_cards/macro_data_v0.md)
 - [ML Dataset Card](docs/model_cards/ml_training_dataset_v0.md)
 - [ML Baseline Model Card](docs/model_cards/scorecard_probability_baseline_v0.md)
 - [Scoring and Risk](docs/scoring-and-risk.md)

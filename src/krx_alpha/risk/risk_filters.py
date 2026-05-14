@@ -10,6 +10,7 @@ class RiskFilterConfig:
     max_range_pct: float = 0.07
     max_volatility_5d: float = 0.04
     min_risk_score: float = 40.0
+    min_macro_score: float = 25.0
     blocked_market_regimes: tuple[str, ...] = ("bear", "high_volatility")
 
 
@@ -47,6 +48,10 @@ class RiskFilter:
         flow_score = row.get("flow_score")
         if pd.notna(flow_score) and float(flow_score) < 25:
             flags.append("weak_investor_flow")
+
+        macro_score = row.get("macro_score")
+        if pd.notna(macro_score) and float(macro_score) < self.config.min_macro_score:
+            flags.append("weak_macro_environment")
 
         market_regime = str(row.get("market_regime", "")).lower()
         if market_regime in self.config.blocked_market_regimes:

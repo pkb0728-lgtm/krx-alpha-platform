@@ -58,6 +58,15 @@ def find_latest_news_sentiment(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_macro_features(project_root: Path) -> Path | None:
+    macro_dir = project_root / "data" / "features" / "macro_fred_daily"
+    if not macro_dir.exists():
+        return None
+
+    files = sorted(macro_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def load_universe_summary(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty:
@@ -161,6 +170,14 @@ def load_news_sentiment(path: Path) -> Any:
         ["date", "news_score"],
         ascending=[False, False],
     ).reset_index(drop=True)
+
+
+def load_macro_features(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values("date", ascending=False).reset_index(drop=True)
 
 
 def load_markdown(path: Path) -> str:

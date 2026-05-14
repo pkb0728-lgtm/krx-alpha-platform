@@ -38,12 +38,14 @@ def test_price_scorer_creates_scores_and_labels() -> None:
     assert score_frame["event_risk_flag"].eq(False).all()
     assert score_frame["flow_score"].eq(50.0).all()
     assert score_frame["news_score"].eq(50.0).all()
+    assert score_frame["macro_score"].eq(50.0).all()
     assert score_frame["total_score"].between(0, 100).all()
     assert "rsi_recovery_zone" in score_frame.loc[0, "score_reason"]
     assert score_frame.loc[0, "financial_reason"] == "no_financial_feature_available"
     assert score_frame.loc[0, "event_reason"] == "no_disclosure_event_available"
     assert score_frame.loc[0, "flow_reason"] == "no_investor_flow_available"
     assert score_frame.loc[0, "news_reason"] == "no_news_sentiment_available"
+    assert score_frame.loc[0, "macro_reason"] == "no_macro_feature_available"
 
 
 def test_price_scorer_blends_financial_score() -> None:
@@ -294,3 +296,49 @@ def test_price_scorer_blends_news_sentiment_score() -> None:
 
     assert score_frame.loc[0, "news_score"] == 73.25
     assert score_frame.loc[0, "news_reason"] == "news_sentiment_positive"
+
+
+def test_price_scorer_blends_macro_score() -> None:
+    feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "close": [72700],
+            "volume": [1200],
+            "trading_value": [87240000],
+            "return_1d": [-0.02],
+            "ma_5": [73780],
+            "ma_20": [74070],
+            "close_to_ma_5": [-0.015],
+            "close_to_ma_20": [-0.018],
+            "volume_change_5d": [0.1],
+            "trading_value_change_5d": [0.05],
+            "range_pct": [0.03],
+            "volatility_5d": [0.02],
+            "volatility_20d": [0.018],
+            "rsi_14": [48],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+    macro_feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "us_10y_yield": [5.1],
+            "fed_funds_rate": [5.33],
+            "usdkrw": [1380.0],
+            "us_10y_yield_change_5d": [0.2],
+            "usdkrw_change_5d": [50.0],
+            "usdkrw_change_pct_5d": [0.04],
+            "macro_score": [25.0],
+            "macro_reason": ["us_10y_yield_rising, usdkrw_rising_fx_pressure"],
+            "source": ["macro_features"],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+
+    score_frame = PriceScorer().score(feature_frame, macro_feature_frame=macro_feature_frame)
+
+    assert score_frame.loc[0, "macro_score"] == 25.0
+    assert "usdkrw_rising_fx_pressure" in score_frame.loc[0, "macro_reason"]

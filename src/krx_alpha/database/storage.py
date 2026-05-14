@@ -61,6 +61,16 @@ def raw_news_file_path(project_root: Path, ticker: str, start_date: str, end_dat
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
 
 
+def raw_macro_file_path(
+    project_root: Path,
+    start_date: str,
+    end_date: str,
+    series_slug: str,
+) -> Path:
+    dataset_dir = raw_dataset_dir(project_root, "macro_fred_daily")
+    return dataset_dir / f"macro_{start_date}_{end_date}_{series_slug}.parquet"
+
+
 def dart_company_file_path(project_root: Path, corp_code: str) -> Path:
     dataset_dir = raw_dataset_dir(project_root, "dart_company")
     return dataset_dir / f"{corp_code}.parquet"
@@ -194,6 +204,16 @@ def news_sentiment_feature_file_path(
 ) -> Path:
     dataset_dir = features_dataset_dir(project_root, "news_sentiment_daily")
     return dataset_dir / f"{ticker}_{start_date}_{end_date}.parquet"
+
+
+def macro_feature_file_path(
+    project_root: Path,
+    start_date: str,
+    end_date: str,
+    series_slug: str,
+) -> Path:
+    dataset_dir = features_dataset_dir(project_root, "macro_fred_daily")
+    return dataset_dir / f"macro_{start_date}_{end_date}_{series_slug}.parquet"
 
 
 def dart_financial_feature_file_path(

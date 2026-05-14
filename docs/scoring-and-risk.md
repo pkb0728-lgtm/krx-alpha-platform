@@ -15,6 +15,7 @@ event_score
 event_risk_flag
 flow_score
 news_score
+macro_score
 total_score
 signal_label
 score_reason
@@ -22,6 +23,7 @@ financial_reason
 event_reason
 flow_reason
 news_reason
+macro_reason
 ```
 
 OpenDART financial statements can also be converted into a separate
@@ -34,11 +36,13 @@ Investor flow features can also be attached. Foreign and institutional net-buy
 strength becomes `flow_score` and `flow_reason`.
 News sentiment features can also be attached. Naver news and rule/Gemini-based
 sentiment analysis become `news_score` and `news_reason`.
+Macro features can also be attached. FRED US 10-year yields, the effective
+federal funds rate, and USD/KRW become `macro_score` and `macro_reason`.
 
 Current MVP weighting:
 
 ```text
-total_score = technical_score * 0.35 + risk_score * 0.20 + financial_score * 0.15 + event_score * 0.10 + flow_score * 0.10 + news_score * 0.10
+total_score = technical_score * 0.30 + risk_score * 0.20 + financial_score * 0.15 + event_score * 0.10 + flow_score * 0.10 + news_score * 0.10 + macro_score * 0.05
 ```
 
 ## Technical Score
@@ -81,6 +85,7 @@ Current risk filters include:
 - weak risk score
 - disclosure event risk
 - weak investor flow
+- unfavorable macro environment
 - unfavorable market regime, currently `bear` and `high_volatility`
 
 ## Market Regime

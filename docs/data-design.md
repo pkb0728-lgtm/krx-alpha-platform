@@ -319,6 +319,38 @@ rule-based analyzer or Gemini-compatible JSON output. The score remains
 human-readable through reason codes such as `news_sentiment_positive`,
 `news_sentiment_negative`, and `news_volume_elevated`.
 
+### Macro/FRED Features
+
+Raw path:
+
+```text
+data/raw/macro_fred_daily/macro_{start}_{end}_{series_slug}.parquet
+```
+
+Feature path:
+
+```text
+data/features/macro_fred_daily/macro_{start}_{end}_{series_slug}.parquet
+```
+
+Important feature columns:
+
+```text
+us_10y_yield
+fed_funds_rate
+usdkrw
+us_10y_yield_change_5d
+usdkrw_change_5d
+usdkrw_change_pct_5d
+macro_score
+macro_reason
+```
+
+The default FRED series are `DGS10`, `DFF`, and `DEXKOUS`. The feature builder
+keeps the output date-aligned and explainable through reason codes such as
+`us_10y_yield_rising`, `fed_funds_rate_restrictive`, and
+`usdkrw_rising_fx_pressure`.
+
 ### Daily Scores
 
 Path:
@@ -337,6 +369,7 @@ event_score
 event_risk_flag
 flow_score
 news_score
+macro_score
 total_score
 signal_label
 score_reason
@@ -344,6 +377,7 @@ financial_reason
 event_reason
 flow_reason
 news_reason
+macro_reason
 ```
 
 ### Market Regime

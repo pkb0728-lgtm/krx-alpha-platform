@@ -6,6 +6,7 @@ from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
     find_latest_universe_summary,
@@ -13,6 +14,7 @@ from krx_alpha.dashboard.data_loader import (
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
+    load_macro_features,
     load_markdown,
     load_ml_metrics,
     load_ml_predictions,
@@ -251,3 +253,33 @@ def test_dashboard_data_loader_reads_latest_news_sentiment(tmp_path: Path) -> No
     frame = load_news_sentiment(news_path)
     assert frame.loc[0, "date"] == "2024-01-31"
     assert frame.loc[0, "news_score"] == 68.0
+
+
+def test_dashboard_data_loader_reads_latest_macro_features(tmp_path: Path) -> None:
+    macro_dir = tmp_path / "data" / "features" / "macro_fred_daily"
+    macro_dir.mkdir(parents=True)
+    macro_path = macro_dir / "macro_20240101_20240131_DGS10_DFF_DEXKOUS.parquet"
+
+    pd.DataFrame(
+        {
+            "date": ["2024-01-30", "2024-01-31"],
+            "as_of_date": ["2024-01-30", "2024-01-31"],
+            "us_10y_yield": [4.1, 4.2],
+            "fed_funds_rate": [5.33, 5.33],
+            "usdkrw": [1320.0, 1335.0],
+            "us_10y_yield_change_5d": [0.1, 0.2],
+            "usdkrw_change_5d": [10.0, 15.0],
+            "usdkrw_change_pct_5d": [0.01, 0.02],
+            "macro_score": [45.0, 43.0],
+            "macro_reason": ["macro_environment_neutral", "us_10y_yield_rising"],
+            "source": ["macro_features", "macro_features"],
+            "feature_created_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 2,
+        }
+    ).to_parquet(macro_path, index=False)
+
+    latest_path = find_latest_macro_features(tmp_path)
+    assert latest_path == macro_path
+
+    frame = load_macro_features(macro_path)
+    assert frame.loc[0, "date"] == "2024-01-31"
+    assert frame.loc[0, "macro_score"] == 43.0

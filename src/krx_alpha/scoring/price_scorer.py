@@ -7,6 +7,7 @@ from krx_alpha.contracts.disclosure_event_contract import validate_disclosure_ev
 from krx_alpha.contracts.feature_contract import validate_price_feature_frame
 from krx_alpha.contracts.financial_feature_contract import validate_financial_feature_frame
 from krx_alpha.contracts.investor_flow_contract import validate_investor_flow_feature_frame
+from krx_alpha.contracts.macro_contract import validate_macro_feature_frame
 from krx_alpha.contracts.news_contract import validate_news_sentiment_frame
 from krx_alpha.contracts.score_contract import validate_daily_score_frame
 
@@ -21,6 +22,7 @@ SCORE_COLUMNS = [
     "event_risk_flag",
     "flow_score",
     "news_score",
+    "macro_score",
     "total_score",
     "signal_label",
     "score_reason",
@@ -28,6 +30,7 @@ SCORE_COLUMNS = [
     "event_reason",
     "flow_reason",
     "news_reason",
+    "macro_reason",
     "scored_at",
 ]
 
@@ -42,6 +45,7 @@ class PriceScorer:
         event_feature_frame: Any | None = None,
         flow_feature_frame: Any | None = None,
         news_feature_frame: Any | None = None,
+        macro_feature_frame: Any | None = None,
     ) -> Any:
         frame = feature_frame.copy()
         validate_price_feature_frame(frame)
@@ -49,16 +53,18 @@ class PriceScorer:
         frame = _attach_event_scores(frame, event_feature_frame)
         frame = _attach_flow_scores(frame, flow_feature_frame)
         frame = _attach_news_scores(frame, news_feature_frame)
+        frame = _attach_macro_scores(frame, macro_feature_frame)
 
         frame["technical_score"] = frame.apply(_technical_score, axis=1)
         frame["risk_score"] = frame.apply(_risk_score, axis=1)
         frame["total_score"] = (
-            frame["technical_score"] * 0.35
+            frame["technical_score"] * 0.30
             + frame["risk_score"] * 0.20
             + frame["financial_score"] * 0.15
             + frame["event_score"] * 0.10
             + frame["flow_score"] * 0.10
             + frame["news_score"] * 0.10
+            + frame["macro_score"] * 0.05
         ).clip(0, 100)
         frame["signal_label"] = frame["total_score"].apply(_signal_label)
         frame["score_reason"] = frame.apply(_score_reason, axis=1)
@@ -167,6 +173,24 @@ def _attach_news_scores(frame: Any, news_feature_frame: Any | None) -> Any:
     merged = frame.merge(news[news_columns], on=["date", "ticker"], how="left")
     merged["news_score"] = merged["news_score"].fillna(50.0)
     merged["news_reason"] = merged["news_reason"].fillna("no_news_sentiment_available")
+    return merged
+
+
+def _attach_macro_scores(frame: Any, macro_feature_frame: Any | None) -> Any:
+    frame = frame.copy()
+    frame["date"] = pd.to_datetime(frame["date"]).dt.date
+    if macro_feature_frame is None:
+        frame["macro_score"] = 50.0
+        frame["macro_reason"] = "no_macro_feature_available"
+        return frame
+
+    validate_macro_feature_frame(macro_feature_frame)
+    macro = macro_feature_frame.copy()
+    macro["date"] = pd.to_datetime(macro["date"]).dt.date
+    macro_columns = ["date", "macro_score", "macro_reason"]
+    merged = frame.merge(macro[macro_columns], on="date", how="left")
+    merged["macro_score"] = merged["macro_score"].fillna(50.0)
+    merged["macro_reason"] = merged["macro_reason"].fillna("no_macro_feature_available")
     return merged
 
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import plotly.express as px
 import streamlit as st
 
@@ -8,6 +9,7 @@ from krx_alpha.dashboard.data_loader import (
     action_counts,
     find_latest_backtest_metrics,
     find_latest_drift_result,
+    find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
     find_latest_universe_summary,
@@ -15,6 +17,7 @@ from krx_alpha.dashboard.data_loader import (
     load_backtest_metrics,
     load_backtest_trades,
     load_drift_result,
+    load_macro_features,
     load_markdown,
     load_ml_metrics,
     load_ml_predictions,
@@ -79,6 +82,7 @@ def main() -> None:
             "latest_action",
             "latest_confidence_score",
             "latest_news_score",
+            "latest_macro_score",
             "latest_market_regime",
             "error",
         ]
@@ -151,6 +155,48 @@ def main() -> None:
 
             st.dataframe(
                 news_frame[_news_sentiment_display_columns(news_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
+
+    st.divider()
+
+    st.subheader("Macro Environment")
+    macro_path = find_latest_macro_features(PROJECT_ROOT)
+    if macro_path is None:
+        st.info("No macro feature found.")
+    else:
+        macro_frame = load_macro_features(macro_path)
+        if macro_frame.empty:
+            st.info("Macro feature is empty.")
+        else:
+            latest_macro = macro_frame.iloc[0]
+            macro_cols = st.columns(5)
+            macro_cols[0].metric("Macro score", _format_score(latest_macro["macro_score"]))
+            macro_cols[1].metric("US 10Y", _format_optional(latest_macro["us_10y_yield"]))
+            macro_cols[2].metric("Fed funds", _format_optional(latest_macro["fed_funds_rate"]))
+            macro_cols[3].metric("USD/KRW", _format_optional(latest_macro["usdkrw"]))
+            macro_cols[4].metric("5d FX", _format_percent(latest_macro["usdkrw_change_pct_5d"]))
+            st.caption(f"Latest macro feature file: {macro_path.name}")
+
+            chart_frame = macro_frame.copy().sort_values("date")
+            chart_frame["date"] = chart_frame["date"].astype(str)
+            fig = px.line(
+                chart_frame,
+                x="date",
+                y="macro_score",
+                markers=True,
+                title=None,
+            )
+            fig.update_layout(
+                margin={"l": 12, "r": 12, "t": 12, "b": 12},
+                xaxis_title=None,
+                yaxis_title="Macro score",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.dataframe(
+                macro_frame[_macro_feature_display_columns(macro_frame)],
                 hide_index=True,
                 use_container_width=True,
             )
@@ -344,11 +390,21 @@ def main() -> None:
 
 
 def _format_percent(value: Any) -> str:
+    if pd.isna(value):
+        return "N/A"
     return f"{float(value) * 100:.2f}%"
 
 
 def _format_score(value: Any) -> str:
+    if pd.isna(value):
+        return "N/A"
     return f"{float(value):.2f}"
+
+
+def _format_optional(value: Any) -> str:
+    if pd.isna(value):
+        return "N/A"
+    return f"{float(value):,.2f}"
 
 
 def _drift_display_columns(frame: Any) -> list[str]:
@@ -401,6 +457,21 @@ def _news_sentiment_display_columns(frame: Any) -> list[str]:
         "news_reason",
         "top_headline",
         "summary",
+        "source",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _macro_feature_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "date",
+        "macro_score",
+        "macro_reason",
+        "us_10y_yield",
+        "us_10y_yield_change_5d",
+        "fed_funds_rate",
+        "usdkrw",
+        "usdkrw_change_pct_5d",
         "source",
     ]
     return [column for column in preferred_columns if column in frame.columns]

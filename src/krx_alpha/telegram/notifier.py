@@ -185,7 +185,8 @@ def _format_candidate_lines(frame: pd.DataFrame, top_n: int) -> list[str]:
             f"F {_format_number(_row_value(row, 'latest_financial_score'))} / "
             f"E {_format_number(_row_value(row, 'latest_event_score'))} / "
             f"Flow {_format_number(_row_value(row, 'latest_flow_score'))} / "
-            f"News {_format_number(_row_value(row, 'latest_news_score'))}"
+            f"News {_format_number(_row_value(row, 'latest_news_score'))} / "
+            f"Macro {_format_number(_row_value(row, 'latest_macro_score'))}"
         )
     return lines
 

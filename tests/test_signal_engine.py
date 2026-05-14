@@ -274,3 +274,58 @@ def test_signal_engine_blocks_weak_investor_flow() -> None:
 
     assert signal_frame.loc[0, "final_action"] == "blocked"
     assert "weak_investor_flow" in signal_frame.loc[0, "risk_flags"]
+
+
+def test_signal_engine_blocks_weak_macro_environment() -> None:
+    score_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "technical_score": [76.0],
+            "risk_score": [80.0],
+            "financial_score": [70.0],
+            "event_score": [50.0],
+            "event_risk_flag": [False],
+            "flow_score": [50.0],
+            "news_score": [50.0],
+            "macro_score": [20.0],
+            "total_score": [72.0],
+            "signal_label": ["watch_buy"],
+            "score_reason": ["close_above_ma20"],
+            "financial_reason": ["operating_margin_healthy"],
+            "event_reason": ["disclosure_routine_report"],
+            "flow_reason": ["no_investor_flow_available"],
+            "news_reason": ["no_news_sentiment_available"],
+            "macro_reason": ["usdkrw_rising_fx_pressure"],
+            "scored_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+    feature_frame = pd.DataFrame(
+        {
+            "date": ["2024-01-31"],
+            "as_of_date": ["2024-01-31"],
+            "ticker": ["005930"],
+            "close": [72700],
+            "volume": [1200],
+            "trading_value": [87240000000],
+            "return_1d": [0.01],
+            "ma_5": [72000],
+            "ma_20": [71000],
+            "close_to_ma_5": [0.01],
+            "close_to_ma_20": [0.02],
+            "volume_change_5d": [0.2],
+            "trading_value_change_5d": [0.3],
+            "range_pct": [0.02],
+            "volatility_5d": [0.01],
+            "volatility_20d": [0.018],
+            "rsi_14": [55],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")],
+        }
+    )
+
+    signal_frame = SignalEngine().generate(score_frame, feature_frame)
+
+    assert signal_frame.loc[0, "final_action"] == "blocked"
+    assert signal_frame.loc[0, "macro_score"] == 20.0
+    assert "weak_macro_environment" in signal_frame.loc[0, "risk_flags"]

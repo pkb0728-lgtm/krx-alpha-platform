@@ -20,6 +20,7 @@ from krx_alpha.collectors.investor_flow_collector import (
     InvestorFlowRequest,
     PykrxInvestorFlowCollector,
 )
+from krx_alpha.collectors.macro_collector import FredMacroCollector, MacroRequest
 from krx_alpha.collectors.news_collector import (
     NaverNewsCollector,
     NewsSearchRequest,
@@ -47,6 +48,7 @@ from krx_alpha.database.storage import (
     ensure_project_dirs,
     final_signal_file_path,
     investor_flow_feature_file_path,
+    macro_feature_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
     ml_metrics_file_path,
@@ -59,6 +61,7 @@ from krx_alpha.database.storage import (
     price_feature_file_path,
     processed_price_file_path,
     raw_investor_flow_file_path,
+    raw_macro_file_path,
     raw_news_file_path,
     raw_price_file_path,
     read_parquet,
@@ -82,6 +85,7 @@ from krx_alpha.experiments.tracker import (
 from krx_alpha.features.dart_disclosure_events import DartDisclosureEventBuilder
 from krx_alpha.features.dart_financial_features import DartFinancialFeatureBuilder
 from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
+from krx_alpha.features.macro_features import MacroFeatureBuilder
 from krx_alpha.features.news_sentiment import NewsSentimentConfig, NewsSentimentFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
 from krx_alpha.models.probability_baseline import (
@@ -222,6 +226,34 @@ def _load_news_sentiment_feature_frame(
             f"{news_path}"
         )
     return read_parquet(news_path)
+
+
+def _load_macro_feature_frame(
+    macro_start: str | None,
+    macro_end: str,
+    macro_series: str,
+) -> pd.DataFrame | None:
+    if macro_start is None:
+        return None
+
+    request = MacroRequest.from_strings(
+        start_date=macro_start,
+        end_date=macro_end,
+        series_ids=macro_series,
+    )
+    macro_path = macro_feature_file_path(
+        settings.project_root,
+        request.compact_start_date,
+        request.compact_end_date,
+        request.series_slug,
+    )
+    if not macro_path.exists():
+        raise typer.BadParameter(
+            "Macro feature file does not exist. "
+            "Run build-macro-features first: "
+            f"{macro_path}"
+        )
+    return read_parquet(macro_path)
 
 
 @app.command()
@@ -436,6 +468,55 @@ def collect_news(
     console.print(f"Query: {request.query}")
     console.print(f"Rows: {len(frame)}")
     console.print(f"Latest headline: {latest['title']}")
+    console.print(f"Source: {latest['source']}")
+    console.print(f"Output: {output_path}")
+
+
+@app.command("collect-macro")
+def collect_macro(
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Macro window start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="Macro window end date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    series: Annotated[
+        str,
+        typer.Option("--series", help="Comma-separated FRED series ids."),
+    ] = "DGS10,DFF,DEXKOUS",
+    demo: Annotated[
+        bool,
+        typer.Option("--demo/--live", help="Use built-in demo macro data instead of live FRED."),
+    ] = True,
+) -> None:
+    """Collect FRED macro observations and save raw macro data."""
+    configure_logger(settings.log_level)
+    request = MacroRequest.from_strings(
+        start_date=start,
+        end_date=end,
+        series_ids=series,
+        demo=demo,
+    )
+    try:
+        frame = FredMacroCollector(api_key=settings.fred_api_key).collect(request)
+    except (RuntimeError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    output_path = raw_macro_file_path(
+        settings.project_root,
+        request.compact_start_date,
+        request.compact_end_date,
+        request.series_slug,
+    )
+    write_parquet(frame, output_path)
+
+    latest = frame.sort_values(["date", "series_id"]).iloc[-1]
+    console.print("[bold green]Collected FRED macro data.[/bold green]")
+    console.print(f"Series: {', '.join(request.series_ids)}")
+    console.print(f"Rows: {len(frame)}")
+    console.print(f"Latest observation: {latest['series_id']} = {float(latest['value']):.4f}")
     console.print(f"Source: {latest['source']}")
     console.print(f"Output: {output_path}")
 
@@ -1103,6 +1184,51 @@ def build_news_sentiment(
     console.print(f"Output: {output_path}")
 
 
+@app.command("build-macro-features")
+def build_macro_features(
+    start: Annotated[
+        str,
+        typer.Option("--start", help="Macro window start date in YYYY-MM-DD format."),
+    ] = "2024-01-01",
+    end: Annotated[
+        str,
+        typer.Option("--end", help="Macro window end date in YYYY-MM-DD format."),
+    ] = "2024-01-31",
+    series: Annotated[
+        str,
+        typer.Option("--series", help="Comma-separated FRED series ids."),
+    ] = "DGS10,DFF,DEXKOUS",
+) -> None:
+    """Build reusable macro environment features from raw FRED observations."""
+    configure_logger(settings.log_level)
+    request = MacroRequest.from_strings(start_date=start, end_date=end, series_ids=series)
+    input_path = raw_macro_file_path(
+        settings.project_root,
+        request.compact_start_date,
+        request.compact_end_date,
+        request.series_slug,
+    )
+    if not input_path.exists():
+        raise typer.BadParameter(f"Raw macro file does not exist: {input_path}")
+
+    macro_frame = read_parquet(input_path)
+    feature_frame = MacroFeatureBuilder().build(macro_frame)
+    output_path = macro_feature_file_path(
+        settings.project_root,
+        request.compact_start_date,
+        request.compact_end_date,
+        request.series_slug,
+    )
+    write_parquet(feature_frame, output_path)
+
+    latest = feature_frame.sort_values("date").iloc[-1]
+    console.print("[bold green]Built macro features.[/bold green]")
+    console.print(f"Rows: {len(feature_frame)}")
+    console.print(f"Latest macro score: {float(latest['macro_score']):.2f}")
+    console.print(f"Latest macro reason: {latest['macro_reason']}")
+    console.print(f"Output: {output_path}")
+
+
 @app.command("score-stock")
 def score_stock(
     ticker: Annotated[
@@ -1157,6 +1283,18 @@ def score_stock(
         str | None,
         typer.Option("--news-end", help="News sentiment feature end date."),
     ] = None,
+    macro_start: Annotated[
+        str | None,
+        typer.Option("--macro-start", help="Macro feature start date."),
+    ] = None,
+    macro_end: Annotated[
+        str | None,
+        typer.Option("--macro-end", help="Macro feature end date."),
+    ] = None,
+    macro_series: Annotated[
+        str,
+        typer.Option("--macro-series", help="Comma-separated FRED series ids."),
+    ] = "DGS10,DFF,DEXKOUS",
 ) -> None:
     """Score a stock from feature data and save daily explainable scores."""
     configure_logger(settings.log_level)
@@ -1194,12 +1332,18 @@ def score_stock(
         news_start,
         news_end or end,
     )
+    macro_frame = _load_macro_feature_frame(
+        macro_start,
+        macro_end or end,
+        macro_series,
+    )
     score_frame = PriceScorer().score(
         feature_frame,
         financial_frame,
         event_frame,
         flow_frame,
         news_frame,
+        macro_frame,
     )
     output_path = daily_score_file_path(
         settings.project_root,
@@ -1217,11 +1361,13 @@ def score_stock(
     console.print(f"Latest event score: {latest['event_score']:.2f}")
     console.print(f"Latest flow score: {latest['flow_score']:.2f}")
     console.print(f"Latest news score: {latest['news_score']:.2f}")
+    console.print(f"Latest macro score: {latest['macro_score']:.2f}")
     console.print(f"Reason: {latest['score_reason']}")
     console.print(f"Financial reason: {latest['financial_reason']}")
     console.print(f"Event reason: {latest['event_reason']}")
     console.print(f"Flow reason: {latest['flow_reason']}")
     console.print(f"News reason: {latest['news_reason']}")
+    console.print(f"Macro reason: {latest['macro_reason']}")
     console.print(f"Output: {output_path}")
 
 
@@ -1449,6 +1595,18 @@ def run_pipeline(
         str | None,
         typer.Option("--news-end", help="News sentiment feature end date."),
     ] = None,
+    macro_start: Annotated[
+        str | None,
+        typer.Option("--macro-start", help="Macro feature start date."),
+    ] = None,
+    macro_end: Annotated[
+        str | None,
+        typer.Option("--macro-end", help="Macro feature end date."),
+    ] = None,
+    macro_series: Annotated[
+        str,
+        typer.Option("--macro-series", help="Comma-separated FRED series ids."),
+    ] = "DGS10,DFF,DEXKOUS",
 ) -> None:
     """Run collect, process, feature, score, signal, and report steps at once."""
     configure_logger(settings.log_level)
@@ -1475,12 +1633,18 @@ def run_pipeline(
         news_start,
         news_end or end,
     )
+    macro_frame = _load_macro_feature_frame(
+        macro_start,
+        macro_end or end,
+        macro_series,
+    )
     result = DailyPipeline(settings.project_root).run(
         request,
         financial_frame,
         event_frame,
         flow_frame,
         news_frame,
+        macro_frame,
     )
 
     console.print("[bold green]Daily pipeline completed.[/bold green]")
@@ -1497,6 +1661,7 @@ def run_pipeline(
     console.print(f"Event score: {result.latest_event_score:.2f}")
     console.print(f"Flow score: {result.latest_flow_score:.2f}")
     console.print(f"News score: {result.latest_news_score:.2f}")
+    console.print(f"Macro score: {result.latest_macro_score:.2f}")
     console.print(f"Market regime: {result.latest_market_regime}")
 
 

@@ -50,6 +50,16 @@ REASON_DESCRIPTIONS = {
     "news_sentiment_negative": "News tone is negative.",
     "news_sentiment_neutral": "News tone is mixed or neutral.",
     "news_volume_elevated": "News volume is elevated and deserves human review.",
+    "no_macro_feature_available": "No macro feature file was attached.",
+    "us_10y_yield_high": "US 10-year yield is high and can pressure equity valuations.",
+    "us_10y_yield_elevated": "US 10-year yield is elevated.",
+    "us_10y_yield_supportive": "US 10-year yield is relatively supportive.",
+    "fed_funds_rate_restrictive": "US policy rate remains restrictive.",
+    "us_10y_yield_rising": "US 10-year yield rose over the recent window.",
+    "us_10y_yield_falling": "US 10-year yield fell over the recent window.",
+    "usdkrw_rising_fx_pressure": "USD/KRW rose, which can signal FX pressure.",
+    "usdkrw_falling_fx_tailwind": "USD/KRW fell, which can be a relative FX tailwind.",
+    "macro_environment_neutral": "Macro evidence is neutral.",
 }
 
 SIGNAL_DESCRIPTIONS = {
@@ -82,6 +92,9 @@ class DailyReportGenerator:
         news_reasons = _format_reasons(
             str(latest_score.get("news_reason", "no_news_sentiment_available"))
         )
+        macro_reasons = _format_reasons(
+            str(latest_score.get("macro_reason", "no_macro_feature_available"))
+        )
         signal = str(latest_score["signal_label"])
         signal_description = SIGNAL_DESCRIPTIONS.get(signal, "Unknown signal.")
 
@@ -99,6 +112,7 @@ class DailyReportGenerator:
                 f"- Event score: {_format_number(latest_score['event_score'])}",
                 f"- Investor flow score: {_format_number(latest_score['flow_score'])}",
                 f"- News sentiment score: {_format_number(latest_score.get('news_score', 50.0))}",
+                f"- Macro score: {_format_number(latest_score.get('macro_score', 50.0))}",
                 f"- Event risk flag: {bool(latest_score['event_risk_flag'])}",
                 "",
                 "## Key Metrics",
@@ -130,6 +144,10 @@ class DailyReportGenerator:
                 "## News Sentiment Evidence",
                 "",
                 news_reasons,
+                "",
+                "## Macro Evidence",
+                "",
+                macro_reasons,
                 "",
                 "## Risk Note",
                 "",

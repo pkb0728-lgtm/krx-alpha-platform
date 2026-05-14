@@ -23,6 +23,8 @@ FINAL_SIGNAL_COLUMNS = [
     "flow_reason",
     "news_score",
     "news_reason",
+    "macro_score",
+    "macro_reason",
     "market_regime",
     "market_regime_score",
     "market_regime_risk_level",
@@ -116,6 +118,10 @@ def _ensure_optional_score_columns(frame: pd.DataFrame) -> pd.DataFrame:
         frame["news_score"] = 50.0
     if "news_reason" not in frame.columns:
         frame["news_reason"] = "no_news_sentiment_available"
+    if "macro_score" not in frame.columns:
+        frame["macro_score"] = 50.0
+    if "macro_reason" not in frame.columns:
+        frame["macro_reason"] = "no_macro_feature_available"
     return frame
 
 

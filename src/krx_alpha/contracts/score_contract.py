@@ -41,6 +41,7 @@ def validate_daily_score_frame(frame: Any) -> None:
         "event_score",
         "flow_score",
         "news_score",
+        "macro_score",
         "total_score",
     ]
     for column in score_columns:
