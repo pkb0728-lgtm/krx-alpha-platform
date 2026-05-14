@@ -64,7 +64,7 @@ python main.py send-telegram-daily --dry-run
 7. Run the daily operations job:
 
 ```powershell
-python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --kis-paper-candidates --telegram-dry-run
 ```
 
 This command also builds the auto-screener shortlist and runs paper portfolio
@@ -72,20 +72,29 @@ simulation by default. The paper output is virtual only and is included in the
 Telegram preview so reviewers can see the operational loop without any broker
 order being sent.
 
-8. Show experiment tracking:
+8. Show the operations runbook:
+
+```text
+docs/operations-runbook.md
+```
+
+The runbook explains the daily command, dashboard review order, KIS paper
+candidate interpretation, and the human review checklist.
+
+9. Show experiment tracking:
 
 ```powershell
 python main.py show-experiments --limit 10
 ```
 
-9. Show drift monitoring:
+10. Show drift monitoring:
 
 ```powershell
 python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
 python main.py send-telegram-daily --dry-run
 ```
 
-10. Explain why this is not just price prediction:
+11. Explain why this is not just price prediction:
 
 - The system uses data contracts.
 - Each data layer is persisted.

@@ -176,6 +176,17 @@ src/krx_alpha/
   utils/         logging and utilities
 ```
 
+## Key Documents
+
+- [Usage Guide](docs/usage.md): command-by-command beginner workflow.
+- [Operations Runbook](docs/operations-runbook.md): daily operating procedure, dashboard review order, and human review checklist.
+- [Architecture](docs/architecture.md): system modules and data flow.
+- [Data Design](docs/data-design.md): data layers, contracts, and artifact paths.
+- [Scoring And Risk](docs/scoring-and-risk.md): signal logic, risk filters, and paper trading assumptions.
+- [Portfolio Review Guide](docs/portfolio-review-guide.md): interview demo script and talking points.
+- [Security](docs/security.md): API key handling and secret-management rules.
+- [Troubleshooting](docs/troubleshooting.md): common local setup and runtime issues.
+
 ## Quick Start
 
 Use PowerShell in VSCode.

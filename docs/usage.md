@@ -1,5 +1,8 @@
 # Usage Guide
 
+For the daily operating procedure and interpretation checklist, see
+`docs/operations-runbook.md`.
+
 ## 1. Open The Project
 
 ```powershell
