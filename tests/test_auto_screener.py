@@ -44,6 +44,8 @@ def test_auto_screener_builds_human_review_shortlist(tmp_path: Path) -> None:
 
     report = format_screening_report(result)
     assert "Auto Screener Report" in report
+    assert "Priority summary: high 1" in report
+    assert "Status summary: passed 1" in report
     assert "Candidate Review Cards" in report
     assert "Status reason: passed" in report
     assert "Priority: high" in report

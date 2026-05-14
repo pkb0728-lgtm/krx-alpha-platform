@@ -202,6 +202,8 @@ def format_screening_report(result_frame: Any, title: str = "Auto Screener Repor
         "",
         f"- Checked tickers: {len(result_frame)}",
         f"- Passed: {len(passed)}",
+        f"- Priority summary: {_format_count_summary(result_frame, 'review_priority')}",
+        f"- Status summary: {_format_count_summary(result_frame, 'screen_status_reason')}",
         f"- Review cards: {min(len(passed), 10)}",
         "",
         "## Candidate Review Cards",
@@ -513,3 +515,10 @@ def _format_risk_flags(value: object) -> str:
     if value is None or pd.isna(value) or str(value).strip() == "":
         return "none"
     return str(value)
+
+
+def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
+    if frame.empty or column not in frame.columns:
+        return "N/A"
+    counts = frame[column].fillna("unknown").astype(str).value_counts()
+    return ", ".join(f"{name} {count}" for name, count in counts.items())
