@@ -9,6 +9,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_ml_metrics,
+    find_latest_news_sentiment,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -17,6 +18,7 @@ from krx_alpha.dashboard.data_loader import (
     load_markdown,
     load_ml_metrics,
     load_ml_predictions,
+    load_news_sentiment,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -44,7 +46,7 @@ def main() -> None:
     failed_count = int((summary_frame["status"] == "failed").sum())
     top_row = summary_frame.iloc[0] if not summary_frame.empty else None
 
-    metric_cols = st.columns(5)
+    metric_cols = st.columns(6)
     metric_cols[0].metric("Tickers", len(summary_frame))
     metric_cols[1].metric("Success", success_count)
     metric_cols[2].metric("Failed", failed_count)
@@ -59,6 +61,12 @@ def main() -> None:
         else "N/A"
     )
     metric_cols[4].metric("Top regime", top_regime)
+    top_news = (
+        _format_score(top_row["latest_news_score"])
+        if top_row is not None and "latest_news_score" in summary_frame.columns
+        else "N/A"
+    )
+    metric_cols[5].metric("Top news", top_news)
 
     st.divider()
 
@@ -70,6 +78,7 @@ def main() -> None:
             "status",
             "latest_action",
             "latest_confidence_score",
+            "latest_news_score",
             "latest_market_regime",
             "error",
         ]
@@ -100,6 +109,51 @@ def main() -> None:
                 yaxis_title=None,
             )
             st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    st.subheader("News Sentiment")
+    news_path = find_latest_news_sentiment(PROJECT_ROOT)
+    if news_path is None:
+        st.info("No news sentiment feature found.")
+    else:
+        news_frame = load_news_sentiment(news_path)
+        if news_frame.empty:
+            st.info("News sentiment feature is empty.")
+        else:
+            latest_news = news_frame.iloc[0]
+            average_score = float(news_frame["news_score"].mean())
+            negative_count = int(news_frame["negative_news_count"].sum())
+            positive_count = int(news_frame["positive_news_count"].sum())
+            news_cols = st.columns(5)
+            news_cols[0].metric("Ticker", str(latest_news["ticker"]))
+            news_cols[1].metric("Latest score", _format_score(latest_news["news_score"]))
+            news_cols[2].metric("Average score", _format_score(average_score))
+            news_cols[3].metric("Positive", positive_count)
+            news_cols[4].metric("Negative", negative_count)
+            st.caption(f"Latest news sentiment file: {news_path.name}")
+
+            chart_frame = news_frame.copy()
+            chart_frame["date"] = chart_frame["date"].astype(str)
+            fig = px.line(
+                chart_frame,
+                x="date",
+                y="news_score",
+                markers=True,
+                title=None,
+            )
+            fig.update_layout(
+                margin={"l": 12, "r": 12, "t": 12, "b": 12},
+                xaxis_title=None,
+                yaxis_title="News score",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.dataframe(
+                news_frame[_news_sentiment_display_columns(news_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
 
     st.divider()
 
@@ -293,6 +347,10 @@ def _format_percent(value: Any) -> str:
     return f"{float(value) * 100:.2f}%"
 
 
+def _format_score(value: Any) -> str:
+    return f"{float(value):.2f}"
+
+
 def _drift_display_columns(frame: Any) -> list[str]:
     preferred_columns = [
         "feature",
@@ -327,6 +385,23 @@ def _ml_prediction_display_columns(frame: Any) -> list[str]:
         "forward_return",
         "label_end_date",
         "top_feature_reason",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _news_sentiment_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "date",
+        "ticker",
+        "news_score",
+        "sentiment_score",
+        "news_count",
+        "positive_news_count",
+        "negative_news_count",
+        "news_reason",
+        "top_headline",
+        "summary",
+        "source",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

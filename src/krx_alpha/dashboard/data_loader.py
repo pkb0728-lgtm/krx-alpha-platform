@@ -49,6 +49,15 @@ def find_latest_ml_metrics(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_news_sentiment(project_root: Path) -> Path | None:
+    news_dir = project_root / "data" / "features" / "news_sentiment_daily"
+    if not news_dir.exists():
+        return None
+
+    files = sorted(news_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def load_universe_summary(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty:
@@ -141,6 +150,17 @@ def load_ml_predictions(metrics_path: Path) -> Any:
         .drop(columns=["_split_order"])
         .reset_index(drop=True)
     )
+
+
+def load_news_sentiment(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return frame
+
+    return frame.sort_values(
+        ["date", "news_score"],
+        ascending=[False, False],
+    ).reset_index(drop=True)
 
 
 def load_markdown(path: Path) -> str:

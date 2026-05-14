@@ -7,6 +7,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
     find_latest_drift_result,
     find_latest_ml_metrics,
+    find_latest_news_sentiment,
     find_latest_universe_summary,
     find_latest_walk_forward_summary,
     load_backtest_metrics,
@@ -15,6 +16,7 @@ from krx_alpha.dashboard.data_loader import (
     load_markdown,
     load_ml_metrics,
     load_ml_predictions,
+    load_news_sentiment,
     load_universe_summary,
     load_walk_forward_folds,
     load_walk_forward_summary,
@@ -218,3 +220,34 @@ def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) 
     assert metrics.loc[0, "split"] == "test"
     assert metrics.loc[0, "roc_auc"] == 0.652
     assert predictions.loc[0, "probability_positive_forward_return"] == 0.78
+
+
+def test_dashboard_data_loader_reads_latest_news_sentiment(tmp_path: Path) -> None:
+    news_dir = tmp_path / "data" / "features" / "news_sentiment_daily"
+    news_dir.mkdir(parents=True)
+    news_path = news_dir / "005930_20240101_20240131.parquet"
+
+    pd.DataFrame(
+        {
+            "date": ["2024-01-30", "2024-01-31"],
+            "as_of_date": ["2024-01-30", "2024-01-31"],
+            "ticker": ["005930", "005930"],
+            "news_count": [2, 3],
+            "positive_news_count": [1, 2],
+            "negative_news_count": [0, 1],
+            "sentiment_score": [0.2, 0.4],
+            "news_score": [59.0, 68.0],
+            "news_reason": ["news_sentiment_positive", "news_sentiment_positive"],
+            "top_headline": ["Headline A", "Headline B"],
+            "summary": ["Summary A", "Summary B"],
+            "source": ["news_sentiment", "gemini_news_sentiment"],
+            "feature_created_at": [pd.Timestamp("2026-05-13T00:00:00Z")] * 2,
+        }
+    ).to_parquet(news_path, index=False)
+
+    latest_path = find_latest_news_sentiment(tmp_path)
+    assert latest_path == news_path
+
+    frame = load_news_sentiment(news_path)
+    assert frame.loc[0, "date"] == "2024-01-31"
+    assert frame.loc[0, "news_score"] == 68.0
