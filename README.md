@@ -1,5 +1,7 @@
 # KRX Alpha Platform
 
+[![CI](https://github.com/pkb0728-lgtm/krx-alpha-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/pkb0728-lgtm/krx-alpha-platform/actions/workflows/ci.yml)
+
 Explainable Korean stock investment decision-support platform built with Python.
 
 This project is not a simple stock price prediction script. It is a small but
@@ -13,6 +15,61 @@ ML training dataset generation, a first explainable ML probability baseline,
 operations health checks, Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
+
+## Portfolio Snapshot
+
+| Area | Current State |
+| --- | --- |
+| MVP status | End-to-end local platform is operational. |
+| Main workflow | `run-daily-job` builds universe results, screener output, KIS paper candidates, paper portfolio outputs, operations health, and Telegram preview. |
+| Safety | No real broker orders are sent. KIS integration is mock-investment token, balance, and review-candidate generation only. |
+| Demo mode | Core pipeline, OpenDART, investor flow, news, macro, reports, and dashboard can be demonstrated with local/demo paths. |
+| Quality gate | `pytest: 135 passed`, `ruff: all checks passed`, `mypy: no issues found`. |
+| Portfolio focus | Data engineering, explainable scoring, risk filtering, backtesting, MLOps-style tracking, operations automation, and dashboarding. |
+
+## Fast Demo
+
+Run the full demo operations loop:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --kis-paper-candidates --telegram-dry-run
+```
+
+Open the dashboard:
+
+```powershell
+streamlit run src/krx_alpha/dashboard/app.py
+```
+
+Open in a browser:
+
+```text
+http://localhost:8501
+```
+
+What to show first:
+
+1. `Universe Ranking`
+2. `Auto Screener`
+3. `KIS Paper Review Candidates`
+4. `Paper Portfolio`
+5. `Operations Health`
+
+## Main Artifacts
+
+| Artifact | Path |
+| --- | --- |
+| Universe summary | `data/signals/universe_summary_daily/` |
+| Auto screener | `data/signals/screening_daily/` |
+| KIS paper review candidates | `data/signals/kis_paper_candidates/` |
+| Paper portfolio summary | `data/backtest/paper_portfolio_summary/` |
+| Operations health | `data/signals/operations_health/` |
+| Daily reports | `reports/` |
+| Experiment log | `experiments/experiment_log.csv` |
+
+For day-to-day operation, see [Operations Runbook](docs/operations-runbook.md).
+For an interview walkthrough, see [Portfolio Review Guide](docs/portfolio-review-guide.md).
 
 ## What This Project Shows
 
@@ -67,6 +124,7 @@ select named universe
 -> apply risk filters
 -> generate final signals
 -> create auto screener shortlist
+-> create KIS mock-account review candidates without sending orders
 -> simulate paper-only fills and portfolio state
 -> aggregate paper-only portfolio results across a universe
 -> backtest buy-candidate signals
@@ -424,6 +482,7 @@ data/signals/final_signals_daily/
 data/signals/market_regime_daily/
 data/signals/universe_summary_daily/
 data/signals/screening_daily/
+data/signals/kis_paper_candidates/
 data/signals/ml_predictions/
 data/signals/ml_metrics/
 data/signals/drift/
@@ -443,6 +502,7 @@ reports/daily/
 reports/regime/
 reports/universe/
 reports/screening/
+reports/kis_paper_candidates/
 reports/backtest/
 reports/paper_trading/
 reports/modeling/
@@ -453,6 +513,7 @@ reports/monitoring/
 
 - [Architecture](docs/architecture.md)
 - [Usage Guide](docs/usage.md)
+- [Operations Runbook](docs/operations-runbook.md)
 - [Data Design](docs/data-design.md)
 - [DART Data Card](docs/data_cards/dart_data_v0.md)
 - [Investor Flow Data Card](docs/data_cards/investor_flow_data_v0.md)
