@@ -208,6 +208,9 @@ def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
         "Auto screener",
         f"- Checked {len(frame)} | passed {len(passed_frame)}",
     ]
+    status_summary = _screen_status_summary(frame)
+    if status_summary:
+        lines.append(f"- Status reasons: {status_summary}")
     if passed_frame.empty:
         lines.append("- No candidates passed the screen.")
         return lines
@@ -231,6 +234,14 @@ def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
         if not _is_missing(caution) and str(caution):
             lines.append(f"   caution: {_truncate_line(str(caution), limit=120)}")
     return lines
+
+
+def _screen_status_summary(frame: pd.DataFrame) -> str:
+    if "screen_status_reason" not in frame.columns:
+        return ""
+
+    counts = frame["screen_status_reason"].fillna("unknown").astype(str).value_counts()
+    return ", ".join(f"{reason} {count}" for reason, count in counts.head(3).items())
 
 
 def _format_paper_portfolio_lines(summary: Any | None) -> list[str]:
