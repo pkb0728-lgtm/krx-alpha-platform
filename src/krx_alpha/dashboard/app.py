@@ -24,6 +24,7 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_paper_portfolio_history,
     load_paper_portfolio_summary,
     load_paper_portfolio_trades,
     load_paper_summary,
@@ -304,6 +305,52 @@ def main() -> None:
                     hide_index=True,
                     use_container_width=True,
                 )
+
+    portfolio_history = load_paper_portfolio_history(PROJECT_ROOT)
+    if not portfolio_history.empty:
+        st.subheader("Paper Portfolio History")
+        latest_history = portfolio_history.iloc[-1]
+        history_cols = st.columns(5)
+        history_cols[0].metric("Runs", int(latest_history["run_sequence"]))
+        history_cols[1].metric(
+            "Latest equity",
+            _format_money(latest_history["ending_equity"]),
+        )
+        history_cols[2].metric(
+            "Latest return",
+            _format_percent(latest_history["cumulative_return"]),
+        )
+        history_cols[3].metric(
+            "Drawdown",
+            _format_percent(latest_history["drawdown"]),
+        )
+        history_cols[4].metric(
+            "Total trades",
+            int(latest_history["cumulative_trade_count"]),
+        )
+
+        chart_frame = portfolio_history.copy()
+        chart_frame["generated_at"] = chart_frame["generated_at"].astype(str)
+        fig = px.line(
+            chart_frame,
+            x="generated_at",
+            y="ending_equity",
+            color="universe",
+            markers=True,
+            title=None,
+        )
+        fig.update_layout(
+            margin={"l": 12, "r": 12, "t": 12, "b": 12},
+            xaxis_title=None,
+            yaxis_title="Ending equity",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.dataframe(
+            portfolio_history[_paper_portfolio_history_display_columns(portfolio_history)],
+            hide_index=True,
+            use_container_width=True,
+        )
 
     st.divider()
 
@@ -596,6 +643,25 @@ def _paper_portfolio_summary_display_columns(frame: Any) -> list[str]:
         "gross_exposure_pct",
         "cash_pct",
         "generated_at",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _paper_portfolio_history_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "universe",
+        "run_sequence",
+        "summary_file",
+        "generated_at",
+        "ending_equity",
+        "cumulative_return",
+        "drawdown",
+        "trade_count",
+        "cumulative_trade_count",
+        "active_position_count",
+        "gross_exposure_pct",
+        "cash_pct",
+        "skipped_tickers",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

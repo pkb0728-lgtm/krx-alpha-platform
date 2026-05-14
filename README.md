@@ -282,6 +282,9 @@ Dashboard:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
+The dashboard includes the latest paper portfolio snapshot and a paper
+portfolio history view built from saved `paper_portfolio_summary` files.
+
 Open:
 
 ```text

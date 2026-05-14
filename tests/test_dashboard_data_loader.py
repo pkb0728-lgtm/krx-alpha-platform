@@ -21,6 +21,7 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_paper_portfolio_history,
     load_paper_portfolio_summary,
     load_paper_portfolio_trades,
     load_paper_summary,
@@ -284,6 +285,55 @@ def test_dashboard_data_loader_reads_latest_paper_portfolio(tmp_path: Path) -> N
     assert summary.loc[0, "universe"] == "demo"
     assert summary.loc[0, "loaded_ticker_count"] == 2
     assert trades["ticker"].tolist() == ["005380", "005930"]
+
+
+def test_dashboard_data_loader_builds_paper_portfolio_history(tmp_path: Path) -> None:
+    summary_dir = tmp_path / "data" / "backtest" / "paper_portfolio_summary"
+    summary_dir.mkdir(parents=True)
+
+    for index, (name, equity, generated_at) in enumerate(
+        [
+            ("demo_20240101_20240131.parquet", 10_200_000.0, "2026-05-14T00:00:00Z"),
+            ("demo_20240201_20240229.parquet", 10_000_000.0, "2026-05-15T00:00:00Z"),
+        ]
+    ):
+        pd.DataFrame(
+            {
+                "universe": ["demo"],
+                "ticker": ["005930,005380"],
+                "initial_cash": [10_000_000.0],
+                "ending_cash": [equity],
+                "ending_position_value": [0.0],
+                "ending_equity": [equity],
+                "cumulative_return": [equity / 10_000_000.0 - 1],
+                "realized_pnl": [equity - 10_000_000.0],
+                "unrealized_pnl": [0.0],
+                "trade_count": [index + 1],
+                "buy_count": [index + 1],
+                "sell_count": [index],
+                "exposure_count": [index + 1],
+                "win_rate": [0.5],
+                "mode": ["paper"],
+                "generated_at": [pd.Timestamp(generated_at)],
+                "requested_ticker_count": [2],
+                "loaded_ticker_count": [2],
+                "skipped_tickers": [""],
+                "active_position_count": [0],
+                "gross_exposure_pct": [0.0],
+                "cash_pct": [100.0],
+            }
+        ).to_parquet(summary_dir / name, index=False)
+
+    history = load_paper_portfolio_history(tmp_path)
+
+    assert history["summary_file"].tolist() == [
+        "demo_20240101_20240131.parquet",
+        "demo_20240201_20240229.parquet",
+    ]
+    assert history["run_sequence"].tolist() == [1, 2]
+    assert history.loc[1, "equity_high_watermark"] == 10_200_000.0
+    assert history.loc[1, "drawdown"] < 0
+    assert history.loc[1, "cumulative_trade_count"] == 3
 
 
 def test_dashboard_data_loader_reads_latest_drift_result(tmp_path: Path) -> None:

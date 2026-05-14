@@ -178,6 +178,38 @@ def load_paper_portfolio_trades(summary_path: Path) -> Any:
     return frame.sort_values(["date", "ticker", "side"]).reset_index(drop=True)
 
 
+def load_paper_portfolio_history(project_root: Path) -> Any:
+    summary_dir = project_root / "data" / "backtest" / "paper_portfolio_summary"
+    if not summary_dir.exists():
+        return pd.DataFrame()
+
+    frames: list[pd.DataFrame] = []
+    for path in sorted(summary_dir.glob("*.parquet"), key=lambda value: value.stat().st_mtime):
+        frame = pd.read_parquet(path)
+        if frame.empty:
+            continue
+        frame = frame.copy()
+        frame["summary_file"] = path.name
+        frame["summary_mtime"] = pd.Timestamp(path.stat().st_mtime, unit="s", tz="UTC")
+        frames.append(frame)
+
+    if not frames:
+        return pd.DataFrame()
+
+    history = pd.concat(frames, ignore_index=True)
+    history["generated_at"] = pd.to_datetime(history["generated_at"], errors="coerce")
+    history = history.sort_values(["universe", "generated_at", "summary_file"]).reset_index(
+        drop=True
+    )
+    history["run_sequence"] = history.groupby("universe").cumcount() + 1
+    history["equity_high_watermark"] = history.groupby("universe")["ending_equity"].cummax()
+    history["drawdown"] = (
+        history["ending_equity"] / history["equity_high_watermark"] - 1
+    ).fillna(0.0)
+    history["cumulative_trade_count"] = history.groupby("universe")["trade_count"].cumsum()
+    return history
+
+
 def load_drift_result(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty or "drift_detected" not in frame.columns:

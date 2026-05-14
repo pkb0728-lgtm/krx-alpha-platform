@@ -270,9 +270,10 @@ http://localhost:8501
 
 The dashboard shows the latest universe summary, action distribution, latest
 news sentiment feature, latest macro feature, backtest metrics, backtest trades,
-paper trading summary, paper trade ledger, walk-forward summary, fold-level
-validation results, ML probability baseline metrics and predictions, latest
-drift monitoring result, and selected Markdown report.
+paper trading summary, paper trade ledger, paper portfolio history,
+walk-forward summary, fold-level validation results, ML probability baseline
+metrics and predictions, latest drift monitoring result, and selected Markdown
+report.
 
 ## 10. Preview Or Send Telegram Brief
 

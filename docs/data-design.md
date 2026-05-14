@@ -510,6 +510,11 @@ from local final signals and local processed prices. The portfolio variant
 combines multiple ticker signals into one shared virtual cash book. No broker
 API is called.
 
+The dashboard can also load all files in `paper_portfolio_summary` and derive a
+history table with `run_sequence`, `equity_high_watermark`, `drawdown`, and
+`cumulative_trade_count`. These columns are computed views, not separate stored
+contracts.
+
 ### Monitoring Outputs
 
 Drift result tables:
