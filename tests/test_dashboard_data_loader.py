@@ -451,12 +451,25 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
             "confidence_score": [62.0, 75.0],
             "market_regime": ["neutral", "bull"],
             "risk_blocked": [False, False],
+            "risk_flags": ["", ""],
             "suggested_position_pct": [1.0, 3.0],
             "trading_value": [10_000_000.0, 20_000_000.0],
             "trading_value_change_5d": [0.02, 0.12],
             "rsi_14": [50.0, 55.0],
             "volatility_5d": [0.01, 0.02],
             "reasons": ["watch_signal", "buy_candidate_signal"],
+            "evidence_summary": [
+                "watch action with screen score 90.00; confidence 62.00",
+                "buy_candidate action with screen score 60.00; confidence 75.00",
+            ],
+            "caution_summary": [
+                "candidate did not pass all screen thresholds",
+                "no hard block, but confirm latest news and disclosures",
+            ],
+            "review_checklist": [
+                "identify_failed_threshold, confirm_recent_news",
+                "confirm_recent_news, check_dart_disclosures",
+            ],
             "signal_path": ["a.parquet", "b.parquet"],
             "screened_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 2,
         }
@@ -473,6 +486,12 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
     assert frame.loc[0, "review_priority_ko"] == "높음"
     assert frame.loc[0, "screen_status_reason_ko"] == "조건 통과"
     assert frame.loc[0, "final_action_ko"] == "매수 검토"
+    assert frame.loc[0, "risk_flags_ko"] == "특별한 리스크 표시 없음"
+    assert "바로 매수하지 말고" in frame.loc[0, "beginner_summary_ko"]
+    assert "뉴스" in frame.loc[0, "next_check_ko"]
+    assert "최종 판단은 매수 검토" in frame.loc[0, "evidence_summary_ko"]
+    assert "최신 뉴스와 공시" in frame.loc[0, "caution_summary_ko"]
+    assert "최근 뉴스 확인" in frame.loc[0, "review_checklist_ko"]
 
     filtered = filter_screening_result(
         frame,
@@ -513,6 +532,7 @@ def test_dashboard_data_loader_reads_latest_kis_paper_candidates(tmp_path: Path)
             "estimated_quantity": [0, 3, 0],
             "confidence_score": [58.0, 72.0, 63.0],
             "screen_score": [55.0, 75.0, 60.0],
+            "risk_flags": ["high_short_term_volatility", "", ""],
             "orders_sent": [0, 0, 0],
             "reason": ["confidence_below_threshold", "passed", "final_action_watch"],
         }
@@ -526,6 +546,8 @@ def test_dashboard_data_loader_reads_latest_kis_paper_candidates(tmp_path: Path)
     assert frame.loc[0, "stock_name"] == "현대차"
     assert frame.loc[0, "candidate_action"] == "review_buy"
     assert frame.loc[0, "candidate_action_ko"] == "매수 검토"
+    assert "모의계좌 기준" in frame.loc[0, "beginner_summary_ko"]
+    assert "뉴스" in frame.loc[0, "next_check_ko"]
     assert int(frame["orders_sent"].sum()) == 0
 
 

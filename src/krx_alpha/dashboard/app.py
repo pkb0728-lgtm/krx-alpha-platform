@@ -223,10 +223,12 @@ def main() -> None:
                         f"{row.get('final_action_ko', row['final_action'])} | "
                         f"점수 {_format_score(row['screen_score'])}",
                     ):
-                        st.write(f"근거: {row.get('evidence_summary', 'N/A')}")
-                        st.write(f"주의점: {row.get('caution_summary', 'N/A')}")
-                        st.write(f"리스크 표시: {row.get('risk_flags', 'none') or 'none'}")
-                        st.write(f"확인할 것: {row.get('review_checklist', 'N/A')}")
+                        st.write(f"초보자 해석: {row.get('beginner_summary_ko', 'N/A')}")
+                        st.write(f"근거: {row.get('evidence_summary_ko', 'N/A')}")
+                        st.write(f"주의점: {row.get('caution_summary_ko', 'N/A')}")
+                        st.write(f"리스크 설명: {row.get('risk_flags_ko', 'N/A')}")
+                        st.write(f"다음 확인: {row.get('next_check_ko', 'N/A')}")
+                        st.write(f"확인 항목: {row.get('review_checklist_ko', 'N/A')}")
             review_queue_frame = screening_review_queue(display_screening_frame)
             if not review_queue_frame.empty:
                 st.caption("보류/확인 필요 종목")
@@ -239,10 +241,14 @@ def main() -> None:
                         f"{_stock_label(row)} | {row.get('review_priority_ko', 'N/A')} | "
                         f"{status_label}",
                     ):
+                        st.write(f"초보자 해석: {row.get('beginner_summary_ko', 'N/A')}")
                         st.write(f"점수: {_format_score(row.get('screen_score', 0.0))}")
                         st.write(f"신뢰도: {_format_score(row.get('confidence_score', 0.0))}")
-                        st.write(f"주의점: {row.get('caution_summary', 'N/A')}")
-                        st.write(f"확인할 것: {row.get('review_checklist', 'N/A')}")
+                        st.write(f"근거: {row.get('evidence_summary_ko', 'N/A')}")
+                        st.write(f"주의점: {row.get('caution_summary_ko', 'N/A')}")
+                        st.write(f"리스크 설명: {row.get('risk_flags_ko', 'N/A')}")
+                        st.write(f"다음 확인: {row.get('next_check_ko', 'N/A')}")
+                        st.write(f"확인 항목: {row.get('review_checklist_ko', 'N/A')}")
             if display_screening_frame.empty:
                 st.info("선택한 조건에 맞는 스크리너 행이 없습니다.")
             else:
@@ -322,10 +328,12 @@ def main() -> None:
                         f"{int(row.get('estimated_quantity', 0))}주 | "
                         f"{float(row.get('estimated_amount', 0.0)):,.0f}",
                     ):
+                        st.write(f"초보자 해석: {row.get('beginner_summary_ko', 'N/A')}")
                         st.write(f"이유: {row.get('reason', 'N/A')}")
-                        st.write(f"근거: {row.get('evidence_summary', 'N/A')}")
-                        st.write(f"주의점: {row.get('caution_summary', 'N/A')}")
-                        st.write(f"리스크 표시: {row.get('risk_flags', 'none') or 'none'}")
+                        st.write(f"근거: {row.get('evidence_summary_ko', 'N/A')}")
+                        st.write(f"주의점: {row.get('caution_summary_ko', 'N/A')}")
+                        st.write(f"리스크 설명: {row.get('risk_flags_ko', 'N/A')}")
+                        st.write(f"다음 확인: {row.get('next_check_ko', 'N/A')}")
 
             if display_candidate_frame.empty:
                 st.info("선택한 조건에 맞는 KIS 후보가 없습니다.")
@@ -912,6 +920,9 @@ KOREAN_COLUMN_LABELS = {
     "market_regime": "시장 국면",
     "market_regime_ko": "시장 국면",
     "risk_flags": "리스크 표시",
+    "risk_flags_ko": "리스크 설명",
+    "beginner_summary_ko": "초보자 해석",
+    "next_check_ko": "다음 확인",
     "suggested_position_pct": "제안 비중(%)",
     "trading_value": "거래대금",
     "trading_value_change_5d": "5일 거래대금 변화",
@@ -919,8 +930,11 @@ KOREAN_COLUMN_LABELS = {
     "volatility_5d": "5일 변동성",
     "reasons": "근거 태그",
     "evidence_summary": "긍정 근거",
+    "evidence_summary_ko": "긍정 근거",
     "caution_summary": "주의점",
+    "caution_summary_ko": "주의점",
     "review_checklist": "확인 항목",
+    "review_checklist_ko": "확인 항목",
     "candidate_action": "후보 상태",
     "candidate_action_ko": "후보 상태",
     "candidate_type": "후보 유형",
@@ -1128,16 +1142,18 @@ def _screening_display_columns(frame: Any) -> list[str]:
         "final_action_ko",
         "confidence_score",
         "market_regime_ko",
-        "risk_flags",
+        "beginner_summary_ko",
+        "risk_flags_ko",
+        "next_check_ko",
         "suggested_position_pct",
         "trading_value",
         "trading_value_change_5d",
         "rsi_14",
         "volatility_5d",
         "reasons",
-        "evidence_summary",
-        "caution_summary",
-        "review_checklist",
+        "evidence_summary_ko",
+        "caution_summary_ko",
+        "review_checklist_ko",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 
@@ -1158,8 +1174,10 @@ def _kis_candidate_display_columns(frame: Any) -> list[str]:
         "confidence_score",
         "screen_score",
         "final_action_ko",
+        "beginner_summary_ko",
         "reason",
-        "risk_flags",
+        "risk_flags_ko",
+        "next_check_ko",
         "orders_sent",
     ]
     return [column for column in preferred_columns if column in frame.columns]
