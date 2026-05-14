@@ -705,7 +705,10 @@ def main() -> None:
         else:
             ml_metric = _select_ml_metric(ml_metrics_frame)
             ml_cols = st.columns(6)
-            ml_cols[0].metric("데이터 구분", str(ml_metric["split"]))
+            ml_cols[0].metric(
+                "데이터 구분",
+                str(ml_metric.get("split_ko", ml_metric["split"])),
+            )
             ml_cols[1].metric("행 수", int(ml_metric["row_count"]))
             ml_cols[2].metric("ROC-AUC", f"{float(ml_metric['roc_auc']):.3f}")
             ml_cols[3].metric("F1-score", f"{float(ml_metric['f1_score']):.3f}")
