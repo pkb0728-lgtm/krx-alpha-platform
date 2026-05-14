@@ -1934,6 +1934,13 @@ def screen_universe(
             help="Comma-separated screen status reasons to print.",
         ),
     ] = None,
+    compact: Annotated[
+        bool,
+        typer.Option(
+            "--compact/--full-table",
+            help="Print a compact terminal table.",
+        ),
+    ] = False,
 ) -> None:
     """Create a human-review shortlist from the latest universe signal artifacts."""
     configure_logger(settings.log_level)
@@ -1974,17 +1981,7 @@ def screen_universe(
         console.print(
             f"Status summary: {_format_screening_counts(result_frame, 'screen_status_reason')}"
         )
-    display_columns = [
-        "ticker",
-        "passed",
-        "screen_status_reason",
-        "review_priority",
-        "screen_score",
-        "final_action",
-        "confidence_score",
-        "suggested_position_pct",
-        "reasons",
-    ]
+    display_columns = _screening_cli_display_columns(compact=compact)
     if not result_frame.empty:
         table_frame = result_frame[result_frame["passed"]] if passed_only else result_frame
         priority_filter = _parse_console_filter_values(priority)
@@ -2001,7 +1998,8 @@ def screen_universe(
             console.print("[yellow]No rows matched the terminal display filter.[/yellow]")
             return
         display_frame = table_frame.head(top_n)[display_columns].copy()
-        display_frame["reasons"] = display_frame["reasons"].map(_short_console_text)
+        if "reasons" in display_frame.columns:
+            display_frame["reasons"] = display_frame["reasons"].map(_short_console_text)
         console.print(display_frame.to_string(index=False))
 
 
@@ -2870,6 +2868,30 @@ def _parse_console_filter_values(value: str | None) -> set[str]:
     if value is None:
         return set()
     return {item.strip().lower() for item in value.split(",") if item.strip()}
+
+
+def _screening_cli_display_columns(compact: bool) -> list[str]:
+    if compact:
+        return [
+            "ticker",
+            "passed",
+            "review_priority",
+            "screen_status_reason",
+            "screen_score",
+            "confidence_score",
+            "suggested_position_pct",
+        ]
+    return [
+        "ticker",
+        "passed",
+        "screen_status_reason",
+        "review_priority",
+        "screen_score",
+        "final_action",
+        "confidence_score",
+        "suggested_position_pct",
+        "reasons",
+    ]
 
 
 def _safe_report_name(value: str) -> str:
