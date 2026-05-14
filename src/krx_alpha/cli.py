@@ -1965,7 +1965,9 @@ def screen_universe(
         "reasons",
     ]
     if not result_frame.empty:
-        console.print(result_frame.head(top_n)[display_columns].to_string(index=False))
+        display_frame = result_frame.head(top_n)[display_columns].copy()
+        display_frame["reasons"] = display_frame["reasons"].map(_short_console_text)
+        console.print(display_frame.to_string(index=False))
 
 
 @app.command("generate-universe-report")
@@ -2820,6 +2822,13 @@ def _format_screening_counts(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _short_console_text(value: object, limit: int = 72) -> str:
+    text = str(value)
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
 
 
 def _safe_report_name(value: str) -> str:
