@@ -419,6 +419,14 @@ python main.py check-apis --skip-pykrx --save
 This writes `data/signals/api_health/` and a Markdown report under
 `reports/monitoring/`.
 
+KIS mock-investment credentials can be checked without sending any order:
+
+```powershell
+python main.py kis-paper-token-check
+```
+
+The command uses only the KIS paper endpoint and prints a redacted token.
+
 ## 13. Review Experiment Logs
 
 Backtest, walk-forward validation, and daily job runs append metadata to:

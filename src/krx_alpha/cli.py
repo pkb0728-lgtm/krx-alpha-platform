@@ -9,6 +9,7 @@ from rich.table import Table
 
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
+from krx_alpha.broker.kis_paper import KISPaperClient, KISPaperCredentials
 from krx_alpha.collectors.dart_collector import (
     DartCompanyRequest,
     DartDisclosureSearchRequest,
@@ -519,6 +520,34 @@ def check_price_quality(
 
     if strict and summary["fail"] > 0:
         raise typer.Exit(code=1)
+
+
+@app.command("kis-paper-token-check")
+def kis_paper_token_check(
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", help="HTTP timeout for the KIS paper token check."),
+    ] = 10.0,
+) -> None:
+    """Issue a KIS mock-investment access token without printing the secret token."""
+    configure_logger(settings.log_level)
+    try:
+        credentials = KISPaperCredentials.from_settings(settings)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    token = client.issue_access_token()
+
+    console.print("[bold green]KIS paper token check succeeded.[/bold green]")
+    console.print(f"Account: {credentials.account_id.normalized}")
+    console.print(f"Token type: {token.token_type}")
+    console.print(f"Token: {token.redacted}")
+    console.print(
+        "Expires in: "
+        + (f"{token.expires_in_seconds} second(s)" if token.expires_in_seconds else "unknown")
+    )
+    console.print("Mode: paper trading only. No order was sent.")
 
 
 @app.command("init-dirs")
