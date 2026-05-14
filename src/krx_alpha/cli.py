@@ -1949,6 +1949,8 @@ def screen_universe(
     display_columns = [
         "ticker",
         "passed",
+        "screen_status_reason",
+        "review_priority",
         "screen_score",
         "final_action",
         "confidence_score",
