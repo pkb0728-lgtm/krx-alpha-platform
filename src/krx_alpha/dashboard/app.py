@@ -12,6 +12,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
+    find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_paper_summary,
     find_latest_universe_summary,
@@ -24,6 +25,7 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_operations_health,
     load_paper_portfolio_history,
     load_paper_portfolio_summary,
     load_paper_portfolio_trades,
@@ -521,6 +523,33 @@ def main() -> None:
 
     st.divider()
 
+    st.subheader("Operations Health")
+    health_path = find_latest_operations_health(PROJECT_ROOT)
+    if health_path is None:
+        st.info("No operations health result found.")
+    else:
+        health_frame = load_operations_health(health_path)
+        if health_frame.empty:
+            st.info("Operations health result is empty.")
+        else:
+            status_values = health_frame["status"].astype(str)
+            warning_count = int(status_values.isin(["WARN", "STALE"]).sum())
+            problem_count = int(status_values.isin(["MISSING", "EMPTY", "FAILED"]).sum())
+            health_cols = st.columns(5)
+            health_cols[0].metric("Latest file", health_path.stem)
+            health_cols[1].metric("Checks", len(health_frame))
+            health_cols[2].metric("OK", int((status_values == "OK").sum()))
+            health_cols[3].metric("Warnings", warning_count)
+            health_cols[4].metric("Problems", problem_count)
+            st.caption(f"Latest operations health file: {health_path.name}")
+            st.dataframe(
+                health_frame[_operations_health_display_columns(health_frame)],
+                hide_index=True,
+                use_container_width=True,
+            )
+
+    st.divider()
+
     st.subheader("Report Viewer")
     successful = summary_frame[summary_frame["status"] == "success"]
     if successful.empty:
@@ -569,6 +598,19 @@ def _drift_display_columns(frame: Any) -> list[str]:
         "missing_rate_delta",
         "drift_detected",
         "drift_reason",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _operations_health_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "check_name",
+        "category",
+        "status",
+        "row_count",
+        "age_hours",
+        "detail",
+        "path",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

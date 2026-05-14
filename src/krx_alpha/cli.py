@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 import pandas as pd
 import typer
@@ -59,6 +59,7 @@ from krx_alpha.database.storage import (
     ml_training_dataset_file_path,
     monitoring_report_file_path,
     news_sentiment_feature_file_path,
+    operations_health_file_path,
     paper_position_file_path,
     paper_summary_file_path,
     paper_trade_ledger_file_path,
@@ -112,6 +113,18 @@ from krx_alpha.monitoring.drift import (
     PerformanceDriftDetector,
     format_data_drift_report,
     format_performance_drift_report,
+)
+from krx_alpha.monitoring.operations_health import (
+    HEALTH_STATUS_EMPTY,
+    HEALTH_STATUS_FAILED,
+    HEALTH_STATUS_MISSING,
+    HEALTH_STATUS_OK,
+    HEALTH_STATUS_STALE,
+    HEALTH_STATUS_WARN,
+    OperationsHealthChecker,
+    OperationsHealthConfig,
+    format_operations_health_report,
+    summarize_operations_health,
 )
 from krx_alpha.paper_trading.portfolio import PaperPortfolioConfig, run_paper_portfolio
 from krx_alpha.paper_trading.simulator import PaperTradingConfig, PaperTradingSimulator
@@ -309,6 +322,90 @@ def check_apis(
     console.print(f"Summary: {ok_count}/{len(results)} OK")
 
     if strict and ok_count != len(results):
+        raise typer.Exit(code=1)
+
+
+@app.command("check-operations")
+def check_operations(
+    freshness_hours: Annotated[
+        float,
+        typer.Option("--freshness-hours", help="Maximum acceptable artifact age in hours."),
+    ] = 36.0,
+    include_apis: Annotated[
+        bool,
+        typer.Option(
+            "--include-apis/--skip-apis",
+            help="Also include API connectivity checks. Skipped by default to avoid network calls.",
+        ),
+    ] = False,
+    include_pykrx: Annotated[
+        bool,
+        typer.Option(
+            "--include-pykrx/--skip-pykrx", help="Also check pykrx when APIs are checked."
+        ),
+    ] = False,
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", help="HTTP timeout for each API check."),
+    ] = 10.0,
+    output_name: Annotated[
+        str,
+        typer.Option("--output-name", help="Output report name without extension."),
+    ] = "operations_health_latest",
+    strict: Annotated[
+        bool,
+        typer.Option("--strict/--no-strict", help="Exit with code 1 when any check is not OK."),
+    ] = False,
+) -> None:
+    """Check local pipeline artifacts and write an operations health report."""
+    configure_logger(settings.log_level)
+    ensure_project_dirs(settings.project_root)
+
+    api_results = None
+    if include_apis:
+        api_results = ApiHealthChecker(timeout_seconds=timeout_seconds).run(
+            ApiCredentials.from_settings(settings),
+            include_pykrx=include_pykrx,
+        )
+
+    result_frame = OperationsHealthChecker(
+        project_root=settings.project_root,
+        config=OperationsHealthConfig(freshness_hours=freshness_hours),
+    ).run(api_results=api_results)
+
+    report_name = _safe_report_name(output_name)
+    result_path = operations_health_file_path(settings.project_root, report_name)
+    report_path = monitoring_report_file_path(settings.project_root, report_name)
+    write_parquet(result_frame, result_path)
+    write_text(format_operations_health_report(result_frame), report_path)
+
+    summary = summarize_operations_health(result_frame)
+    table = Table(title="Operations Health")
+    table.add_column("Check")
+    table.add_column("Category")
+    table.add_column("Status")
+    table.add_column("Rows", justify="right")
+    table.add_column("Age Hours", justify="right")
+    table.add_column("Detail")
+    for _, row in result_frame.sort_values(["severity", "category", "check_name"]).iterrows():
+        table.add_row(
+            str(row["check_name"]),
+            str(row["category"]),
+            _format_health_status(str(row["status"])),
+            _format_optional_table_value(row["row_count"], decimals=0),
+            _format_optional_table_value(row["age_hours"], decimals=2),
+            str(row["detail"]),
+        )
+    console.print(table)
+    console.print(
+        "Summary: "
+        f"{summary['ok']} OK, {summary['warnings']} warning(s), "
+        f"{summary['problems']} problem(s)"
+    )
+    console.print(f"Result: {result_path}")
+    console.print(f"Report: {report_path}")
+
+    if strict and summary["ok"] != summary["total"]:
         raise typer.Exit(code=1)
 
 
@@ -2568,6 +2665,24 @@ def _format_api_status(status: str) -> str:
     if status == API_STATUS_FAILED:
         return "[red]FAILED[/red]"
     return status
+
+
+def _format_health_status(status: str) -> str:
+    if status == HEALTH_STATUS_OK:
+        return "[green]OK[/green]"
+    if status in {HEALTH_STATUS_WARN, HEALTH_STATUS_STALE}:
+        return f"[yellow]{status}[/yellow]"
+    if status in {HEALTH_STATUS_MISSING, HEALTH_STATUS_EMPTY, HEALTH_STATUS_FAILED}:
+        return f"[red]{status}[/red]"
+    return status
+
+
+def _format_optional_table_value(value: object, decimals: int) -> str:
+    if pd.isna(value):
+        return ""
+    if decimals == 0:
+        return str(int(cast(Any, value)))
+    return f"{float(cast(Any, value)):.{decimals}f}"
 
 
 def _safe_report_name(value: str) -> str:

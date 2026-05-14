@@ -49,6 +49,7 @@ flowchart TD
     N --> EL["Experiment log"]
     EL --> PD["Performance drift monitor"]
     G --> DD["Data drift monitor"]
+    L --> OH["Operations health checker"]
     N --> O["Backtest report"]
     Q --> M
     Q --> O
@@ -56,6 +57,7 @@ flowchart TD
     DJ --> EL
     PD --> M
     DD --> M
+    OH --> M
     R --> P["Regime report"]
 ```
 
@@ -74,10 +76,10 @@ flowchart TD
 | `backtest` | Validate historical signal behavior with cost, slippage, and walk-forward folds. |
 | `paper_trading` | Simulate paper-only fills, positions, and portfolio summaries without broker orders. |
 | `experiments` | Append run parameters, model version, metrics, and artifact links to a CSV log. |
-| `monitoring` | Detect feature data drift and experiment performance drift. |
+| `monitoring` | Detect feature data drift, experiment performance drift, and local operations health. |
 | `universe` | Manage named ticker lists for repeatable screening. |
 | `reports` | Generate Markdown reports for human review. |
-| `dashboard` | Display universe, paper trading, backtest, and walk-forward validation results through Streamlit. |
+| `dashboard` | Display universe, paper trading, backtest, walk-forward, drift, and operations health results through Streamlit. |
 | `scheduler` | Orchestrate after-market daily jobs for universe runs, reports, and alerts. |
 | `telegram` | Build and send compact daily operations briefs through Telegram. |
 | `pipelines` | Orchestrate single-stock and universe workflows. |

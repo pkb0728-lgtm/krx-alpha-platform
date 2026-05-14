@@ -241,6 +241,27 @@ The dashboard displays the latest drift result in the `Drift Monitoring`
 section. The Telegram daily brief also includes a compact `Drift` section after
 the walk-forward summary.
 
+## Operations Health
+
+Example command:
+
+```powershell
+python main.py check-operations --skip-apis
+```
+
+Example output:
+
+```text
+Operations Health
+Summary: 9 OK, 4 warning(s), 0 problem(s)
+Result: data/signals/operations_health/operations_health_latest.parquet
+Report: reports/monitoring/operations_health_latest.md
+```
+
+Use `--include-apis --skip-pykrx` after `.env` credentials are configured to add
+API connectivity checks. The default command checks local files only, so it is
+safe for offline portfolio demos.
+
 ## Backtest
 
 Example command:

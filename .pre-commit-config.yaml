@@ -3,16 +3,28 @@ repos:
     hooks:
       - id: ruff
         name: ruff
-        entry: python -m ruff check --fix
-        language: system
+        entry: ruff check --fix
+        language: python
+        additional_dependencies:
+          - ruff>=0.15.12
         types_or: [python, pyi]
       - id: ruff-format
         name: ruff-format
-        entry: python -m ruff format
-        language: system
+        entry: ruff format
+        language: python
+        additional_dependencies:
+          - ruff>=0.15.12
         types_or: [python, pyi]
       - id: mypy
         name: mypy
-        entry: python -m mypy src
-        language: system
+        entry: mypy src
+        language: python
+        additional_dependencies:
+          - mypy>=2.1.0
+          - loguru>=0.7
+          - pandas>=2.2
+          - pydantic>=2.7
+          - pydantic-settings>=2.2
+          - rich>=13.7
+          - typer>=0.12
         pass_filenames: false

@@ -19,6 +19,7 @@ from krx_alpha.database.storage import (
     ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
+    operations_health_file_path,
     paper_portfolio_position_file_path,
     paper_portfolio_report_file_path,
     paper_portfolio_summary_file_path,
@@ -183,6 +184,11 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         drift_result_file_path(tmp_path, "data_drift_demo")
         .as_posix()
         .endswith("data/signals/drift/data_drift_demo.parquet")
+    )
+    assert (
+        operations_health_file_path(tmp_path, "operations_health_latest")
+        .as_posix()
+        .endswith("data/signals/operations_health/operations_health_latest.parquet")
     )
     assert (
         monitoring_report_file_path(tmp_path, "data_drift_demo")

@@ -272,8 +272,8 @@ The dashboard shows the latest universe summary, action distribution, latest
 news sentiment feature, latest macro feature, backtest metrics, backtest trades,
 paper trading summary, paper trade ledger, paper portfolio history,
 walk-forward summary, fold-level validation results, ML probability baseline
-metrics and predictions, latest drift monitoring result, and selected Markdown
-report.
+metrics and predictions, latest drift monitoring result, latest operations
+health result, and selected Markdown report.
 
 ## 10. Preview Or Send Telegram Brief
 
@@ -349,7 +349,32 @@ schtasks /Create /SC DAILY /TN KRXAlphaDaily /ST 16:30 /TR "C:\Users\USER\Docume
 Keep the first scheduled runs in `--telegram-dry-run` mode if you are still
 checking the output.
 
-## 12. Review Experiment Logs
+## 12. Check Operations Health
+
+Operations health checks confirm that the latest local artifacts exist, are
+readable, and are fresh enough for review:
+
+```powershell
+python main.py check-operations --skip-apis
+```
+
+This command does not call external APIs by default. It writes:
+
+```text
+data/signals/operations_health/
+reports/monitoring/
+```
+
+After `.env` credentials are configured, you can include API connectivity
+checks as well:
+
+```powershell
+python main.py check-operations --include-apis --skip-pykrx
+```
+
+Use `--include-pykrx` when you also want to verify live pykrx price collection.
+
+## 13. Review Experiment Logs
 
 Backtest, walk-forward validation, and daily job runs append metadata to:
 
@@ -367,7 +392,7 @@ The CSV stores run ID, model version, parameters, metrics, date range, and the
 main artifact path. The file is intentionally ignored by Git because it is a
 local run artifact.
 
-## 13. Detect Drift
+## 14. Detect Drift
 
 Data drift compares numeric feature distributions between a reference dataset
 and a current dataset:

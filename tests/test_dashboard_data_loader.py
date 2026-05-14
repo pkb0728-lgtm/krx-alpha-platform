@@ -9,6 +9,7 @@ from krx_alpha.dashboard.data_loader import (
     find_latest_macro_features,
     find_latest_ml_metrics,
     find_latest_news_sentiment,
+    find_latest_operations_health,
     find_latest_paper_portfolio_summary,
     find_latest_paper_summary,
     find_latest_universe_summary,
@@ -21,6 +22,7 @@ from krx_alpha.dashboard.data_loader import (
     load_ml_metrics,
     load_ml_predictions,
     load_news_sentiment,
+    load_operations_health,
     load_paper_portfolio_history,
     load_paper_portfolio_summary,
     load_paper_portfolio_trades,
@@ -358,6 +360,33 @@ def test_dashboard_data_loader_reads_latest_drift_result(tmp_path: Path) -> None
     frame = load_drift_result(drift_path)
     assert bool(frame.loc[0, "drift_detected"]) is True
     assert frame.loc[0, "feature"] == "rsi_14"
+
+
+def test_dashboard_data_loader_reads_latest_operations_health(tmp_path: Path) -> None:
+    health_dir = tmp_path / "data" / "signals" / "operations_health"
+    health_dir.mkdir(parents=True)
+    health_path = health_dir / "operations_health_latest.parquet"
+
+    pd.DataFrame(
+        {
+            "check_name": ["Optional ML metrics", "Universe summary"],
+            "category": ["models", "signals"],
+            "status": ["WARN", "OK"],
+            "severity": [1, 0],
+            "path": ["", "data/signals/universe_summary_daily/universe_demo.parquet"],
+            "row_count": [None, 3],
+            "modified_at": [None, "2026-05-14T00:00:00+00:00"],
+            "age_hours": [None, 1.0],
+            "detail": ["optional artifact not found", "artifact is present"],
+        }
+    ).to_parquet(health_path, index=False)
+
+    latest_path = find_latest_operations_health(tmp_path)
+    assert latest_path == health_path
+
+    frame = load_operations_health(health_path)
+    assert frame.loc[0, "check_name"] == "Universe summary"
+    assert frame.loc[1, "status"] == "WARN"
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:

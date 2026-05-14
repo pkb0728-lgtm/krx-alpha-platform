@@ -529,6 +529,18 @@ Drift Markdown reports:
 reports/monitoring/{report_name}.md
 ```
 
+Operations health tables:
+
+```text
+data/signals/operations_health/{report_name}.parquet
+```
+
+Operations health Markdown reports:
+
+```text
+reports/monitoring/{report_name}.md
+```
+
 Important data drift columns:
 
 ```text
@@ -551,6 +563,20 @@ absolute_change
 relative_change
 drift_detected
 drift_reason
+```
+
+Important operations health columns:
+
+```text
+check_name
+category
+status
+severity
+path
+row_count
+modified_at
+age_hours
+detail
 ```
 
 ## Data Contract Rules

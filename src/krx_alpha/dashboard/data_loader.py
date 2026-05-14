@@ -58,6 +58,15 @@ def find_latest_drift_result(project_root: Path) -> Path | None:
     return files[-1] if files else None
 
 
+def find_latest_operations_health(project_root: Path) -> Path | None:
+    health_dir = project_root / "data" / "signals" / "operations_health"
+    if not health_dir.exists():
+        return None
+
+    files = sorted(health_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
 def find_latest_ml_metrics(project_root: Path) -> Path | None:
     metrics_dir = project_root / "data" / "signals" / "ml_metrics"
     if not metrics_dir.exists():
@@ -203,9 +212,9 @@ def load_paper_portfolio_history(project_root: Path) -> Any:
     )
     history["run_sequence"] = history.groupby("universe").cumcount() + 1
     history["equity_high_watermark"] = history.groupby("universe")["ending_equity"].cummax()
-    history["drawdown"] = (
-        history["ending_equity"] / history["equity_high_watermark"] - 1
-    ).fillna(0.0)
+    history["drawdown"] = (history["ending_equity"] / history["equity_high_watermark"] - 1).fillna(
+        0.0
+    )
     history["cumulative_trade_count"] = history.groupby("universe")["trade_count"].cumsum()
     return history
 
@@ -216,6 +225,14 @@ def load_drift_result(path: Path) -> Any:
         return frame
 
     return frame.sort_values("drift_detected", ascending=False).reset_index(drop=True)
+
+
+def load_operations_health(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty or "severity" not in frame.columns:
+        return frame
+
+    return frame.sort_values(["severity", "category", "check_name"]).reset_index(drop=True)
 
 
 def load_ml_metrics(path: Path) -> Any:

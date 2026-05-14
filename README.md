@@ -10,7 +10,7 @@ scoring, Naver news collection, Gemini-compatible news sentiment scoring,
 FRED macro environment scoring, market regime analysis, explainable scoring, risk filtering, paper trading, backtesting,
 experiment tracking, drift monitoring, report generation, scheduled daily jobs,
 ML training dataset generation, a first explainable ML probability baseline,
-Telegram alerts, and a Streamlit dashboard.
+operations health checks, Telegram alerts, and a Streamlit dashboard.
 
 > This project is for education and portfolio review. It is not investment advice.
 
@@ -37,6 +37,7 @@ Telegram alerts, and a Streamlit dashboard.
 - Explainable ML probability baseline without heavyweight dependencies
 - CSV-based experiment tracking for backtest and operations runs
 - Data drift and performance drift monitoring
+- Operations health checks for local artifacts and optional API connectivity
 - Markdown reports for single-stock and universe screening
 - Daily job runner for after-market operations
 - Telegram daily brief with drift status preview, send command, and retry settings
@@ -72,6 +73,7 @@ select named universe
 -> train first probability baseline
 -> log experiment metrics
 -> detect data/performance drift
+-> check operations health
 -> generate Markdown reports
 -> run daily scheduled job
 -> send or preview Telegram daily brief
@@ -131,11 +133,13 @@ flowchart LR
     N --> EXP["experiment log"]
     EXP --> PD["performance drift monitor"]
     F --> DD["data drift monitor"]
+    L --> OH["operations health check"]
     N --> O["backtest report"]
     V --> M
     V --> EXP
     DD --> M
     PD --> M
+    OH --> M
     U --> EXP
     P["universe registry"] --> A
     P --> L
@@ -155,7 +159,7 @@ src/krx_alpha/
   signals/       final signal generation
   backtest/      signal backtesting
   experiments/   CSV experiment tracking
-  monitoring/    data and performance drift detection
+  monitoring/    data, performance drift, and operations health checks
   universe/      named universe definitions
   reports/       Markdown report generation
   dashboard/     Streamlit dashboard
@@ -282,8 +286,9 @@ Dashboard:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
-The dashboard includes the latest paper portfolio snapshot and a paper
-portfolio history view built from saved `paper_portfolio_summary` files.
+The dashboard includes the latest paper portfolio snapshot, a paper portfolio
+history view built from saved `paper_portfolio_summary` files, and the latest
+operations health result when available.
 
 Open:
 
@@ -336,6 +341,13 @@ python main.py detect-data-drift --reference-path data/features/prices_daily/005
 python main.py send-telegram-daily --dry-run
 ```
 
+Operations health review:
+
+```powershell
+python main.py check-operations --skip-apis
+python main.py check-operations --include-apis --skip-pykrx
+```
+
 ## Quality Checks
 
 ```powershell
@@ -347,7 +359,7 @@ pytest
 Current verified result:
 
 ```text
-pytest: 101 passed
+pytest: 112 passed
 ruff: all checks passed
 mypy: no issues found
 ```
@@ -376,6 +388,7 @@ data/signals/universe_summary_daily/
 data/signals/ml_predictions/
 data/signals/ml_metrics/
 data/signals/drift/
+data/signals/operations_health/
 data/backtest/trades/
 data/backtest/metrics/
 data/backtest/paper_trade_ledger/
