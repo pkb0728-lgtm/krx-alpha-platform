@@ -37,6 +37,14 @@ SCREENING_COLUMNS = [
     "screened_at",
 ]
 
+SCREENING_PRIORITY_ORDER = {
+    "high": 0,
+    "medium": 1,
+    "watchlist": 2,
+    "low": 3,
+    "blocked": 4,
+}
+
 
 @dataclass(frozen=True)
 class AutoScreenerConfig:
@@ -80,10 +88,7 @@ class AutoScreener:
 
         result = pd.DataFrame(rows, columns=SCREENING_COLUMNS)
         if not result.empty:
-            result = result.sort_values(
-                ["passed", "screen_score", "confidence_score"],
-                ascending=[False, False, False],
-            ).reset_index(drop=True)
+            result = _sort_screening_result(result)
         validate_screening_frame(result)
         return result
 
@@ -522,3 +527,16 @@ def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _sort_screening_result(frame: pd.DataFrame) -> pd.DataFrame:
+    result = frame.copy()
+    result["_priority_order"] = result["review_priority"].map(SCREENING_PRIORITY_ORDER).fillna(99)
+    return (
+        result.sort_values(
+            ["_priority_order", "screen_score", "confidence_score"],
+            ascending=[True, False, False],
+        )
+        .drop(columns=["_priority_order"])
+        .reset_index(drop=True)
+    )

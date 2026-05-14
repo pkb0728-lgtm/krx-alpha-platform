@@ -3,6 +3,14 @@ from typing import Any
 
 import pandas as pd
 
+SCREENING_PRIORITY_ORDER = {
+    "high": 0,
+    "medium": 1,
+    "watchlist": 2,
+    "low": 3,
+    "blocked": 4,
+}
+
 
 def find_latest_universe_summary(project_root: Path) -> Path | None:
     summary_dir = project_root / "data" / "signals" / "universe_summary_daily"
@@ -248,6 +256,18 @@ def load_screening_result(path: Path) -> Any:
     frame = pd.read_parquet(path)
     if frame.empty or "screen_score" not in frame.columns:
         return frame
+
+    if "review_priority" in frame.columns:
+        frame = frame.copy()
+        frame["_priority_order"] = frame["review_priority"].map(SCREENING_PRIORITY_ORDER).fillna(99)
+        return (
+            frame.sort_values(
+                ["_priority_order", "screen_score", "confidence_score"],
+                ascending=[True, False, False],
+            )
+            .drop(columns=["_priority_order"])
+            .reset_index(drop=True)
+        )
 
     return frame.sort_values(
         ["passed", "screen_score", "confidence_score"],

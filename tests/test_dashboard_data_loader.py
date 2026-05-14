@@ -401,7 +401,8 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
             "screen_date": ["2024-01-31", "2024-01-31"],
             "ticker": ["005930", "000660"],
             "passed": [False, True],
-            "screen_score": [62.0, 78.0],
+            "review_priority": ["watchlist", "high"],
+            "screen_score": [90.0, 60.0],
             "final_action": ["watch", "buy_candidate"],
             "confidence_score": [62.0, 75.0],
             "market_regime": ["neutral", "bull"],
@@ -423,6 +424,7 @@ def test_dashboard_data_loader_reads_latest_screening_result(tmp_path: Path) -> 
     frame = load_screening_result(screening_path)
     assert frame.loc[0, "ticker"] == "000660"
     assert bool(frame.loc[0, "passed"]) is True
+    assert frame.loc[0, "review_priority"] == "high"
 
 
 def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) -> None:
