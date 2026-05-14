@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -82,6 +83,39 @@ def test_kis_paper_client_issues_token_against_mock_server_only() -> None:
         "appkey": "app-key",
         "appsecret": "app-secret",
     }
+
+
+def test_kis_paper_client_reuses_cached_token(tmp_path: Path) -> None:
+    credentials = KISPaperCredentials(
+        app_key="app-key",
+        app_secret="app-secret",
+        account_id=KISPaperAccountId.parse("12345678-01"),
+    )
+    cache_path = tmp_path / "kis_paper_token.json"
+    first_client = FakeKISHttpClient()
+
+    issued_token = KISPaperClient(
+        credentials,
+        http_client=first_client,
+        token_cache_path=cache_path,
+    ).issue_access_token()
+
+    assert cache_path.exists()
+    assert issued_token.access_token == "abcd1234efgh5678"
+    assert len(first_client.calls) == 1
+
+    rate_limited_client = FakeKISHttpClient(
+        status_code=403,
+        payload={"msg1": "접근토큰 발급 잠시 후 다시 시도하세요(1분당 1회)"},
+    )
+    cached_token = KISPaperClient(
+        credentials,
+        http_client=rate_limited_client,
+        token_cache_path=cache_path,
+    ).issue_access_token()
+
+    assert cached_token.access_token == issued_token.access_token
+    assert rate_limited_client.calls == []
 
 
 def test_kis_paper_client_redacts_secret_from_failure_message() -> None:

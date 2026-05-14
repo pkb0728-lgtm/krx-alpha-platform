@@ -180,16 +180,22 @@ app = typer.Typer(help="KRX Alpha Platform command line interface")
 console = Console()
 
 
+def _kis_token_cache_path() -> Path:
+    return settings.project_root / ".cache" / "kis_paper_token.json"
+
+
 class _CLIKISPaperCandidateSource:
     def __init__(
         self,
         project_root: Path,
         credentials: KISPaperCredentials,
         timeout_seconds: float,
+        token_cache_path: Path | None = None,
     ) -> None:
         self.project_root = project_root
         self.credentials = credentials
         self.timeout_seconds = timeout_seconds
+        self.token_cache_path = token_cache_path
 
     def build_candidates(
         self,
@@ -199,7 +205,11 @@ class _CLIKISPaperCandidateSource:
         cash_buffer_pct: float,
     ) -> Any:
         enriched_frame = enrich_screening_reference_prices(screening_frame, self.project_root)
-        client = KISPaperClient(self.credentials, timeout_seconds=self.timeout_seconds)
+        client = KISPaperClient(
+            self.credentials,
+            timeout_seconds=self.timeout_seconds,
+            token_cache_path=self.token_cache_path,
+        )
         token = client.issue_access_token()
         balance = client.inquire_balance(token)
         return KISPaperCandidateBuilder(
@@ -374,7 +384,10 @@ def check_apis(
     """Check configured API connectivity without printing secret values."""
     configure_logger(settings.log_level)
     credentials = ApiCredentials.from_settings(settings)
-    results = ApiHealthChecker(timeout_seconds=timeout_seconds).run(
+    results = ApiHealthChecker(
+        timeout_seconds=timeout_seconds,
+        kis_token_cache_path=_kis_token_cache_path(),
+    ).run(
         credentials,
         include_pykrx=include_pykrx,
     )
@@ -442,7 +455,10 @@ def check_operations(
 
     api_results = None
     if include_apis:
-        api_results = ApiHealthChecker(timeout_seconds=timeout_seconds).run(
+        api_results = ApiHealthChecker(
+            timeout_seconds=timeout_seconds,
+            kis_token_cache_path=_kis_token_cache_path(),
+        ).run(
             ApiCredentials.from_settings(settings),
             include_pykrx=include_pykrx,
         )
@@ -577,7 +593,11 @@ def kis_paper_token_check(
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    client = KISPaperClient(
+        credentials,
+        timeout_seconds=timeout_seconds,
+        token_cache_path=_kis_token_cache_path(),
+    )
     token = client.issue_access_token()
 
     console.print("[bold green]KIS paper token check succeeded.[/bold green]")
@@ -605,7 +625,11 @@ def kis_paper_balance(
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    client = KISPaperClient(
+        credentials,
+        timeout_seconds=timeout_seconds,
+        token_cache_path=_kis_token_cache_path(),
+    )
     token = client.issue_access_token()
     balance = client.inquire_balance(token)
 
@@ -685,7 +709,11 @@ def build_kis_paper_candidates(
     screening_frame = load_screening_result(resolved_screening_path)
     screening_frame = enrich_screening_reference_prices(screening_frame, settings.project_root)
 
-    client = KISPaperClient(credentials, timeout_seconds=timeout_seconds)
+    client = KISPaperClient(
+        credentials,
+        timeout_seconds=timeout_seconds,
+        token_cache_path=_kis_token_cache_path(),
+    )
     token = client.issue_access_token()
     balance = client.inquire_balance(token)
 
@@ -2970,6 +2998,7 @@ def run_daily_job(
             project_root=settings.project_root,
             credentials=kis_credentials,
             timeout_seconds=kis_timeout_seconds,
+            token_cache_path=_kis_token_cache_path(),
         )
 
     runner = DailyJobRunner(

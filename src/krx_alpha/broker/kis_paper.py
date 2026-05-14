@@ -1,4 +1,8 @@
+import hashlib
+import json
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Protocol, cast
 
 KIS_PAPER_BASE_URL = "https://openapivts.koreainvestment.com:29443"
@@ -153,13 +157,21 @@ class KISPaperClient:
         credentials: KISPaperCredentials,
         http_client: KISHttpClient | None = None,
         timeout_seconds: float = 10.0,
+        token_cache_path: Path | None = None,
+        token_cache_margin_seconds: int = 300,
     ) -> None:
         self.credentials = credentials
         self.http_client = http_client or RequestsKISHttpClient()
         self.timeout_seconds = timeout_seconds
         self.base_url = KIS_PAPER_BASE_URL
+        self.token_cache_path = token_cache_path
+        self.token_cache_margin_seconds = token_cache_margin_seconds
 
     def issue_access_token(self) -> KISPaperToken:
+        cached_token = self._load_cached_token()
+        if cached_token is not None:
+            return cached_token
+
         status_code, payload = self.http_client.request_json(
             "POST",
             f"{self.base_url}{KIS_TOKEN_PATH}",
@@ -180,11 +192,13 @@ class KISPaperClient:
                 detail = f"{detail}, {_redact(message, self.credentials.secret_values())}"
             raise RuntimeError(detail)
 
-        return KISPaperToken(
+        issued_token = KISPaperToken(
             access_token=token,
             token_type=str(payload.get("token_type") or "Bearer"),
             expires_in_seconds=_optional_int(payload.get("expires_in")),
         )
+        self._save_cached_token(issued_token)
+        return issued_token
 
     def inquire_balance(self, token: KISPaperToken) -> KISPaperBalance:
         status_code, payload = self.http_client.request_json(
@@ -223,6 +237,58 @@ class KISPaperClient:
 
         return _parse_balance_payload(payload, self.credentials.account_id.normalized)
 
+    def _load_cached_token(self) -> KISPaperToken | None:
+        if self.token_cache_path is None or not self.token_cache_path.exists():
+            return None
+
+        try:
+            payload = json.loads(self.token_cache_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+        if payload.get("credentials_fingerprint") != self._credentials_fingerprint():
+            return None
+
+        expires_at = _parse_datetime(payload.get("expires_at"))
+        if expires_at is None:
+            return None
+        if expires_at <= datetime.now(UTC) + timedelta(seconds=self.token_cache_margin_seconds):
+            return None
+
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str) or not access_token:
+            return None
+
+        return KISPaperToken(
+            access_token=access_token,
+            token_type=str(payload.get("token_type") or "Bearer"),
+            expires_in_seconds=max(0, int((expires_at - datetime.now(UTC)).total_seconds())),
+        )
+
+    def _save_cached_token(self, token: KISPaperToken) -> None:
+        if self.token_cache_path is None:
+            return
+
+        expires_in_seconds = token.expires_in_seconds or 23 * 60 * 60
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in_seconds)
+        payload = {
+            "access_token": token.access_token,
+            "token_type": token.token_type,
+            "expires_at": expires_at.isoformat(),
+            "credentials_fingerprint": self._credentials_fingerprint(),
+        }
+        try:
+            self.token_cache_path.parent.mkdir(parents=True, exist_ok=True)
+            self.token_cache_path.write_text(json.dumps(payload), encoding="utf-8")
+        except OSError:
+            return
+
+    def _credentials_fingerprint(self) -> str:
+        raw_value = f"{self.credentials.app_key}|{self.credentials.app_secret}"
+        return hashlib.sha256(raw_value.encode("utf-8")).hexdigest()
+
 
 def _optional_int(value: object) -> int | None:
     if value is None:
@@ -231,6 +297,18 @@ def _optional_int(value: object) -> int | None:
         return int(cast(Any, value))
     except (TypeError, ValueError):
         return None
+
+
+def _parse_datetime(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _parse_balance_payload(payload: dict[str, Any], account: str) -> KISPaperBalance:

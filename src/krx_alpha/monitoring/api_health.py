@@ -1,9 +1,11 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol, cast
 
 import pandas as pd
 
+from krx_alpha.broker.kis_paper import KISPaperAccountId, KISPaperClient, KISPaperCredentials
 from krx_alpha.collectors.price_collector import PriceRequest, PykrxPriceCollector
 
 API_STATUS_OK = "OK"
@@ -137,9 +139,11 @@ class ApiHealthChecker:
         self,
         http_client: JsonHttpClient | None = None,
         timeout_seconds: float = 10.0,
+        kis_token_cache_path: Path | None = None,
     ) -> None:
         self.http_client = http_client or RequestsJsonHttpClient()
         self.timeout_seconds = timeout_seconds
+        self.kis_token_cache_path = kis_token_cache_path
 
     def run(self, credentials: ApiCredentials, include_pykrx: bool = True) -> list[ApiCheckResult]:
         checks = [
@@ -231,6 +235,7 @@ class ApiHealthChecker:
             lambda: self._request_kis_paper(
                 credentials.kis_app_key or "",
                 credentials.kis_app_secret or "",
+                credentials.kis_account_no or "",
             ),
         )
 
@@ -335,23 +340,24 @@ class ApiHealthChecker:
             f"getMe HTTP {bot_status}, getChat HTTP {chat_status}",
         )
 
-    def _request_kis_paper(self, app_key: str, app_secret: str) -> ApiCheckResult:
-        status_code, payload = self.http_client.request_json(
-            "POST",
-            "https://openapivts.koreainvestment.com:29443/oauth2/tokenP",
-            headers={"content-type": "application/json; charset=utf-8"},
-            json_payload={
-                "grant_type": "client_credentials",
-                "appkey": app_key,
-                "appsecret": app_secret,
-            },
-            timeout_seconds=self.timeout_seconds,
+    def _request_kis_paper(
+        self,
+        app_key: str,
+        app_secret: str,
+        account_no: str,
+    ) -> ApiCheckResult:
+        credentials = KISPaperCredentials(
+            app_key=app_key,
+            app_secret=app_secret,
+            account_id=KISPaperAccountId.parse(account_no),
         )
-        if status_code == 200 and payload.get("access_token"):
-            return ApiCheckResult("KIS Paper", API_STATUS_OK, "paper token endpoint returned token")
-        message = str(payload.get("msg1") or payload.get("error_description") or "")
-        detail = f"HTTP {status_code}" + (f", {message}" if message else "")
-        return ApiCheckResult("KIS Paper", API_STATUS_FAILED, detail)
+        KISPaperClient(
+            credentials,
+            http_client=self.http_client,
+            timeout_seconds=self.timeout_seconds,
+            token_cache_path=self.kis_token_cache_path,
+        ).issue_access_token()
+        return ApiCheckResult("KIS Paper", API_STATUS_OK, "paper token is available")
 
     def _request_fred(self, api_key: str) -> ApiCheckResult:
         status_code, payload = self.http_client.request_json(
