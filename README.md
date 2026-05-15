@@ -296,7 +296,7 @@ mypy: no issues found
 - [Troubleshooting](docs/troubleshooting.md)
 - [ADR 0001](docs/adr/0001-mvp-scope.md)
 
-## 면접에서 설명하는 방법
+## 프로젝트 간단 요약
 
 짧게는 이렇게 설명할 수 있습니다.
 
