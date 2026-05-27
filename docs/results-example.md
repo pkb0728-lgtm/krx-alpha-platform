@@ -122,6 +122,20 @@ Interpretation:
 - The paper portfolio stayed fully in cash.
 - This is a conservative and valid result, not a pipeline failure.
 
+Dashboard audit:
+
+```text
+Filled trades: 0
+Ending equity = cash + position value
+10,000,000 = 10,000,000 + 0
+Paper return = ending equity / initial cash - 1 = 0.00%
+```
+
+If the KIS mock-investment section shows a larger total evaluation amount, that
+number comes from the KIS paper account balance endpoint. It is used only to
+estimate candidate quantities and is separate from the paper portfolio's virtual
+cash.
+
 ## Telegram Brief
 
 Preview command:
@@ -171,7 +185,9 @@ The dashboard displays:
 - news sentiment
 - macro features
 - paper portfolio summary
+- paper portfolio audit table for trade count and ending equity
 - backtest and walk-forward result
+- walk-forward audit table for fold-level trade counts
 - ML baseline result
 - drift monitoring
 - API and operations health
