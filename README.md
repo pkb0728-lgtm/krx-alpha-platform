@@ -23,8 +23,8 @@
 | KIS 연동 | 모의투자 토큰/잔고 조회 및 검토 후보 생성까지만 지원 |
 | 실제 주문 | 현재 구현하지 않음. 실제 주문 API 호출 없음 |
 | 대시보드 | Streamlit으로 유니버스, 스크리너, KIS 후보, 백테스트, 운영 상태 확인 |
-| 알림 | Telegram dry-run 및 실제 전송 지원 |
-| 테스트 | `pytest: 135 passed` |
+| 알림 | Telegram dry-run 및 실제 전송 지원, 한국어 일일 요약 |
+| 테스트 | `pytest: 136 passed` |
 | 품질 관리 | `ruff`, `mypy`, `pre-commit`, GitHub Actions CI |
 
 ## 빠른 실행
@@ -38,7 +38,13 @@ VSCode 터미널에서 가상환경을 켭니다.
 하루 운영 흐름을 한 번에 실행합니다.
 
 ```powershell
-python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --kis-paper-candidates --telegram-dry-run
+python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-send
+```
+
+텔레그램 전송 없이 미리보기만 하려면:
+
+```powershell
+python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-dry-run
 ```
 
 대시보드를 실행합니다.
@@ -55,11 +61,39 @@ http://localhost:8501
 
 대시보드에서 먼저 볼 곳:
 
-1. `Universe Ranking`
-2. `Auto Screener`
-3. `KIS Paper Review Candidates`
-4. `Paper Portfolio`
-5. `Operations Health`
+1. `유니버스 순위`
+2. `자동 스크리너`
+3. `KIS 모의투자 검토 후보`
+4. `페이퍼 포트폴리오`
+5. `운영 상태`
+
+스크리너 통과 종목이 0개여도 오류가 아닐 수 있습니다. 점수, 신뢰도,
+리스크 기준을 모두 만족한 종목이 없으면 프로그램은 보수적으로 후보를
+만들지 않습니다.
+
+## 포트폴리오 제출 요약
+
+이 저장소는 단순 주가 예측 스크립트가 아니라, 장 마감 후 한 번 실행해서
+분석 결과를 생성하는 **운영형 금융 데이터 분석 플랫폼 MVP**입니다.
+
+면접이나 포트폴리오 리뷰에서는 아래 흐름을 보여주면 됩니다.
+
+```text
+1. python main.py check-apis --save
+2. python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-dry-run
+3. streamlit run src/krx_alpha/dashboard/app.py
+4. pytest
+```
+
+강조할 점:
+
+- 데이터 수집부터 리포트/대시보드/텔레그램까지 end-to-end 실행됩니다.
+- 실제 주문은 보내지 않고, KIS 모의투자 계좌 기준 검토 후보만 만듭니다.
+- 후보가 없다는 결과도 정상 결과입니다. 리스크 관리 관점에서 무리하게
+  매수 후보를 만들지 않는 것이 이 프로젝트의 핵심 설계입니다.
+- 모든 최종 판단은 사람이 직접 확인하는 Human-in-the-loop 구조입니다.
+
+더 자세한 제출용 설명은 [포트폴리오 제출 가이드](docs/portfolio-submission-ko.md)를 참고하세요.
 
 ## 이 프로젝트가 보여주는 역량
 

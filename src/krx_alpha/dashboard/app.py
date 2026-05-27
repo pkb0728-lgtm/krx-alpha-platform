@@ -215,6 +215,12 @@ def main() -> None:
             )
             display_passed_frame = display_screening_frame[display_screening_frame["passed"]]
             st.caption(f"표시 행 수: {len(display_screening_frame)}")
+            if passed_frame.empty:
+                st.info(
+                    "오늘 스크리너 통과 종목은 없습니다. 오류가 아니라 점수, 신뢰도, "
+                    "리스크 기준을 모두 만족한 종목이 없다는 뜻입니다. 이 경우에는 "
+                    "보류/확인 필요 종목에서 왜 탈락했는지 확인하세요."
+                )
             if not display_passed_frame.empty:
                 st.caption("검토 후보 카드")
                 for _, row in display_passed_frame.head(5).iterrows():
@@ -299,6 +305,11 @@ def main() -> None:
             )
             candidate_cols[4].metric("실제 주문 수", order_count)
             st.caption(f"최근 KIS 후보 파일: {kis_candidate_path.name}")
+            if review_frame.empty:
+                st.info(
+                    "KIS 매수/추가매수 검토 후보가 없습니다. 스크리너를 통과한 종목이 "
+                    "없거나 리스크 필터가 차단한 경우에는 예상 수량과 금액이 0으로 표시됩니다."
+                )
 
             available_actions = _sorted_unique_values(kis_candidate_frame, "candidate_action")
             default_actions = [action for action in review_actions if action in available_actions]
