@@ -7,6 +7,7 @@ import streamlit as st
 
 from krx_alpha.dashboard.data_loader import (
     action_counts,
+    beginner_decision_brief,
     filter_screening_result,
     find_latest_api_health,
     find_latest_backtest_metrics,
@@ -85,6 +86,16 @@ def main() -> None:
         return
 
     summary_frame = load_universe_summary(summary_path)
+    screening_path = find_latest_screening_result(PROJECT_ROOT)
+    screening_frame = (
+        load_screening_result(screening_path) if screening_path is not None else pd.DataFrame()
+    )
+    kis_candidate_path = find_latest_kis_paper_candidates(PROJECT_ROOT)
+    kis_candidate_frame = (
+        load_kis_paper_candidates(kis_candidate_path)
+        if kis_candidate_path is not None
+        else pd.DataFrame()
+    )
     success_count = int((summary_frame["status"] == "success").sum())
     failed_count = int((summary_frame["status"] == "failed").sum())
     top_row = summary_frame.iloc[0] if not summary_frame.empty else None
@@ -117,6 +128,15 @@ def main() -> None:
         else "N/A"
     )
     metric_cols[5].metric("뉴스 점수", top_news)
+
+    brief = beginner_decision_brief(summary_frame, screening_frame, kis_candidate_frame)
+    st.subheader("오늘 결론부터 보기")
+    st.info(f"**{brief['headline']}**\n\n{brief['detail']}\n\n다음 확인: {brief['next_step']}")
+    brief_cols = st.columns(4)
+    brief_cols[0].metric("상위 종목", str(brief["top_stock"]))
+    brief_cols[1].metric("스크리너 통과", int(brief["screening_passed_count"]))
+    brief_cols[2].metric("KIS 검토 후보", int(brief["review_candidate_count"]))
+    brief_cols[3].metric("리스크 차단", int(brief["blocked_count"]))
 
     st.divider()
 
@@ -171,11 +191,9 @@ def main() -> None:
 
     st.subheader("자동 스크리너")
     st.caption("전체 종목 중 사람이 다시 검토할 만한 후보를 걸러내는 단계입니다.")
-    screening_path = find_latest_screening_result(PROJECT_ROOT)
     if screening_path is None:
         st.info("스크리너 결과가 없습니다.")
     else:
-        screening_frame = load_screening_result(screening_path)
         if screening_frame.empty:
             st.info("스크리너 결과가 비어 있습니다.")
         else:
@@ -273,11 +291,9 @@ def main() -> None:
         "모의투자 계좌 잔고를 기준으로 매수/추가매수 검토 후보를 계산합니다. "
         "실제 주문은 보내지 않습니다."
     )
-    kis_candidate_path = find_latest_kis_paper_candidates(PROJECT_ROOT)
     if kis_candidate_path is None:
         st.info("KIS 모의투자 후보 결과가 없습니다.")
     else:
-        kis_candidate_frame = load_kis_paper_candidates(kis_candidate_path)
         if kis_candidate_frame.empty:
             st.info("KIS 모의투자 후보 결과가 비어 있습니다.")
         else:

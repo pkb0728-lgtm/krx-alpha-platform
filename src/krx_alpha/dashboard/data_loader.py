@@ -643,6 +643,90 @@ def action_counts(frame: Any) -> Any:
     )
 
 
+def beginner_decision_brief(
+    summary_frame: pd.DataFrame,
+    screening_frame: pd.DataFrame | None = None,
+    kis_candidate_frame: pd.DataFrame | None = None,
+) -> dict[str, str | int]:
+    total_count = len(summary_frame)
+    if total_count == 0:
+        return {
+            "headline": "아직 분석 결과가 없습니다.",
+            "detail": "먼저 일일 작업을 실행해 유니버스 분석 결과를 생성하세요.",
+            "next_step": "터미널에서 run-daily-job 명령을 실행한 뒤 대시보드를 새로고침하세요.",
+            "top_stock": "N/A",
+            "screening_passed_count": 0,
+            "review_candidate_count": 0,
+            "blocked_count": 0,
+        }
+
+    top_stock = _brief_stock_label(summary_frame.iloc[0])
+    buy_count = _count_equal(summary_frame, "latest_action", "buy_candidate")
+    watch_count = _count_equal(summary_frame, "latest_action", "watch")
+    blocked_count = _count_equal(summary_frame, "latest_action", "blocked")
+    screening_passed_count = _count_true(screening_frame, "passed")
+    review_candidate_count = _count_values(
+        kis_candidate_frame,
+        "candidate_action",
+        {"review_buy", "review_add"},
+    )
+
+    if review_candidate_count > 0:
+        headline = f"오늘은 사람이 다시 볼 매수 검토 후보가 {review_candidate_count}개 있습니다."
+        detail = (
+            f"상위 종목은 {top_stock}입니다. 스크리너 통과 종목은 {screening_passed_count}개이며, "
+            "KIS 모의투자 기준 후보 수량과 예상 금액까지 계산되었습니다."
+        )
+        next_step = (
+            "후보 카드에서 뉴스, 공시, 유동성, 계좌 비중을 확인한 뒤 사람의 판단으로만 결정하세요."
+        )
+    elif buy_count > 0 or screening_passed_count > 0:
+        headline = "오늘은 검토할 후보가 있지만 아직 수동 확인이 필요합니다."
+        detail = (
+            f"상위 종목은 {top_stock}입니다. 시스템상 매수 검토 신호 또는 "
+            "스크리너 통과 결과가 있지만, "
+            "실제 주문은 보내지 않았습니다."
+        )
+        next_step = "자동 스크리너의 근거와 주의점을 먼저 읽고 최신 뉴스와 DART 공시를 확인하세요."
+    elif watch_count > 0:
+        headline = "오늘은 적극 매수보다 관망이 우선입니다."
+        detail = (
+            f"상위 관심 종목은 {top_stock}입니다. 관망 종목은 {watch_count}개, "
+            f"리스크 차단 종목은 {blocked_count}개입니다."
+        )
+        next_step = (
+            "관망 종목의 신뢰도, 거래대금, 뉴스 흐름이 개선되는지 다음 실행 결과와 비교하세요."
+        )
+    elif blocked_count > 0:
+        headline = "오늘은 리스크 관리가 우선이라 신규 매수 후보가 없습니다."
+        detail = (
+            f"{blocked_count}개 종목이 리스크 필터에 막혔습니다. 하락장, "
+            "고변동성, 단기 변동성 확대 같은 "
+            "조건에서는 쉬는 것도 전략입니다."
+        )
+        next_step = (
+            "리스크 설명 열에서 어떤 이유로 차단됐는지 확인하고 "
+            "시장 변동성이 낮아질 때까지 기다리세요."
+        )
+    else:
+        headline = "오늘은 뚜렷한 신규 매수 후보가 없습니다."
+        detail = (
+            f"상위 종목은 {top_stock}이지만 점수와 리스크 조건이 충분히 강하지 않습니다. "
+            "무리하게 매수 후보를 만들지 않는 보수적인 결과입니다."
+        )
+        next_step = "다음 거래일 데이터가 쌓인 뒤 다시 실행하고, 후보가 생기면 근거부터 확인하세요."
+
+    return {
+        "headline": headline,
+        "detail": detail,
+        "next_step": next_step,
+        "top_stock": top_stock,
+        "screening_passed_count": screening_passed_count,
+        "review_candidate_count": review_candidate_count,
+        "blocked_count": blocked_count,
+    }
+
+
 def _with_readable_columns(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
     if "ticker" in result.columns and "stock_name" not in result.columns:
@@ -687,6 +771,39 @@ def _with_readable_columns(frame: pd.DataFrame) -> pd.DataFrame:
 def _stock_name(value: object) -> str:
     ticker = str(value).zfill(6)
     return STOCK_NAME_MAP.get(ticker, "")
+
+
+def _brief_stock_label(row: pd.Series) -> str:
+    ticker = str(row.get("ticker", "")).zfill(6)
+    stock_name = str(row.get("stock_name", "") or _stock_name(ticker))
+    if stock_name and stock_name != "nan":
+        return f"{ticker} {stock_name}"
+    return ticker
+
+
+def _count_equal(frame: pd.DataFrame | None, column: str, value: object) -> int:
+    if frame is None or frame.empty or column not in frame.columns:
+        return 0
+    return int((frame[column].astype(str) == str(value)).sum())
+
+
+def _count_values(frame: pd.DataFrame | None, column: str, values: set[str]) -> int:
+    if frame is None or frame.empty or column not in frame.columns:
+        return 0
+    return int(frame[column].astype(str).isin(values).sum())
+
+
+def _count_true(frame: pd.DataFrame | None, column: str) -> int:
+    if frame is None or frame.empty or column not in frame.columns:
+        return 0
+    return int(frame[column].map(_is_truthy).sum())
+
+
+def _is_truthy(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    return text in {"true", "1", "yes", "y"}
 
 
 def _map_final_action(value: object) -> str:

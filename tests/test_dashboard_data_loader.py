@@ -5,6 +5,7 @@ import pandas as pd
 from krx_alpha.dashboard.app import _koreanize_columns
 from krx_alpha.dashboard.data_loader import (
     action_counts,
+    beginner_decision_brief,
     filter_screening_result,
     find_latest_api_health,
     find_latest_backtest_metrics,
@@ -68,6 +69,43 @@ def test_dashboard_data_loader_reads_latest_summary(tmp_path: Path) -> None:
 
     counts = action_counts(frame)
     assert set(counts["latest_action"]) == {"watch", "buy_candidate"}
+
+
+def test_dashboard_beginner_decision_brief_highlights_review_candidates() -> None:
+    summary = pd.DataFrame(
+        {
+            "ticker": ["005380", "005930"],
+            "latest_action": ["buy_candidate", "watch"],
+        }
+    )
+    screening = pd.DataFrame({"passed": [True, False]})
+    kis_candidates = pd.DataFrame({"candidate_action": ["review_buy", "skip"]})
+
+    brief = beginner_decision_brief(summary, screening, kis_candidates)
+
+    assert "매수 검토 후보가 1개" in str(brief["headline"])
+    assert brief["top_stock"] == "005380 현대차"
+    assert brief["screening_passed_count"] == 1
+    assert brief["review_candidate_count"] == 1
+
+
+def test_dashboard_beginner_decision_brief_explains_watch_only_result() -> None:
+    summary = pd.DataFrame(
+        {
+            "ticker": ["068270", "005930"],
+            "latest_action": ["watch", "blocked"],
+        }
+    )
+    screening = pd.DataFrame({"passed": [False, False]})
+    kis_candidates = pd.DataFrame({"candidate_action": ["hold_review", "skip"]})
+
+    brief = beginner_decision_brief(summary, screening, kis_candidates)
+
+    assert "관망" in str(brief["headline"])
+    assert brief["top_stock"] == "068270 셀트리온"
+    assert brief["screening_passed_count"] == 0
+    assert brief["review_candidate_count"] == 0
+    assert brief["blocked_count"] == 1
 
 
 def test_dashboard_load_markdown(tmp_path: Path) -> None:
