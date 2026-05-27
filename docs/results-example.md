@@ -10,14 +10,14 @@
 Example command:
 
 ```powershell
-python main.py run-daily-job --universe large_cap --lookback-days 60 --kis-paper-candidates --telegram-send
+python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-send
 ```
 
 Latest local run:
 
 ```text
 Universe: large_cap
-Period: 2026-03-28 to 2026-05-27
+Period: 2025-11-28 to 2026-05-27
 Total: 10
 Success: 10
 Failed: 0
@@ -33,25 +33,25 @@ The latest `large_cap` universe run produced 10 successful ticker results.
 
 | Ticker | Name | Action | Confidence | Market Regime |
 | --- | --- | --- | ---: | --- |
-| 068270 | 셀트리온 | watch | 55.23 | insufficient_data |
-| 105560 | KB금융 | hold | 53.62 | insufficient_data |
-| 055550 | 신한지주 | hold | 53.21 | insufficient_data |
-| 035420 | NAVER | hold | 52.91 | insufficient_data |
-| 035720 | 카카오 | hold | 49.14 | insufficient_data |
-| 005930 | 삼성전자 | blocked | 37.76 | insufficient_data |
-| 000270 | 기아 | blocked | 34.47 | insufficient_data |
-| 005380 | 현대차 | blocked | 33.85 | insufficient_data |
-| 000660 | SK하이닉스 | blocked | 31.85 | insufficient_data |
-| 051910 | LG화학 | blocked | 24.70 | insufficient_data |
+| 068270 | 셀트리온 | watch | 55.23 | neutral |
+| 105560 | KB금융 | hold | 53.62 | sideways |
+| 055550 | 신한지주 | hold | 53.21 | neutral |
+| 035420 | NAVER | blocked | 37.91 | bear |
+| 005930 | 삼성전자 | blocked | 37.76 | high_volatility |
+| 000270 | 기아 | blocked | 34.47 | high_volatility |
+| 035720 | 카카오 | blocked | 34.14 | bear |
+| 005380 | 현대차 | blocked | 33.85 | high_volatility |
+| 000660 | SK하이닉스 | blocked | 31.85 | high_volatility |
+| 051910 | LG화학 | blocked | 24.70 | high_volatility |
 
 Interpretation:
 
 - `watch` means the stock is worth monitoring, but it is not a buy candidate.
 - `hold` means the signal is neutral or not strong enough.
 - `blocked` means the risk filter blocked the signal.
-- `insufficient_data` means the market regime model wanted more price history.
-  For regime analysis, `--lookback-days 120` or `--lookback-days 180` is usually
-  more useful than 60 days.
+- With `--lookback-days 180`, market regime labels became more informative than
+  the shorter 60-day run. The result now separates neutral, sideways, bear, and
+  high-volatility regimes.
 
 ## Auto Screener Result
 
@@ -69,8 +69,9 @@ Top review queue rows:
 | 068270 | 셀트리온 | False | confidence_and_score_below_threshold | watchlist | 59.33 | 55.23 | none |
 | 105560 | KB금융 | False | action_not_allowed | low | 35.77 | 53.62 | none |
 | 055550 | 신한지주 | False | action_not_allowed | low | 35.62 | 53.21 | none |
-| 005930 | 삼성전자 | False | action_not_allowed | blocked | 0.00 | 37.76 | high_short_term_volatility, weak_risk_score |
-| 000660 | SK하이닉스 | False | action_not_allowed | blocked | 0.00 | 31.85 | wide_daily_range, high_short_term_volatility, weak_risk_score |
+| 035420 | NAVER | False | action_not_allowed | blocked | 0.00 | 37.91 | market_regime_bear |
+| 005930 | 삼성전자 | False | action_not_allowed | blocked | 0.00 | 37.76 | high_short_term_volatility, weak_risk_score, market_regime_high_volatility |
+| 000660 | SK하이닉스 | False | action_not_allowed | blocked | 0.00 | 31.85 | wide_daily_range, high_short_term_volatility, weak_risk_score, market_regime_high_volatility |
 
 Important interpretation:
 
@@ -141,7 +142,7 @@ KRX Alpha 일일 요약
 - 실패: 0개
 
 상위 종목
-1. 068270 셀트리온 | 판단: 관망 | 신뢰도 55.23 | 시장: 데이터 부족
+1. 068270 셀트리온 | 판단: 관망 | 신뢰도 55.23 | 시장: 중립
    해석: 관심 종목으로 지켜보되 아직 적극 매수 단계는 아닙니다.
 
 자동 스크리너
@@ -190,8 +191,8 @@ Latest local operations health had healthy core artifacts, with some optional
 modeling or stale analysis artifacts marked as stale.
 
 ```text
-OK: 9
-STALE: 7
+OK: 10
+STALE: 6
 Problems: 0
 ```
 
