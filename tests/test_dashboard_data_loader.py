@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from krx_alpha.dashboard.app import _koreanize_columns
+from krx_alpha.dashboard.app import (
+    _artifact_matches_period,
+    _find_matching_period_file,
+    _koreanize_columns,
+    _period_from_artifact_name,
+    _period_label,
+)
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     beginner_decision_brief,
@@ -42,6 +48,25 @@ from krx_alpha.dashboard.data_loader import (
     load_walk_forward_summary,
     screening_review_queue,
 )
+
+
+def test_dashboard_artifact_period_helpers(tmp_path: Path) -> None:
+    active_period = ("2025-11-28", "2026-05-27")
+    artifact_path = tmp_path / "large_cap_20251128_20260527.parquet"
+    old_artifact_path = tmp_path / "macro_20240101_20240131_DGS10.parquet"
+
+    artifact_path.write_text("placeholder", encoding="utf-8")
+    old_artifact_path.write_text("placeholder", encoding="utf-8")
+
+    assert _period_from_artifact_name(artifact_path) == active_period
+    assert _period_from_artifact_name(old_artifact_path) == (
+        "2024-01-01",
+        "2024-01-31",
+    )
+    assert _period_label(active_period) == "2025-11-28 ~ 2026-05-27"
+    assert _artifact_matches_period(artifact_path, active_period)
+    assert not _artifact_matches_period(old_artifact_path, active_period)
+    assert _find_matching_period_file(tmp_path, active_period) == artifact_path
 
 
 def test_dashboard_data_loader_reads_latest_summary(tmp_path: Path) -> None:

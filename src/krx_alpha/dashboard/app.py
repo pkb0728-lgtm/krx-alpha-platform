@@ -86,6 +86,7 @@ def main() -> None:
         return
 
     summary_frame = load_universe_summary(summary_path)
+    active_period = _period_from_artifact_name(summary_path)
     screening_path = find_latest_screening_result(PROJECT_ROOT)
     screening_frame = (
         load_screening_result(screening_path) if screening_path is not None else pd.DataFrame()
@@ -115,6 +116,13 @@ def main() -> None:
         str(top_row["latest_market_regime"])
         if top_row is not None and "latest_market_regime" in summary_frame.columns
         else "N/A"
+    )
+
+    st.caption(f"현재 대시보드 기준 파일: {summary_path.name}")
+    st.caption(f"현재 분석 기간: {_period_label(active_period)}")
+    st.info(
+        "이 기간과 맞지 않는 거시 환경, 백테스트, 워크포워드, ML 결과는 "
+        "오늘 실행 결과가 아니라 과거 검증용 산출물로 표시됩니다."
     )
     top_regime_ko = (
         str(top_row["latest_market_regime_ko"])
@@ -443,6 +451,7 @@ def main() -> None:
                 "5일 환율 변화", _format_percent(latest_macro["usdkrw_change_pct_5d"])
             )
             st.caption(f"최근 거시 피처 파일: {macro_path.name}")
+            _warn_if_period_mismatch("거시 환경", macro_path, active_period)
 
             chart_frame = macro_frame.copy().sort_values("date")
             chart_frame["date"] = chart_frame["date"].astype(str)
@@ -491,6 +500,7 @@ def main() -> None:
             backtest_cols[5].metric("샤프비율", f"{float(metric['sharpe_ratio']):.2f}")
 
             st.caption(f"최근 백테스트 파일: {metrics_path.name}")
+            _warn_if_period_mismatch("백테스트", metrics_path, active_period)
             st.dataframe(
                 _koreanize_columns(metrics_frame),
                 hide_index=True,
@@ -520,7 +530,10 @@ def main() -> None:
 
     st.subheader("페이퍼 포트폴리오")
     st.caption("실제 돈을 쓰지 않고 가상 현금으로 신호를 검증한 결과입니다.")
-    portfolio_path = find_latest_paper_portfolio_summary(PROJECT_ROOT)
+    portfolio_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "backtest" / "paper_portfolio_summary",
+        active_period,
+    ) or find_latest_paper_portfolio_summary(PROJECT_ROOT)
     if portfolio_path is None:
         st.info("페이퍼 포트폴리오 결과가 없습니다.")
     else:
@@ -551,6 +564,7 @@ def main() -> None:
             )
 
             st.caption(f"최근 페이퍼 포트폴리오 파일: {portfolio_path.name}")
+            _warn_if_period_mismatch("페이퍼 포트폴리오", portfolio_path, active_period)
             st.dataframe(
                 _koreanize_columns(
                     portfolio_summary[_paper_portfolio_summary_display_columns(portfolio_summary)]
@@ -645,6 +659,7 @@ def main() -> None:
             )
 
             st.caption(f"최근 페이퍼트레이딩 파일: {paper_path.name}")
+            _warn_if_period_mismatch("단일 종목 페이퍼트레이딩", paper_path, active_period)
             st.dataframe(
                 _koreanize_columns(paper_summary),
                 hide_index=True,
@@ -694,6 +709,7 @@ def main() -> None:
             )
 
             st.caption(f"최근 워크포워드 파일: {walk_forward_path.name}")
+            _warn_if_period_mismatch("워크포워드 검증", walk_forward_path, active_period)
             st.dataframe(
                 _koreanize_columns(walk_forward_summary),
                 hide_index=True,
@@ -751,6 +767,7 @@ def main() -> None:
             ml_cols[5].metric("재현율", _format_percent(ml_metric["recall"]))
 
             st.caption(f"최근 ML 결과 파일: {ml_metrics_path.name}")
+            _warn_if_period_mismatch("ML 확률 베이스라인", ml_metrics_path, active_period)
             st.dataframe(
                 _koreanize_columns(ml_metrics_frame),
                 hide_index=True,
@@ -1215,6 +1232,74 @@ def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _period_from_artifact_name(path: Path | None) -> tuple[str, str] | None:
+    if path is None:
+        return None
+
+    compact_dates = [part for part in path.stem.split("_") if len(part) == 8 and part.isdigit()]
+    if len(compact_dates) < 2:
+        return None
+
+    return (
+        _format_compact_date(compact_dates[-2]),
+        _format_compact_date(compact_dates[-1]),
+    )
+
+
+def _format_compact_date(value: str) -> str:
+    return f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+
+
+def _period_label(period: tuple[str, str] | None) -> str:
+    if period is None:
+        return "파일명에서 기간을 확인할 수 없음"
+    return f"{period[0]} ~ {period[1]}"
+
+
+def _artifact_matches_period(path: Path | None, active_period: tuple[str, str] | None) -> bool:
+    if path is None or active_period is None:
+        return False
+    return _period_from_artifact_name(path) == active_period
+
+
+def _warn_if_period_mismatch(
+    section_label: str,
+    artifact_path: Path | None,
+    active_period: tuple[str, str] | None,
+) -> None:
+    if artifact_path is None or active_period is None:
+        return
+
+    artifact_period = _period_from_artifact_name(artifact_path)
+    if artifact_period is None or artifact_period == active_period:
+        return
+
+    st.warning(
+        f"{section_label} 섹션은 현재 분석 기간({_period_label(active_period)})과 "
+        f"다른 파일({_period_label(artifact_period)})을 보고 있습니다. "
+        "이 값은 오늘 실행 결과가 아니라 과거 검증/샘플 산출물입니다."
+    )
+
+
+def _find_matching_period_file(
+    directory: Path,
+    active_period: tuple[str, str] | None,
+    pattern: str = "*.parquet",
+) -> Path | None:
+    if active_period is None or not directory.exists():
+        return None
+
+    matching_paths = [
+        path
+        for path in directory.glob(pattern)
+        if path.is_file() and _artifact_matches_period(path, active_period)
+    ]
+    if not matching_paths:
+        return None
+
+    return max(matching_paths, key=lambda path: (path.stat().st_mtime, path.name))
 
 
 def _sorted_unique_values(frame: pd.DataFrame, column: str) -> list[str]:
