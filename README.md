@@ -24,7 +24,7 @@
 | 실제 주문 | 현재 구현하지 않음. 실제 주문 API 호출 없음 |
 | 대시보드 | Streamlit으로 유니버스, 스크리너, KIS 후보, 백테스트, 운영 상태 확인 |
 | 알림 | Telegram dry-run 및 실제 전송 지원, 한국어 일일 요약 |
-| 테스트 | `pytest: 136 passed` |
+| 테스트 | `pytest` 전체 통과 |
 | 품질 관리 | `ruff`, `mypy`, `pre-commit`, GitHub Actions CI |
 
 ## 빠른 실행
@@ -39,6 +39,12 @@ VSCode 터미널에서 가상환경을 켭니다.
 
 ```powershell
 python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-send
+```
+
+이 명령은 분석 결과를 자동으로 `decision_journal`에도 누적 저장합니다. 며칠 뒤 실제 수익률과 비교하려면:
+
+```powershell
+python main.py evaluate-decision-journal --holding-days 5
 ```
 
 텔레그램 전송 없이 미리보기만 하려면:
@@ -307,7 +313,7 @@ pytest
 현재 검증 결과:
 
 ```text
-pytest: 135 passed
+pytest: all tests passed
 ruff: all checks passed
 mypy: no issues found
 ```

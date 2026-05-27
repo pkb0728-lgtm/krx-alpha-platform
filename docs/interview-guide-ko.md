@@ -191,7 +191,7 @@ API 키와 토큰은 GitHub에 올리지 않도록 설계했습니다.
 - `pre-commit`: 커밋 전 품질 검사
 - GitHub Actions: 원격 CI
 
-최근 기준 전체 테스트는 `136 passed`입니다.
+최근 기준 전체 테스트는 `pytest`로 통과 여부를 확인합니다.
 
 ## 현재 한계
 

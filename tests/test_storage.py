@@ -9,6 +9,11 @@ from krx_alpha.database.storage import (
     dart_financial_feature_file_path,
     dart_financial_file_path,
     data_quality_file_path,
+    decision_journal_csv_path,
+    decision_journal_evaluation_csv_path,
+    decision_journal_evaluation_file_path,
+    decision_journal_file_path,
+    decision_journal_report_file_path,
     drift_result_file_path,
     ensure_project_dirs,
     experiment_log_file_path,
@@ -242,6 +247,31 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         monitoring_report_file_path(tmp_path, "data_drift_demo")
         .as_posix()
         .endswith("reports/monitoring/data_drift_demo.md")
+    )
+    assert (
+        decision_journal_file_path(tmp_path)
+        .as_posix()
+        .endswith("data/signals/decision_journal/decision_journal.parquet")
+    )
+    assert (
+        decision_journal_csv_path(tmp_path)
+        .as_posix()
+        .endswith("data/signals/decision_journal/decision_journal.csv")
+    )
+    assert (
+        decision_journal_evaluation_file_path(tmp_path, 5)
+        .as_posix()
+        .endswith("data/signals/decision_journal_evaluation/decision_journal_h5.parquet")
+    )
+    assert (
+        decision_journal_evaluation_csv_path(tmp_path, 5)
+        .as_posix()
+        .endswith("data/signals/decision_journal_evaluation/decision_journal_h5.csv")
+    )
+    assert (
+        decision_journal_report_file_path(tmp_path, 5)
+        .as_posix()
+        .endswith("reports/decision_journal/decision_journal_h5.md")
     )
 
 

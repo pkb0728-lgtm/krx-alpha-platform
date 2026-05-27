@@ -480,6 +480,42 @@ def kis_paper_candidate_report_file_path(project_root: Path, report_name: str) -
     return project_root / "reports" / "kis_paper_candidates" / f"{report_name}.md"
 
 
+def decision_journal_file_path(project_root: Path, journal_name: str = "decision_journal") -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "decision_journal")
+    return dataset_dir / f"{journal_name}.parquet"
+
+
+def decision_journal_csv_path(project_root: Path, journal_name: str = "decision_journal") -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "decision_journal")
+    return dataset_dir / f"{journal_name}.csv"
+
+
+def decision_journal_evaluation_file_path(
+    project_root: Path,
+    holding_days: int,
+    journal_name: str = "decision_journal",
+) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "decision_journal_evaluation")
+    return dataset_dir / f"{journal_name}_h{holding_days}.parquet"
+
+
+def decision_journal_evaluation_csv_path(
+    project_root: Path,
+    holding_days: int,
+    journal_name: str = "decision_journal",
+) -> Path:
+    dataset_dir = signals_dataset_dir(project_root, "decision_journal_evaluation")
+    return dataset_dir / f"{journal_name}_h{holding_days}.csv"
+
+
+def decision_journal_report_file_path(
+    project_root: Path,
+    holding_days: int,
+    journal_name: str = "decision_journal",
+) -> Path:
+    return project_root / "reports" / "decision_journal" / f"{journal_name}_h{holding_days}.md"
+
+
 def screening_report_file_path(project_root: Path, report_name: str) -> Path:
     return project_root / "reports" / "screening" / f"{report_name}.md"
 

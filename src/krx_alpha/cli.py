@@ -59,6 +59,7 @@ from krx_alpha.database.storage import (
     dart_financial_feature_file_path,
     dart_financial_file_path,
     data_quality_file_path,
+    decision_journal_file_path,
     drift_result_file_path,
     ensure_project_dirs,
     final_signal_file_path,
@@ -114,6 +115,11 @@ from krx_alpha.features.investor_flow_features import InvestorFlowFeatureBuilder
 from krx_alpha.features.macro_features import MacroFeatureBuilder
 from krx_alpha.features.news_sentiment import NewsSentimentConfig, NewsSentimentFeatureBuilder
 from krx_alpha.features.price_features import PriceFeatureBuilder
+from krx_alpha.journal.decision_journal import (
+    append_decision_journal,
+    build_decision_journal_frame,
+    evaluate_decision_journal,
+)
 from krx_alpha.models.probability_baseline import (
     MLProbabilityBaselineConfig,
     MLProbabilityBaselineTrainer,
@@ -3079,6 +3085,12 @@ def run_daily_job(
         )
         console.print(f"KIS manual price checks: {result.kis_candidate_manual_price_count}")
         console.print("KIS mode: paper candidate review only. No order was sent.")
+    console.print(f"Decision journal: {result.decision_journal_path}")
+    console.print(f"Decision journal CSV: {result.decision_journal_csv_path}")
+    console.print(
+        "Decision journal rows: "
+        f"+{result.decision_journal_appended_count} / total {result.decision_journal_total_count}"
+    )
     console.print(f"Operations health: {result.operations_health_path}")
     console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")
@@ -3087,6 +3099,144 @@ def run_daily_job(
         console.print(f"Telegram: {status}")
         if result.telegram_dry_run:
             console.print(result.telegram_message)
+
+
+@app.command("record-decision-journal")
+def record_decision_journal(
+    universe: Annotated[
+        str,
+        typer.Option("--universe", "-u", help="Universe name to store in the journal."),
+    ] = "large_cap",
+    summary_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--summary-path",
+            help="Universe summary parquet path. Uses latest if omitted.",
+        ),
+    ] = None,
+    screening_path: Annotated[
+        Path | None,
+        typer.Option("--screening-path", help="Screening parquet path. Uses latest if omitted."),
+    ] = None,
+    kis_candidate_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--kis-candidate-path",
+            help="KIS candidate parquet path. Uses latest if omitted.",
+        ),
+    ] = None,
+    start: Annotated[
+        str | None,
+        typer.Option(
+            "--start",
+            help="Analysis start date. Inferred from summary filename if omitted.",
+        ),
+    ] = None,
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="Analysis end date. Inferred from summary filename if omitted."),
+    ] = None,
+) -> None:
+    """Append an existing universe run to the durable decision journal."""
+    resolved_summary_path = summary_path or find_latest_universe_summary(settings.project_root)
+    if resolved_summary_path is None or not resolved_summary_path.exists():
+        raise typer.BadParameter("Universe summary path does not exist.")
+
+    if start and end:
+        start_date = start
+        end_date = end
+    else:
+        inferred_start, inferred_end = _infer_summary_period(resolved_summary_path)
+        start_date = start or inferred_start
+        end_date = end or inferred_end
+    summary_frame = read_parquet(resolved_summary_path)
+
+    resolved_screening_path = screening_path or find_latest_screening_result(settings.project_root)
+    screening_frame = (
+        load_screening_result(resolved_screening_path)
+        if resolved_screening_path is not None and resolved_screening_path.exists()
+        else None
+    )
+    resolved_kis_path = kis_candidate_path or find_latest_kis_paper_candidates(
+        settings.project_root
+    )
+    kis_candidate_frame = (
+        load_kis_paper_candidates(resolved_kis_path)
+        if resolved_kis_path is not None and resolved_kis_path.exists()
+        else None
+    )
+
+    journal_rows = build_decision_journal_frame(
+        universe=universe,
+        start_date=start_date,
+        end_date=end_date,
+        summary_frame=summary_frame,
+        screening_frame=screening_frame,
+        kis_candidate_frame=kis_candidate_frame,
+    )
+    result = append_decision_journal(settings.project_root, journal_rows)
+    console.print("[bold green]Decision journal updated.[/bold green]")
+    console.print(f"Summary: {resolved_summary_path}")
+    console.print(f"Journal: {result.parquet_path}")
+    console.print(f"CSV: {result.csv_path}")
+    console.print(f"Rows appended: {result.appended_count}")
+    console.print(f"Total rows: {result.total_count}")
+
+
+@app.command("evaluate-decision-journal")
+def evaluate_decision_journal_command(
+    holding_days: Annotated[
+        int,
+        typer.Option("--holding-days", help="Trading-day horizon used for outcome comparison."),
+    ] = 5,
+    journal_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--journal-path",
+            help="Decision journal parquet path. Uses default if omitted.",
+        ),
+    ] = None,
+) -> None:
+    """Compare stored decisions with later realized price movement."""
+    resolved_journal_path = journal_path or decision_journal_file_path(settings.project_root)
+    if not resolved_journal_path.exists():
+        raise typer.BadParameter(
+            "Decision journal does not exist yet. "
+            "Run run-daily-job or record-decision-journal first."
+        )
+
+    journal_frame = read_parquet(resolved_journal_path)
+    result = evaluate_decision_journal(
+        settings.project_root,
+        holding_days=holding_days,
+        journal_frame=journal_frame,
+    )
+    console.print("[bold green]Decision journal evaluated.[/bold green]")
+    console.print(f"Journal: {resolved_journal_path}")
+    console.print(f"Result: {result.parquet_path}")
+    console.print(f"CSV: {result.csv_path}")
+    console.print(f"Report: {result.report_path}")
+    console.print(f"Evaluated: {result.evaluated_count}")
+    console.print(f"Pending: {result.pending_count}")
+    if result.summary.empty:
+        console.print("[yellow]No evaluated summary rows yet.[/yellow]")
+        return
+
+    table = Table(title=f"Decision Journal Evaluation h{holding_days}")
+    table.add_column("Action")
+    table.add_column("Decisions", justify="right")
+    table.add_column("Evaluated", justify="right")
+    table.add_column("Avg Return", justify="right")
+    table.add_column("Favorable", justify="right")
+    for _, row in result.summary.iterrows():
+        table.add_row(
+            str(row["latest_action"]),
+            str(int(row["decision_count"])),
+            str(int(row["evaluated_count"])),
+            f"{float(row['average_forward_return']) * 100:.2f}%",
+            f"{float(row['favorable_rate']) * 100:.2f}%",
+        )
+    console.print(table)
 
 
 @app.command("show-experiments")
@@ -3307,6 +3457,22 @@ def _screening_cli_display_columns(compact: bool) -> list[str]:
         "suggested_position_pct",
         "reasons",
     ]
+
+
+def _infer_summary_period(path: Path) -> tuple[str, str]:
+    stem = path.stem
+    parts = stem.split("_")
+    if len(parts) >= 3 and parts[-2].isdigit() and parts[-1].isdigit():
+        return _compact_date(parts[-2]), _compact_date(parts[-1])
+    raise typer.BadParameter(
+        "Could not infer start/end dates from summary filename. Pass --start and --end."
+    )
+
+
+def _compact_date(value: str) -> str:
+    if len(value) == 8:
+        return f"{value[:4]}-{value[4:6]}-{value[6:]}"
+    return value
 
 
 def _safe_report_name(value: str) -> str:

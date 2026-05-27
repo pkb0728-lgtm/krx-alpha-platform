@@ -340,7 +340,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> refresh operations health -> build Telegram brief
+run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> append decision journal -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:
@@ -388,6 +388,25 @@ After Telegram credentials are configured in `.env`, send the brief:
 ```powershell
 python main.py run-daily-job --universe demo --lookback-days 60 --telegram-send
 ```
+
+Every daily job also appends durable rows to:
+
+```text
+data/signals/decision_journal/decision_journal.parquet
+data/signals/decision_journal/decision_journal.csv
+```
+
+To compare saved decisions with later realized prices, run this after enough
+future trading days have passed:
+
+```powershell
+python main.py evaluate-decision-journal --holding-days 5
+python main.py evaluate-decision-journal --holding-days 20
+```
+
+Evaluation outputs are written to `data/signals/decision_journal_evaluation/`
+and `reports/decision_journal/`. Rows without enough future price data are
+marked as `pending`, so it is normal for today's decisions to wait until later.
 
 Windows Task Scheduler can run the same command after market close. Use the
 full Python path from your virtual environment:

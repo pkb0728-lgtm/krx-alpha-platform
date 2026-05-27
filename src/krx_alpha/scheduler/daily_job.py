@@ -28,6 +28,11 @@ from krx_alpha.experiments.tracker import (
     ExperimentTracker,
     build_daily_job_experiment_record,
 )
+from krx_alpha.journal.decision_journal import (
+    DecisionJournalWriteResult,
+    append_decision_journal,
+    build_decision_journal_frame,
+)
 from krx_alpha.monitoring.operations_health import (
     OperationsHealthChecker,
     format_operations_health_report,
@@ -125,6 +130,10 @@ class DailyJobResult:
     telegram_message: str
     operations_health_path: Path
     operations_health_report_path: Path
+    decision_journal_path: Path
+    decision_journal_csv_path: Path
+    decision_journal_appended_count: int
+    decision_journal_total_count: int
 
 
 @dataclass(frozen=True)
@@ -203,6 +212,14 @@ class DailyJobRunner:
             start_date=start_date,
             end_date=end_date,
         )
+        journal_result = self._write_decision_journal(
+            config=config,
+            start_date=start_date,
+            end_date=end_date,
+            summary_frame=summary_frame,
+            screening_frame=screening_result.frame if screening_result else None,
+            kis_candidate_frame=kis_candidate_result.frame if kis_candidate_result else None,
+        )
         paper_summary = paper_result.summary if paper_result is not None else None
         operations_health, operations_health_path, operations_health_report_path = (
             self._write_operations_health()
@@ -250,6 +267,7 @@ class DailyJobRunner:
             experiment_log_path=experiment_log_path,
             operations_health_path=operations_health_path,
             operations_health_report_path=operations_health_report_path,
+            journal_result=journal_result,
         )
 
     def _run_screening(
@@ -410,6 +428,25 @@ class DailyJobRunner:
         write_text(format_operations_health_report(result_frame), report_path)
         return result_frame, result_path, report_path
 
+    def _write_decision_journal(
+        self,
+        config: DailyJobConfig,
+        start_date: str,
+        end_date: str,
+        summary_frame: Any,
+        screening_frame: Any | None,
+        kis_candidate_frame: Any | None,
+    ) -> DecisionJournalWriteResult:
+        journal_rows = build_decision_journal_frame(
+            universe=config.universe,
+            start_date=start_date,
+            end_date=end_date,
+            summary_frame=summary_frame,
+            screening_frame=screening_frame,
+            kis_candidate_frame=kis_candidate_frame,
+        )
+        return append_decision_journal(self.project_root, journal_rows)
+
 
 def resolve_daily_job_date_range(config: DailyJobConfig, today: date) -> tuple[str, str]:
     if config.start_date and config.end_date:
@@ -466,6 +503,7 @@ def _build_result(
     experiment_log_path: Path,
     operations_health_path: Path,
     operations_health_report_path: Path,
+    journal_result: DecisionJournalWriteResult,
 ) -> DailyJobResult:
     paper_summary = paper_result.summary if paper_result is not None else None
     return DailyJobResult(
@@ -507,4 +545,8 @@ def _build_result(
         telegram_message=telegram_result.message,
         operations_health_path=operations_health_path,
         operations_health_report_path=operations_health_report_path,
+        decision_journal_path=journal_result.parquet_path,
+        decision_journal_csv_path=journal_result.csv_path,
+        decision_journal_appended_count=journal_result.appended_count,
+        decision_journal_total_count=journal_result.total_count,
     )
