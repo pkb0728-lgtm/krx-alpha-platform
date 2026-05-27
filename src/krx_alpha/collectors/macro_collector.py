@@ -115,8 +115,8 @@ class FredMacroCollector:
             ]
             frame = pd.concat(frames, ignore_index=True)
 
-        frame = frame[STANDARD_MACRO_COLUMNS].sort_values(["date", "series_id"]).reset_index(
-            drop=True
+        frame = (
+            frame[STANDARD_MACRO_COLUMNS].sort_values(["date", "series_id"]).reset_index(drop=True)
         )
         validate_macro_frame(frame)
         return frame

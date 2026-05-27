@@ -10,18 +10,9 @@ from krx_alpha.dashboard.data_loader import (
     beginner_decision_brief,
     filter_screening_result,
     find_latest_api_health,
-    find_latest_backtest_metrics,
     find_latest_drift_result,
-    find_latest_kis_paper_candidates,
-    find_latest_macro_features,
-    find_latest_ml_metrics,
-    find_latest_news_sentiment,
     find_latest_operations_health,
-    find_latest_paper_portfolio_summary,
-    find_latest_paper_summary,
-    find_latest_screening_result,
     find_latest_universe_summary,
-    find_latest_walk_forward_summary,
     load_api_health,
     load_backtest_metrics,
     load_backtest_trades,
@@ -87,11 +78,17 @@ def main() -> None:
 
     summary_frame = load_universe_summary(summary_path)
     active_period = _period_from_artifact_name(summary_path)
-    screening_path = find_latest_screening_result(PROJECT_ROOT)
+    screening_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "signals" / "screening_daily",
+        active_period,
+    )
     screening_frame = (
         load_screening_result(screening_path) if screening_path is not None else pd.DataFrame()
     )
-    kis_candidate_path = find_latest_kis_paper_candidates(PROJECT_ROOT)
+    kis_candidate_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "signals" / "kis_paper_candidates",
+        active_period,
+    )
     kis_candidate_frame = (
         load_kis_paper_candidates(kis_candidate_path)
         if kis_candidate_path is not None
@@ -387,9 +384,12 @@ def main() -> None:
 
     st.subheader("뉴스 감성 분석")
     st.caption("뉴스 제목과 요약을 바탕으로 긍정/부정 분위기를 점수화한 결과입니다.")
-    news_path = find_latest_news_sentiment(PROJECT_ROOT)
+    news_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "features" / "news_sentiment_daily",
+        active_period,
+    )
     if news_path is None:
-        st.info("뉴스 감성 분석 결과가 없습니다.")
+        st.info("현재 분석 기간의 뉴스 감성 분석 결과가 없습니다.")
     else:
         news_frame = load_news_sentiment(news_path)
         if news_frame.empty:
@@ -433,9 +433,12 @@ def main() -> None:
 
     st.subheader("거시 환경")
     st.caption("미국 금리와 환율 같은 큰 시장 환경이 우호적인지 확인하는 영역입니다.")
-    macro_path = find_latest_macro_features(PROJECT_ROOT)
+    macro_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "features" / "macro_fred_daily",
+        active_period,
+    )
     if macro_path is None:
-        st.info("거시 환경 피처가 없습니다.")
+        st.info("현재 분석 기간의 거시 환경 결과가 없습니다.")
     else:
         macro_frame = load_macro_features(macro_path)
         if macro_frame.empty:
@@ -479,9 +482,12 @@ def main() -> None:
 
     st.subheader("백테스트 요약")
     st.caption("과거 데이터에서 이 신호가 어떻게 작동했는지 비용과 슬리피지를 반영해 확인합니다.")
-    metrics_path = find_latest_backtest_metrics(PROJECT_ROOT)
+    metrics_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "backtest" / "metrics",
+        active_period,
+    )
     if metrics_path is None:
-        st.info("백테스트 결과가 없습니다.")
+        st.info("현재 분석 기간의 백테스트 결과가 없습니다.")
     else:
         metrics_frame = load_backtest_metrics(metrics_path)
         if metrics_frame.empty:
@@ -533,9 +539,9 @@ def main() -> None:
     portfolio_path = _find_matching_period_file(
         PROJECT_ROOT / "data" / "backtest" / "paper_portfolio_summary",
         active_period,
-    ) or find_latest_paper_portfolio_summary(PROJECT_ROOT)
+    )
     if portfolio_path is None:
-        st.info("페이퍼 포트폴리오 결과가 없습니다.")
+        st.info("현재 분석 기간의 페이퍼 포트폴리오 결과가 없습니다.")
     else:
         portfolio_summary = load_paper_portfolio_summary(portfolio_path)
         if portfolio_summary.empty:
@@ -635,9 +641,12 @@ def main() -> None:
     st.divider()
 
     st.subheader("단일 종목 페이퍼트레이딩")
-    paper_path = find_latest_paper_summary(PROJECT_ROOT)
+    paper_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "backtest" / "paper_summary",
+        active_period,
+    )
     if paper_path is None:
-        st.info("단일 종목 페이퍼트레이딩 결과가 없습니다.")
+        st.info("현재 분석 기간의 단일 종목 페이퍼트레이딩 결과가 없습니다.")
     else:
         paper_summary = load_paper_summary(paper_path)
         if paper_summary.empty:
@@ -679,9 +688,12 @@ def main() -> None:
 
     st.subheader("워크포워드 검증")
     st.caption("기간을 여러 구간으로 나눠서 신호가 특정 기간에만 잘 맞는지 확인합니다.")
-    walk_forward_path = find_latest_walk_forward_summary(PROJECT_ROOT)
+    walk_forward_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "backtest" / "walk_forward_summary",
+        active_period,
+    )
     if walk_forward_path is None:
-        st.info("워크포워드 검증 결과가 없습니다.")
+        st.info("현재 분석 기간의 워크포워드 검증 결과가 없습니다.")
     else:
         walk_forward_summary = load_walk_forward_summary(walk_forward_path)
         if walk_forward_summary.empty:
@@ -746,9 +758,12 @@ def main() -> None:
 
     st.subheader("ML 확률 베이스라인")
     st.caption("미래 수익률이 양수일 확률을 단순 모델로 추정한 실험 결과입니다.")
-    ml_metrics_path = find_latest_ml_metrics(PROJECT_ROOT)
+    ml_metrics_path = _find_matching_period_file(
+        PROJECT_ROOT / "data" / "signals" / "ml_metrics",
+        active_period,
+    )
     if ml_metrics_path is None:
-        st.info("ML 베이스라인 결과가 없습니다.")
+        st.info("현재 분석 기간의 ML 베이스라인 결과가 없습니다.")
     else:
         ml_metrics_frame = load_ml_metrics(ml_metrics_path)
         if ml_metrics_frame.empty:
