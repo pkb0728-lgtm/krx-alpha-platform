@@ -8,6 +8,7 @@ __pycache__/
 .coverage
 htmlcov/
 .cache/
+.cache/kis_paper_token.json
 
 # Virtual environments
 .venv/

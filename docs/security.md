@@ -37,6 +37,19 @@ Do not log API keys, account numbers, access tokens, or raw authentication
 responses. Future collectors should sanitize errors before sending them to logs
 or Telegram.
 
+## Local Token Cache
+
+KIS mock-investment access tokens can be cached locally at:
+
+```text
+.cache/kis_paper_token.json
+```
+
+This file can contain a live access token and must never be committed. The
+repository ignores `.cache/` and explicitly ignores the KIS token cache path.
+If credentials are rotated, delete this file and let the next KIS command issue
+a fresh token.
+
 ## GitHub Secrets
 
 When CI/CD or scheduled runs are added, production secrets should be stored in
