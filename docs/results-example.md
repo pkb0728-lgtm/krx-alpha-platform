@@ -1,119 +1,159 @@
-# Result Example
+# Results Example
 
-## Universe Screening
+이 문서는 KRX Alpha Platform을 실행했을 때 나오는 대표 결과와 해석 방법을
+정리한 예시입니다. 포트폴리오 리뷰에서는 “좋은 종목을 무조건 추천하는
+도구”가 아니라, 데이터와 리스크 기준을 통과한 경우에만 사람이 다시 볼
+후보를 만드는 시스템이라는 점을 강조하면 좋습니다.
+
+## Latest Daily Job Example
 
 Example command:
 
 ```powershell
-python main.py list-universe --universe demo
-python main.py run-universe --universe demo --start 2024-01-01 --end 2024-01-31
-python main.py screen-universe
+python main.py run-daily-job --universe large_cap --lookback-days 60 --kis-paper-candidates --telegram-send
 ```
 
-Example output:
+Latest local run:
 
 ```text
-Universe pipeline completed.
-Total: 3
-Success: 3
+Universe: large_cap
+Period: 2026-03-28 to 2026-05-27
+Total: 10
+Success: 10
 Failed: 0
-
-Ticker  Status   Action         Confidence
-005380  success  buy_candidate  72.83
-005930  success  watch          63.78
-000660  success  watch          59.37
+Screening passed: 0/10
+KIS review candidates: 0/10
+Paper trades: 0
+Paper return: 0.00%
 ```
 
-Example screener output:
+## Universe Summary
+
+The latest `large_cap` universe run produced 10 successful ticker results.
+
+| Ticker | Name | Action | Confidence | Market Regime |
+| --- | --- | --- | ---: | --- |
+| 068270 | 셀트리온 | watch | 55.23 | insufficient_data |
+| 105560 | KB금융 | hold | 53.62 | insufficient_data |
+| 055550 | 신한지주 | hold | 53.21 | insufficient_data |
+| 035420 | NAVER | hold | 52.91 | insufficient_data |
+| 035720 | 카카오 | hold | 49.14 | insufficient_data |
+| 005930 | 삼성전자 | blocked | 37.76 | insufficient_data |
+| 000270 | 기아 | blocked | 34.47 | insufficient_data |
+| 005380 | 현대차 | blocked | 33.85 | insufficient_data |
+| 000660 | SK하이닉스 | blocked | 31.85 | insufficient_data |
+| 051910 | LG화학 | blocked | 24.70 | insufficient_data |
+
+Interpretation:
+
+- `watch` means the stock is worth monitoring, but it is not a buy candidate.
+- `hold` means the signal is neutral or not strong enough.
+- `blocked` means the risk filter blocked the signal.
+- `insufficient_data` means the market regime model wanted more price history.
+  For regime analysis, `--lookback-days 120` or `--lookback-days 180` is usually
+  more useful than 60 days.
+
+## Auto Screener Result
+
+Latest screener summary:
 
 ```text
-Universe screening completed.
-Checked: 3
-Passed: 1
-Result: data/signals/screening_daily/screening_universe_20240101_20240131.parquet
-Report: reports/screening/screening_universe_20240101_20240131.md
+Checked: 10
+Passed: 0
 ```
 
-## Interpretation
+Top review queue rows:
 
-The output does not mean "buy this stock." It means the stock passed the current
-rule-based screening and risk-filter logic for the selected date range. The
-auto screener is a shortlist for human review, not an order instruction. Its
-Markdown report includes candidate review cards with evidence, caution points,
-and manual checklist items.
+| Ticker | Name | Passed | Reason | Priority | Screen Score | Confidence | Risk Flags |
+| --- | --- | --- | --- | --- | ---: | ---: | --- |
+| 068270 | 셀트리온 | False | confidence_and_score_below_threshold | watchlist | 59.33 | 55.23 | none |
+| 105560 | KB금융 | False | action_not_allowed | low | 35.77 | 53.62 | none |
+| 055550 | 신한지주 | False | action_not_allowed | low | 35.62 | 53.21 | none |
+| 005930 | 삼성전자 | False | action_not_allowed | blocked | 0.00 | 37.76 | high_short_term_volatility, weak_risk_score |
+| 000660 | SK하이닉스 | False | action_not_allowed | blocked | 0.00 | 31.85 | wide_daily_range, high_short_term_volatility, weak_risk_score |
 
-## OpenDART Demo Collection
+Important interpretation:
 
-Example command:
+```text
+0 passed candidates is not necessarily an error.
+It means no ticker passed action, confidence, score, and risk-filter conditions
+at the same time.
+```
+
+In this run, 셀트리온 was the closest review item, but it still failed the
+threshold because both the score and confidence were below the configured
+screening criteria.
+
+## KIS Paper Candidate Result
+
+The KIS paper candidate builder combines the screener output with mock account
+information. It does not send real orders.
+
+Latest example:
+
+```text
+Rows: 10
+Review buy/add: 0
+Manual price checks: 0
+Orders sent: 0
+```
+
+All rows were `skip` because no ticker passed the screener. This is expected:
+the KIS module should not create a mock buy candidate when the upstream risk and
+screening rules reject every ticker.
+
+## Paper Portfolio Result
+
+Latest paper portfolio summary:
+
+```text
+Universe: large_cap
+Loaded tickers: 10/10
+Trades: 0
+Cumulative return: 0.00%
+Cash: 100.00%
+Gross exposure: 0.00%
+```
+
+Interpretation:
+
+- No trade was opened because no ticker became a valid buy candidate.
+- The paper portfolio stayed fully in cash.
+- This is a conservative and valid result, not a pipeline failure.
+
+## Telegram Brief
+
+Preview command:
 
 ```powershell
-python main.py collect-dart-financials --ticker 005930 --year 2023 --report-code 11011 --demo
-python main.py build-dart-financial-features --ticker 005930 --year 2023 --report-code 11011
-python main.py collect-dart-disclosures --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
-python main.py build-dart-disclosure-events --ticker 005930 --start 2024-01-01 --end 2024-01-31
-python main.py collect-investor-flow --ticker 005930 --start 2024-01-01 --end 2024-01-31 --demo
-python main.py build-investor-flow-features --ticker 005930 --start 2024-01-01 --end 2024-01-31
+python main.py send-telegram-daily --dry-run
 ```
 
-Example output:
+Example Korean message shape:
 
 ```text
-Collected DART financial statements.
-Ticker: 005930
-Corp code: 00126380
-Rows: 6
-Source: opendart_demo
+KRX Alpha 일일 요약
+생성 시각: 2026-05-27 21:00
+
+전체 분석
+- 분석 종목: 10개
+- 정상 처리: 10개
+- 실패: 0개
+
+상위 종목
+1. 068270 셀트리온 | 판단: 관망 | 신뢰도 55.23 | 시장: 데이터 부족
+   해석: 관심 종목으로 지켜보되 아직 적극 매수 단계는 아닙니다.
+
+자동 스크리너
+- 검사 종목: 10개 / 통과: 0개
+- 통과 종목 없음: 지금은 억지로 고를 종목이 없습니다.
+
+KIS 모의투자 후보
+- 전체 후보 행: 10개 / 매수·추가매수 검토: 0개 / 가격 확인 필요: 0개
+- 실제 주문은 보내지 않고, 모의계좌 기준 검토 목록만 만듭니다.
 ```
-
-Example financial feature output:
-
-```text
-Built DART financial features.
-Ticker: 005930
-Corp code: 00126380
-Financial score: 100.00
-Reason: revenue_growth_positive, operating_margin_healthy, net_margin_positive, debt_ratio_conservative
-```
-
-Example multi-factor pipeline command:
-
-```powershell
-python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31 --financial-year 2023 --event-start 2024-01-01 --event-end 2024-01-31 --flow-start 2024-01-01 --flow-end 2024-01-31
-```
-
-Example scoring line:
-
-```text
-Financial score: 100.00
-Event score: 50.00
-Flow score: 85.00
-```
-
-| Action | Meaning |
-| --- | --- |
-| `buy_candidate` | Candidate passed score and risk filters. |
-| `watch` | Worth monitoring, but confirmation is still needed. |
-| `blocked` | Risk filter blocked the signal. |
-| `avoid` | Weak evidence or weak score. |
 
 ## Dashboard
-
-The Streamlit dashboard displays:
-
-- number of tickers
-- success and failed counts
-- ranked candidate table
-- action distribution chart
-- latest auto screener shortlist
-- latest backtest metrics
-- latest backtest trades
-- latest walk-forward summary
-- fold-level walk-forward validation table
-- latest ML probability baseline metrics
-- latest ML prediction table
-- latest drift monitoring result
-- latest operations health result
-- selected stock Markdown report
 
 Run:
 
@@ -121,172 +161,63 @@ Run:
 streamlit run src/krx_alpha/dashboard/app.py
 ```
 
-## Telegram Brief
+The dashboard displays:
 
-Example command:
+- universe ranking
+- action distribution
+- auto screener result and review queue
+- KIS mock-investment review candidates
+- news sentiment
+- macro features
+- paper portfolio summary
+- backtest and walk-forward result
+- ML baseline result
+- drift monitoring
+- API and operations health
 
-```powershell
-python main.py send-telegram-daily --dry-run
-```
-
-Example output:
-
-```text
-KRX Alpha Daily Brief
-Generated: 2026-05-13 09:00
-
-Universe
-- Tickers: 3
-- Success: 3
-- Failed: 0
-
-Top candidates
-1. 005380 | buy_candidate | score 72.83 | regime bull | F 80.00 / E 55.00 / Flow 70.00
-
-Backtest
-- 005380 | trades 7 | win 57.14% | return 78.67% | MDD -10.35% | Sharpe 4.33
-
-Walk-forward
-- 005380 | folds 3 | trades 2 | compounded 3.64% | worst MDD -5.20% | positive folds 66.67%
-```
-
-## Daily Job
-
-Example command:
-
-```powershell
-python main.py run-daily-job --universe demo --start 2024-01-01 --end 2024-01-31 --telegram-dry-run
-```
-
-Example output:
-
-```text
-Daily scheduled job completed.
-Universe: demo
-Period: 2024-01-01 to 2024-01-31
-Total: 3
-Success: 3
-Failed: 0
-Paper summary: data/backtest/paper_portfolio_summary/demo_20240101_20240131.parquet
-Paper report: reports/paper_trading/portfolio_demo_20240101_20240131.md
-Paper trades: 0
-Paper return: 0.00%
-Experiment log: experiments/experiment_log.csv
-Telegram: dry-run
-```
-
-## Experiment Tracking
-
-Example command:
-
-```powershell
-python main.py show-experiments --limit 5
-```
-
-Example fields:
-
-```text
-created_at | experiment_name | run_type | ticker | universe | start_date | end_date | metrics_json | artifact_path
-```
-
-Backtest runs store return, drawdown, win rate, Sharpe ratio, and trade count.
-Daily job runs store ticker counts, success count, failed count, and the report
-artifact path.
-
-## ML Training Dataset
-
-Example command:
-
-```powershell
-python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
-python main.py train-ml-baseline --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
-```
-
-Example output:
-
-```text
-Built ML training dataset.
-Ticker: 005380
-Rows: 56
-Holding days: 5
-Positive label rate: 55.36%
-Output: data/features/ml_training/005380_20240101_20240331_h5.parquet
-```
-
-Example ML baseline output:
-
-```text
-ML probability baseline trained.
-Ticker: 005380
-Test rows: 17
-Test ROC-AUC: 0.652
-Test F1-score: 0.522
-Report: reports/modeling/probability_baseline_005380_20240101_20240331_h5.md
-```
-
-This dataset is for later probability modeling. The model input features are
-dated by `as_of_date`; future-return labels are kept separately for audit. The
-baseline model is intentionally simple and explainable so it can establish the
-training/evaluation workflow before heavier models are added.
-
-## Drift Monitoring
-
-Example commands:
-
-```powershell
-python main.py detect-performance-drift --run-type backtest --metric cumulative_return --baseline-window 1 --recent-window 1
-python main.py detect-data-drift --reference-path data/features/prices_daily/005930_20240101_20240131.parquet --current-path data/features/prices_daily/005380_20240101_20240131.parquet --columns rsi_14,volatility_5d,trading_value_change_5d
-```
-
-Example output:
-
-```text
-Performance drift detection completed.
-Run type: backtest
-Metric: cumulative_return
-Drift detected: False
-Report: reports/monitoring/performance_drift_backtest_cumulative_return.md
-
-Data drift detection completed.
-Checked features: 3
-Drifted features: 1
-Report: reports/monitoring/data_drift_005930_vs_005380.md
-```
-
-The dashboard displays the latest drift result in the `Drift Monitoring`
-section. The Telegram daily brief also includes a compact `Drift` section after
-the walk-forward summary.
+When candidates are zero, the dashboard shows a beginner-friendly explanation
+that this can be a normal risk-management result.
 
 ## Operations Health
 
 Example command:
 
 ```powershell
-python main.py check-operations --skip-apis
+python main.py check-operations --include-apis --skip-pykrx
 ```
 
-Example output:
+Latest local operations health had healthy core artifacts, with some optional
+modeling or stale analysis artifacts marked as stale.
 
 ```text
-Operations Health
-Summary: 9 OK, 4 warning(s), 0 problem(s)
-Result: data/signals/operations_health/operations_health_latest.parquet
-Report: reports/monitoring/operations_health_latest.md
+OK: 9
+STALE: 7
+Problems: 0
 ```
 
-Use `--include-apis --skip-pykrx` after `.env` credentials are configured to add
-API connectivity checks. The default command checks local files only, so it is
-safe for offline portfolio demos.
+Interpretation:
 
-The Telegram daily brief includes a compact operations health section:
+- `OK` means the latest required artifact exists and can be read.
+- `STALE` means the file exists but is older than the configured freshness
+  threshold.
+- `STALE` is usually a maintenance warning, not a hard failure.
 
-```text
-Operations health
-- OK 14/14 | warnings 0 | problems 0
-- Status: all checked artifacts are healthy
-```
+## API Health
 
-## Backtest
+Latest API checks were all OK:
+
+| API | Status |
+| --- | --- |
+| OpenDART | OK |
+| Naver Search | OK |
+| Gemini | OK |
+| Telegram | OK |
+| KIS Paper | OK |
+| FRED | OK |
+
+This means the configured credentials were reachable at the time of the check.
+
+## Backtest And Walk-Forward
 
 Example command:
 
@@ -297,35 +228,30 @@ python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-3
 python main.py walk-forward-backtest --ticker 005380 --start 2024-01-01 --end 2024-03-31 --train-size 20 --test-size 5 --step-size 5
 ```
 
-Example regime output:
+The backtest is intentionally simple and exists to validate signal behavior. It
+is not a production execution simulator.
 
-```text
-Market regime analyzed.
-Latest regime: neutral
-Regime score: 50.00
-Risk level: medium
+## ML Baseline
+
+Example command:
+
+```powershell
+python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
+python main.py train-ml-baseline --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
 ```
 
-Example output:
+The current ML baseline is intentionally explainable and lightweight. Its
+purpose is to show the training/evaluation workflow before adding heavier
+models such as LightGBM or an ensemble.
+
+## Portfolio Review Talking Point
+
+Use this short explanation in an interview:
 
 ```text
-Backtest completed.
-Trades: 7
-Win rate: 57.14%
-Cumulative return: 78.67%
-Max drawdown: -10.35%
-Sharpe ratio: 4.33
+This project does not force a daily recommendation. It collects multiple Korean
+market data sources, generates explainable signals, applies risk filters, and
+only creates review candidates when the evidence and risk conditions are good
+enough. If no stock passes the screen, the platform reports "no candidate" and
+keeps the paper portfolio in cash.
 ```
-
-Example walk-forward output:
-
-```text
-Walk-forward backtest completed.
-Folds: 3
-Trades: 0
-Compounded return: 0.00%
-Positive fold ratio: 0.00%
-```
-
-This is a simple MVP backtest for signal validation. It is not a production
-execution simulator.
