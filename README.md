@@ -319,6 +319,8 @@ mypy: no issues found
 - [한국어 운영 Runbook](docs/operations-runbook-ko.md)
 - [사용 가이드](docs/usage.md)
 - [포트폴리오 리뷰 가이드](docs/portfolio-review-guide.md)
+- [포트폴리오 제출 가이드](docs/portfolio-submission-ko.md)
+- [면접 답변 가이드](docs/interview-guide-ko.md)
 
 영어/상세 문서:
 
