@@ -3003,6 +3003,33 @@ def run_daily_job(
             help="HTTP timeout for KIS paper candidate balance inquiry.",
         ),
     ] = 10.0,
+    refresh_dashboard_artifacts: Annotated[
+        bool,
+        typer.Option(
+            "--refresh-dashboard-artifacts/--no-refresh-dashboard-artifacts",
+            help=(
+                "Refresh same-period macro, backtest, paper, walk-forward, "
+                "and ML dashboard artifacts."
+            ),
+        ),
+    ] = True,
+    dashboard_artifact_ticker: Annotated[
+        str | None,
+        typer.Option(
+            "--dashboard-artifact-ticker",
+            help=(
+                "Ticker used for single-stock dashboard validation artifacts. "
+                "Defaults to top ranked success."
+            ),
+        ),
+    ] = None,
+    macro_live: Annotated[
+        bool,
+        typer.Option(
+            "--macro-live/--macro-demo",
+            help="Use live FRED macro data when FRED_API_KEY is set, otherwise demo fallback.",
+        ),
+    ] = True,
 ) -> None:
     """Run the after-market daily job: universe, screener, paper portfolio, and Telegram."""
     configure_logger(settings.log_level)
@@ -3049,6 +3076,10 @@ def run_daily_job(
                 kis_paper_candidates=kis_paper_candidates,
                 kis_candidate_max_candidates=kis_candidate_max_candidates,
                 kis_candidate_cash_buffer_pct=kis_candidate_cash_buffer_pct,
+                refresh_dashboard_artifacts=refresh_dashboard_artifacts,
+                dashboard_artifact_ticker=dashboard_artifact_ticker,
+                macro_live=macro_live,
+                fred_api_key=settings.fred_api_key,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -3091,6 +3122,22 @@ def run_daily_job(
         "Decision journal rows: "
         f"+{result.decision_journal_appended_count} / total {result.decision_journal_total_count}"
     )
+    if result.dashboard_artifact_ticker or result.macro_feature_path:
+        console.print(f"Dashboard artifact ticker: {result.dashboard_artifact_ticker or 'N/A'}")
+    if result.macro_feature_path:
+        console.print(f"Macro features: {result.macro_feature_path}")
+    if result.backtest_metrics_path:
+        console.print(f"Backtest metrics: {result.backtest_metrics_path}")
+    if result.paper_single_summary_path:
+        console.print(f"Single paper summary: {result.paper_single_summary_path}")
+    if result.walk_forward_summary_path:
+        console.print(f"Walk-forward summary: {result.walk_forward_summary_path}")
+    if result.ml_metrics_path:
+        console.print(f"ML metrics: {result.ml_metrics_path}")
+    if result.dashboard_artifact_errors:
+        console.print("[yellow]Dashboard artifact notes:[/yellow]")
+        for error in result.dashboard_artifact_errors:
+            console.print(f"- {error}")
     console.print(f"Operations health: {result.operations_health_path}")
     console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")

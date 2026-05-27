@@ -340,7 +340,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> append decision journal -> refresh operations health -> build Telegram brief
+run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> refresh dashboard validation artifacts -> append decision journal -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:
@@ -381,6 +381,22 @@ When `--start` is omitted, the job uses `--lookback-days` and today's date:
 
 ```powershell
 python main.py run-daily-job --universe demo --lookback-days 60 --telegram-dry-run
+```
+
+By default, the daily job also refreshes the same-period macro feature,
+single-stock backtest, single-stock paper simulation, walk-forward validation,
+and ML probability baseline files used by the Streamlit dashboard. The artifact
+ticker is the top successful universe ticker unless you set one explicitly:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --dashboard-artifact-ticker 005930 --telegram-dry-run
+```
+
+Skip those dashboard validation artifacts only when you want a faster smoke
+test:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --no-refresh-dashboard-artifacts --telegram-dry-run
 ```
 
 After Telegram credentials are configured in `.env`, send the brief:

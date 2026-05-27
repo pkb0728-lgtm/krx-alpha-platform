@@ -8,6 +8,7 @@ import pytest
 from krx_alpha.database.storage import (
     drift_result_file_path,
     final_signal_file_path,
+    price_feature_file_path,
     processed_price_file_path,
     universe_summary_csv_path,
     universe_summary_file_path,
@@ -177,6 +178,18 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.paper_report_path.exists()
     assert result.paper_trade_count == 2
     assert result.paper_cumulative_return > 0
+    assert result.dashboard_artifact_ticker == "005380"
+    assert result.macro_feature_path is not None
+    assert result.macro_feature_path.exists()
+    assert result.backtest_metrics_path is not None
+    assert result.backtest_metrics_path.exists()
+    assert result.paper_single_summary_path is not None
+    assert result.paper_single_summary_path.exists()
+    assert result.walk_forward_summary_path is not None
+    assert result.walk_forward_summary_path.exists()
+    assert result.ml_metrics_path is not None
+    assert result.ml_metrics_path.exists()
+    assert result.dashboard_artifact_errors == ()
     assert result.screening_result_path is not None
     assert result.screening_result_path.exists()
     assert result.screening_csv_path is not None
@@ -248,31 +261,50 @@ def _write_paper_inputs(
 ) -> None:
     price_path = processed_price_file_path(project_root, ticker, start_date, end_date)
     signal_path = final_signal_file_path(project_root, ticker, start_date, end_date)
+    feature_path = price_feature_file_path(project_root, ticker, start_date, end_date)
     write_parquet(_processed_price_frame(ticker), price_path)
     write_parquet(_final_signal_frame(ticker, buy_candidate), signal_path)
+    write_parquet(_price_feature_frame(ticker), feature_path)
 
 
 def _processed_price_frame(ticker: str) -> pd.DataFrame:
+    dates = pd.date_range("2024-01-02", periods=30, freq="D")
+    close = [100 + index * 2 for index in range(30)]
     return pd.DataFrame(
         {
-            "date": pd.date_range("2024-01-02", periods=8, freq="D").date,
-            "as_of_date": pd.date_range("2024-01-02", periods=8, freq="D").date,
-            "ticker": [ticker] * 8,
-            "open": [100, 101, 102, 103, 104, 105, 106, 107],
-            "high": [101, 102, 103, 104, 105, 106, 107, 108],
-            "low": [99, 100, 101, 102, 103, 104, 105, 106],
-            "close": [100, 102, 104, 106, 108, 110, 112, 114],
-            "volume": [1000] * 8,
-            "trading_value": [100000] * 8,
-            "trading_value_is_estimated": [False] * 8,
-            "return_1d": [float("nan")] + [0.01] * 7,
-            "log_return_1d": [float("nan")] + [0.00995] * 7,
-            "range_pct": [0.02] * 8,
-            "change_rate": [0.0] * 8,
-            "source": ["test"] * 8,
-            "collected_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 8,
-            "processed_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * 8,
+            "date": dates.date,
+            "as_of_date": dates.date,
+            "ticker": [ticker] * len(dates),
+            "open": [99 + index * 2 for index in range(30)],
+            "high": [101 + index * 2 for index in range(30)],
+            "low": [98 + index * 2 for index in range(30)],
+            "close": close,
+            "volume": [1000] * len(dates),
+            "trading_value": [100000] * len(dates),
+            "trading_value_is_estimated": [False] * len(dates),
+            "return_1d": [float("nan")] + [0.01] * (len(dates) - 1),
+            "log_return_1d": [float("nan")] + [0.00995] * (len(dates) - 1),
+            "range_pct": [0.02] * len(dates),
+            "change_rate": [0.0] * len(dates),
+            "source": ["test"] * len(dates),
+            "collected_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * len(dates),
+            "processed_at": [pd.Timestamp("2026-05-14T00:00:00Z")] * len(dates),
         }
+    )
+
+
+def _price_feature_frame(ticker: str) -> pd.DataFrame:
+    price_frame = _processed_price_frame(ticker)
+    rows = len(price_frame)
+    return price_frame.assign(
+        close_to_ma_5=[0.01] * rows,
+        close_to_ma_20=[0.02] * rows,
+        volume_change_5d=[0.03] * rows,
+        trading_value_change_5d=[0.04] * rows,
+        volatility_5d=[0.02] * rows,
+        volatility_20d=[0.03] * rows,
+        rsi_14=[55.0] * rows,
+        feature_created_at=[pd.Timestamp("2026-05-14T00:00:00Z")] * rows,
     )
 
 

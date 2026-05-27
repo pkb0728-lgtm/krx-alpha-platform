@@ -41,6 +41,11 @@ VSCode 터미널에서 가상환경을 켭니다.
 python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-send
 ```
 
+이 명령은 유니버스 분석뿐 아니라 대시보드에서 사용하는 같은 기간의
+거시환경, 백테스트, 페이퍼 포트폴리오, 워크포워드, ML 확률 베이스라인
+자료도 함께 갱신합니다. 특정 종목 기준으로 검증 자료를 만들고 싶으면
+`--dashboard-artifact-ticker 005930`처럼 종목코드를 지정할 수 있습니다.
+
 이 명령은 분석 결과를 자동으로 `decision_journal`에도 누적 저장합니다. 며칠 뒤 실제 수익률과 비교하려면:
 
 ```powershell
