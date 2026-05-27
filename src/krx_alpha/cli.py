@@ -3013,6 +3013,13 @@ def run_daily_job(
             ),
         ),
     ] = True,
+    score_external_features: Annotated[
+        bool,
+        typer.Option(
+            "--score-external-features/--no-score-external-features",
+            help="Collect news and macro features before scoring the universe.",
+        ),
+    ] = True,
     dashboard_artifact_ticker: Annotated[
         str | None,
         typer.Option(
@@ -3030,6 +3037,24 @@ def run_daily_job(
             help="Use live FRED macro data when FRED_API_KEY is set, otherwise demo fallback.",
         ),
     ] = True,
+    news_live: Annotated[
+        bool,
+        typer.Option(
+            "--news-live/--news-demo",
+            help="Use live Naver news when credentials are set, otherwise demo fallback.",
+        ),
+    ] = True,
+    news_gemini: Annotated[
+        bool,
+        typer.Option(
+            "--news-gemini/--news-rule-based",
+            help="Use Gemini for news sentiment when GEMINI_API_KEY is set.",
+        ),
+    ] = False,
+    news_display: Annotated[
+        int,
+        typer.Option("--news-display", help="Number of Naver news search items per ticker."),
+    ] = 5,
 ) -> None:
     """Run the after-market daily job: universe, screener, paper portfolio, and Telegram."""
     configure_logger(settings.log_level)
@@ -3077,9 +3102,16 @@ def run_daily_job(
                 kis_candidate_max_candidates=kis_candidate_max_candidates,
                 kis_candidate_cash_buffer_pct=kis_candidate_cash_buffer_pct,
                 refresh_dashboard_artifacts=refresh_dashboard_artifacts,
+                score_external_features=score_external_features,
                 dashboard_artifact_ticker=dashboard_artifact_ticker,
                 macro_live=macro_live,
                 fred_api_key=settings.fred_api_key,
+                news_live=news_live,
+                news_display=news_display,
+                news_use_gemini=news_gemini,
+                naver_client_id=settings.naver_client_id,
+                naver_client_secret=settings.naver_client_secret,
+                gemini_api_key=settings.gemini_api_key,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -3122,6 +3154,14 @@ def run_daily_job(
         "Decision journal rows: "
         f"+{result.decision_journal_appended_count} / total {result.decision_journal_total_count}"
     )
+    if result.scoring_macro_feature_path:
+        console.print(f"Scoring macro features: {result.scoring_macro_feature_path}")
+    if result.scoring_news_feature_paths:
+        console.print(f"Scoring news sentiment files: {len(result.scoring_news_feature_paths)}")
+    if result.scoring_feature_errors:
+        console.print("[yellow]Scoring feature notes:[/yellow]")
+        for error in result.scoring_feature_errors:
+            console.print(f"- {error}")
     if result.dashboard_artifact_ticker or result.macro_feature_path:
         console.print(f"Dashboard artifact ticker: {result.dashboard_artifact_ticker or 'N/A'}")
     if result.macro_feature_path:

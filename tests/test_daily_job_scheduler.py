@@ -29,12 +29,27 @@ class FakeUniversePipeline:
         self.project_root = project_root
         self.calls: list[dict[str, Any]] = []
 
-    def run(self, tickers: list[str], start_date: str, end_date: str) -> UniversePipelineResult:
+    def run(
+        self,
+        tickers: list[str],
+        start_date: str,
+        end_date: str,
+        financial_feature_frame: Any | None = None,
+        event_feature_frame: Any | None = None,
+        flow_feature_frame: Any | None = None,
+        news_feature_frame: Any | None = None,
+        macro_feature_frame: Any | None = None,
+    ) -> UniversePipelineResult:
         self.calls.append(
             {
                 "tickers": tickers,
                 "start_date": start_date,
                 "end_date": end_date,
+                "financial_feature_frame": financial_feature_frame,
+                "event_feature_frame": event_feature_frame,
+                "flow_feature_frame": flow_feature_frame,
+                "news_feature_frame": news_feature_frame,
+                "macro_feature_frame": macro_feature_frame,
             }
         )
         frame = pd.DataFrame(
@@ -168,6 +183,8 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
 
     assert pipeline.calls[0]["start_date"] == "2024-01-01"
     assert pipeline.calls[0]["end_date"] == "2024-01-31"
+    assert pipeline.calls[0]["news_feature_frame"] is not None
+    assert pipeline.calls[0]["macro_feature_frame"] is not None
     assert result.summary_path.exists()
     assert result.summary_csv_path.exists()
     assert result.report_path.exists()
@@ -178,6 +195,11 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.paper_report_path.exists()
     assert result.paper_trade_count == 2
     assert result.paper_cumulative_return > 0
+    assert result.scoring_macro_feature_path is not None
+    assert result.scoring_macro_feature_path.exists()
+    assert len(result.scoring_news_feature_paths) == 3
+    assert all(path.exists() for path in result.scoring_news_feature_paths)
+    assert result.scoring_feature_errors == ()
     assert result.dashboard_artifact_ticker == "005380"
     assert result.macro_feature_path is not None
     assert result.macro_feature_path.exists()

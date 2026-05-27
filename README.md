@@ -45,6 +45,9 @@ python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-pape
 거시환경, 백테스트, 페이퍼 포트폴리오, 워크포워드, ML 확률 베이스라인
 자료도 함께 갱신합니다. 특정 종목 기준으로 검증 자료를 만들고 싶으면
 `--dashboard-artifact-ticker 005930`처럼 종목코드를 지정할 수 있습니다.
+뉴스와 거시환경 피처도 먼저 생성해서 종목 점수의 `News`, `Macro` 항목에
+반영합니다. 빠른 점검만 하고 싶으면 `--no-score-external-features`를 붙이면
+됩니다.
 
 이 명령은 분석 결과를 자동으로 `decision_journal`에도 누적 저장합니다. 며칠 뒤 실제 수익률과 비교하려면:
 

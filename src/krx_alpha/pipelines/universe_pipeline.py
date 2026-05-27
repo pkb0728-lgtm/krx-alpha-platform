@@ -33,7 +33,17 @@ class UniversePipeline:
         self.project_root = project_root
         self.daily_pipeline = daily_pipeline or DailyPipeline(project_root)
 
-    def run(self, tickers: list[str], start_date: str, end_date: str) -> UniversePipelineResult:
+    def run(
+        self,
+        tickers: list[str],
+        start_date: str,
+        end_date: str,
+        financial_feature_frame: Any | None = None,
+        event_feature_frame: Any | None = None,
+        flow_feature_frame: Any | None = None,
+        news_feature_frame: Any | None = None,
+        macro_feature_frame: Any | None = None,
+    ) -> UniversePipelineResult:
         rows: list[dict[str, object]] = []
 
         for ticker in tickers:
@@ -47,7 +57,14 @@ class UniversePipeline:
                     start_date=start_date,
                     end_date=end_date,
                 )
-                result = self.daily_pipeline.run(request)
+                result = self.daily_pipeline.run(
+                    request,
+                    financial_feature_frame=financial_feature_frame,
+                    event_feature_frame=event_feature_frame,
+                    flow_feature_frame=flow_feature_frame,
+                    news_feature_frame=news_feature_frame,
+                    macro_feature_frame=macro_feature_frame,
+                )
                 rows.append(_success_row_from_pipeline(request, result))
             except Exception as exc:
                 cached_row = self._cached_signal_row(

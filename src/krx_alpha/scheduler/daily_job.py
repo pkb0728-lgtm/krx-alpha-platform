@@ -4,10 +4,13 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Protocol
 
+import pandas as pd
+
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
 from krx_alpha.broker.kis_candidates import format_kis_paper_candidate_report
 from krx_alpha.collectors.macro_collector import FredMacroCollector, MacroRequest
+from krx_alpha.collectors.news_collector import NaverNewsCollector, NewsSearchRequest
 from krx_alpha.collectors.price_collector import PriceRequest
 from krx_alpha.dashboard.data_loader import (
     find_latest_backtest_metrics,
@@ -29,6 +32,7 @@ from krx_alpha.database.storage import (
     ml_prediction_file_path,
     ml_training_dataset_file_path,
     monitoring_report_file_path,
+    news_sentiment_feature_file_path,
     operations_health_file_path,
     paper_position_file_path,
     paper_summary_file_path,
@@ -37,6 +41,7 @@ from krx_alpha.database.storage import (
     price_feature_file_path,
     processed_price_file_path,
     raw_macro_file_path,
+    raw_news_file_path,
     read_parquet,
     screening_report_file_path,
     screening_result_csv_path,
@@ -57,6 +62,7 @@ from krx_alpha.experiments.tracker import (
     build_walk_forward_experiment_record,
 )
 from krx_alpha.features.macro_features import MacroFeatureBuilder
+from krx_alpha.features.news_sentiment import NewsSentimentConfig, NewsSentimentFeatureBuilder
 from krx_alpha.journal.decision_journal import (
     DecisionJournalWriteResult,
     append_decision_journal,
@@ -135,6 +141,7 @@ class DailyJobConfig:
     kis_candidate_max_candidates: int = 10
     kis_candidate_cash_buffer_pct: float = 5.0
     refresh_dashboard_artifacts: bool = True
+    score_external_features: bool = True
     dashboard_artifact_ticker: str | None = None
     dashboard_artifact_holding_days: int = 5
     dashboard_artifact_train_size: int = 40
@@ -143,6 +150,12 @@ class DailyJobConfig:
     macro_series: str = "DGS10,DFF,DEXKOUS"
     macro_live: bool = True
     fred_api_key: str | None = None
+    news_live: bool = True
+    news_display: int = 5
+    news_use_gemini: bool = False
+    naver_client_id: str | None = None
+    naver_client_secret: str | None = None
+    gemini_api_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -181,6 +194,9 @@ class DailyJobResult:
     decision_journal_csv_path: Path
     decision_journal_appended_count: int
     decision_journal_total_count: int
+    scoring_macro_feature_path: Path | None
+    scoring_news_feature_paths: tuple[Path, ...]
+    scoring_feature_errors: tuple[str, ...]
     dashboard_artifact_ticker: str
     macro_feature_path: Path | None
     backtest_metrics_path: Path | None
@@ -222,6 +238,15 @@ class DailyJobDashboardArtifactResult:
     errors: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class DailyJobScoringFeatureResult:
+    macro_feature_frame: Any | None
+    macro_feature_path: Path | None
+    news_feature_frame: Any | None
+    news_feature_paths: tuple[Path, ...]
+    errors: tuple[str, ...]
+
+
 class DailyJobRunner:
     """Run the after-market daily workflow for a named universe."""
 
@@ -242,10 +267,18 @@ class DailyJobRunner:
     def run(self, config: DailyJobConfig, today: date | None = None) -> DailyJobResult:
         start_date, end_date = resolve_daily_job_date_range(config, today or date.today())
         definition = UniverseRegistry().get(config.universe)
+        scoring_feature_result = self._prepare_scoring_features(
+            config=config,
+            tickers=definition.tickers(),
+            start_date=start_date,
+            end_date=end_date,
+        )
         pipeline_result = self.universe_pipeline.run(
             tickers=definition.tickers(),
             start_date=start_date,
             end_date=end_date,
+            news_feature_frame=scoring_feature_result.news_feature_frame,
+            macro_feature_frame=scoring_feature_result.macro_feature_frame,
         )
 
         summary_frame = read_parquet(pipeline_result.summary_path)
@@ -282,6 +315,7 @@ class DailyJobRunner:
             summary_frame=summary_frame,
             start_date=start_date,
             end_date=end_date,
+            macro_feature_path=scoring_feature_result.macro_feature_path,
         )
         journal_result = self._write_decision_journal(
             config=config,
@@ -340,6 +374,7 @@ class DailyJobRunner:
             operations_health_report_path=operations_health_report_path,
             journal_result=journal_result,
             dashboard_artifact_result=dashboard_artifact_result,
+            scoring_feature_result=scoring_feature_result,
         )
 
     def _run_screening(
@@ -465,6 +500,7 @@ class DailyJobRunner:
         summary_frame: Any,
         start_date: str,
         end_date: str,
+        macro_feature_path: Path | None = None,
     ) -> DailyJobDashboardArtifactResult:
         if not config.refresh_dashboard_artifacts:
             return DailyJobDashboardArtifactResult("", None, None, None, None, None, ())
@@ -478,7 +514,8 @@ class DailyJobRunner:
         )
         errors: list[str] = []
 
-        macro_feature_path = self._refresh_macro_artifact(config, start_date, end_date, errors)
+        if macro_feature_path is None:
+            macro_feature_path = self._refresh_macro_artifact(config, start_date, end_date, errors)
         if not ticker:
             errors.append("dashboard_artifacts: no successful ticker with price/signal inputs")
             return DailyJobDashboardArtifactResult(
@@ -577,6 +614,106 @@ class DailyJobRunner:
         except Exception as exc:
             errors.append(f"macro_refresh_failed: {exc}")
             return None
+
+    def _prepare_scoring_features(
+        self,
+        config: DailyJobConfig,
+        tickers: list[str],
+        start_date: str,
+        end_date: str,
+    ) -> DailyJobScoringFeatureResult:
+        if not config.score_external_features:
+            return DailyJobScoringFeatureResult(None, None, None, (), ())
+
+        errors: list[str] = []
+        macro_feature_path = self._refresh_macro_artifact(config, start_date, end_date, errors)
+        macro_feature_frame = read_parquet(macro_feature_path) if macro_feature_path else None
+        news_feature_frame, news_feature_paths = self._refresh_news_feature_artifacts(
+            config=config,
+            tickers=tickers,
+            start_date=start_date,
+            end_date=end_date,
+            errors=errors,
+        )
+        return DailyJobScoringFeatureResult(
+            macro_feature_frame=macro_feature_frame,
+            macro_feature_path=macro_feature_path,
+            news_feature_frame=news_feature_frame,
+            news_feature_paths=news_feature_paths,
+            errors=tuple(errors),
+        )
+
+    def _refresh_news_feature_artifacts(
+        self,
+        config: DailyJobConfig,
+        tickers: list[str],
+        start_date: str,
+        end_date: str,
+        errors: list[str],
+    ) -> tuple[Any | None, tuple[Path, ...]]:
+        feature_frames: list[Any] = []
+        feature_paths: list[Path] = []
+        use_live = config.news_live and bool(config.naver_client_id and config.naver_client_secret)
+        use_gemini = config.news_use_gemini and bool(config.gemini_api_key)
+        if config.news_use_gemini and not use_gemini:
+            errors.append("news_gemini_skipped_used_rule_based: missing Gemini API key")
+
+        for ticker in tickers:
+            request = NewsSearchRequest.from_strings(
+                ticker=ticker,
+                start_date=start_date,
+                end_date=end_date,
+                display=config.news_display,
+                demo=not use_live,
+            )
+            try:
+                try:
+                    news_frame = NaverNewsCollector(
+                        client_id=config.naver_client_id,
+                        client_secret=config.naver_client_secret,
+                    ).collect(request)
+                except Exception as exc:
+                    if not use_live:
+                        raise
+                    errors.append(f"news_live_failed_used_demo:{request.ticker}: {exc}")
+                    request = NewsSearchRequest.from_strings(
+                        ticker=ticker,
+                        start_date=start_date,
+                        end_date=end_date,
+                        display=config.news_display,
+                        demo=True,
+                    )
+                    news_frame = NaverNewsCollector().collect(request)
+
+                raw_path = raw_news_file_path(
+                    self.project_root,
+                    request.ticker,
+                    request.compact_start_date,
+                    request.compact_end_date,
+                )
+                write_parquet(news_frame, raw_path)
+                feature_frame = NewsSentimentFeatureBuilder(
+                    api_key=config.gemini_api_key,
+                    config=NewsSentimentConfig(
+                        use_gemini=use_gemini,
+                        allow_rule_fallback=True,
+                    ),
+                ).build(news_frame)
+                feature_path = news_sentiment_feature_file_path(
+                    self.project_root,
+                    request.ticker,
+                    request.compact_start_date,
+                    request.compact_end_date,
+                )
+                write_parquet(feature_frame, feature_path)
+                feature_frames.append(feature_frame)
+                feature_paths.append(feature_path)
+            except Exception as exc:
+                errors.append(f"news_refresh_failed:{request.ticker}: {exc}")
+
+        if not feature_frames:
+            return None, tuple()
+        return pd.concat(feature_frames, ignore_index=True), tuple(feature_paths)
 
     def _refresh_backtest_artifact(
         self,
@@ -1020,6 +1157,7 @@ def _build_result(
     operations_health_report_path: Path,
     journal_result: DecisionJournalWriteResult,
     dashboard_artifact_result: DailyJobDashboardArtifactResult,
+    scoring_feature_result: DailyJobScoringFeatureResult,
 ) -> DailyJobResult:
     paper_summary = paper_result.summary if paper_result is not None else None
     return DailyJobResult(
@@ -1065,6 +1203,9 @@ def _build_result(
         decision_journal_csv_path=journal_result.csv_path,
         decision_journal_appended_count=journal_result.appended_count,
         decision_journal_total_count=journal_result.total_count,
+        scoring_macro_feature_path=scoring_feature_result.macro_feature_path,
+        scoring_news_feature_paths=scoring_feature_result.news_feature_paths,
+        scoring_feature_errors=scoring_feature_result.errors,
         dashboard_artifact_ticker=dashboard_artifact_result.ticker,
         macro_feature_path=dashboard_artifact_result.macro_feature_path,
         backtest_metrics_path=dashboard_artifact_result.backtest_metrics_path,

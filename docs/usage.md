@@ -399,6 +399,22 @@ test:
 python main.py run-daily-job --universe demo --lookback-days 60 --no-refresh-dashboard-artifacts --telegram-dry-run
 ```
 
+The daily job also builds news sentiment and macro features before universe
+scoring, so the `News` and `Macro` score columns are not permanently neutral
+when data is available. Naver and FRED live data are used when credentials exist;
+otherwise the job falls back to demo data for local checks. Gemini news sentiment
+is opt-in:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --news-gemini --telegram-dry-run
+```
+
+Skip those scoring inputs only for a very quick smoke test:
+
+```powershell
+python main.py run-daily-job --universe demo --lookback-days 60 --no-score-external-features --telegram-dry-run
+```
+
 After Telegram credentials are configured in `.env`, send the brief:
 
 ```powershell

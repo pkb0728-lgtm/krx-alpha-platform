@@ -11,8 +11,27 @@ from krx_alpha.pipelines.universe_pipeline import UniversePipeline
 class FakeDailyPipeline:
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
+        self.calls: list[dict[str, object]] = []
 
-    def run(self, request: PriceRequest) -> DailyPipelineResult:
+    def run(
+        self,
+        request: PriceRequest,
+        financial_feature_frame: object | None = None,
+        event_feature_frame: object | None = None,
+        flow_feature_frame: object | None = None,
+        news_feature_frame: object | None = None,
+        macro_feature_frame: object | None = None,
+    ) -> DailyPipelineResult:
+        self.calls.append(
+            {
+                "ticker": request.ticker,
+                "financial_feature_frame": financial_feature_frame,
+                "event_feature_frame": event_feature_frame,
+                "flow_feature_frame": flow_feature_frame,
+                "news_feature_frame": news_feature_frame,
+                "macro_feature_frame": macro_feature_frame,
+            }
+        )
         if request.ticker == "000000":
             raise RuntimeError("mock failure")
 
@@ -45,15 +64,20 @@ class FakeDailyPipeline:
 
 
 def test_universe_pipeline_saves_summary(tmp_path: Path) -> None:
+    fake_daily_pipeline = FakeDailyPipeline(tmp_path)
     pipeline = UniversePipeline(
         project_root=tmp_path,
-        daily_pipeline=FakeDailyPipeline(tmp_path),  # type: ignore[arg-type]
+        daily_pipeline=fake_daily_pipeline,  # type: ignore[arg-type]
     )
+    news_feature_frame = pd.DataFrame({"ticker": ["005930"]})
+    macro_feature_frame = pd.DataFrame({"date": ["2024-01-31"]})
 
     result = pipeline.run(
         tickers=["005930", "000000"],
         start_date="2024-01-01",
         end_date="2024-01-31",
+        news_feature_frame=news_feature_frame,
+        macro_feature_frame=macro_feature_frame,
     )
 
     assert result.total_count == 2
@@ -64,6 +88,8 @@ def test_universe_pipeline_saves_summary(tmp_path: Path) -> None:
     summary = pd.read_parquet(result.summary_path)
     assert summary.loc[0, "data_quality_warning_count"] == 1
     assert summary.loc[0, "data_quality_fail_count"] == 0
+    assert fake_daily_pipeline.calls[0]["news_feature_frame"] is news_feature_frame
+    assert fake_daily_pipeline.calls[0]["macro_feature_frame"] is macro_feature_frame
 
 
 def test_universe_pipeline_uses_cached_signal_after_collection_failure(tmp_path: Path) -> None:
