@@ -130,6 +130,9 @@ def test_build_daily_telegram_message_includes_core_sections() -> None:
     )
 
     assert "KRX Alpha 일일 요약" in message
+    assert "오늘 결론" in message
+    assert "매수 검토 후보가 1개" in message
+    assert "스크리너 통과: 1개 | KIS 검토 후보: 1개 | 리스크 차단: 0개" in message
     assert "1. 005380 현대차 | 판단: 매수 검토" in message
     assert "뉴스 45.00" in message
     assert "매크로 42.00" in message

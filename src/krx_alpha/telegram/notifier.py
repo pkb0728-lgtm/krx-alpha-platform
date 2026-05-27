@@ -299,8 +299,15 @@ def build_daily_telegram_message(
         f"- 정상 처리: {len(success_frame)}개",
         f"- 실패: {len(failed_frame)}개",
         "",
-        "상위 종목",
     ]
+    lines.extend(
+        _format_beginner_brief_lines(
+            success_frame,
+            screening_result,
+            kis_paper_candidates,
+        )
+    )
+    lines.extend(["", "상위 종목"])
     lines.extend(_format_candidate_lines(success_frame, top_n))
     lines.extend(_format_screening_lines(screening_result, top_n))
     lines.extend(_format_paper_portfolio_lines(paper_portfolio_summary))
@@ -344,6 +351,53 @@ def _format_candidate_lines(frame: pd.DataFrame, top_n: int) -> list[str]:
         )
         lines.append(f"   해석: {_action_guide(_row_value(row, 'latest_action'))}")
     return lines
+
+
+def _format_beginner_brief_lines(
+    success_frame: pd.DataFrame,
+    screening_result: Any | None,
+    kis_paper_candidates: Any | None,
+) -> list[str]:
+    if success_frame.empty:
+        return [
+            "오늘 결론",
+            "- 정상 처리된 종목이 없어 투자 후보를 판단할 수 없습니다.",
+            "- 다음 확인: API 연결과 데이터 수집 결과를 먼저 확인하세요.",
+        ]
+
+    top_stock = _stock_label(success_frame.iloc[0])
+    buy_count = _count_action(success_frame, "buy_candidate")
+    watch_count = _count_action(success_frame, "watch")
+    blocked_count = _count_action(success_frame, "blocked")
+    passed_count = _screening_passed_count(screening_result)
+    review_count = _kis_review_candidate_count(kis_paper_candidates)
+
+    if review_count > 0:
+        headline = f"사람이 다시 볼 매수 검토 후보가 {review_count}개 있습니다."
+        next_step = "후보의 뉴스, 공시, 유동성, 계좌 비중을 확인하세요."
+    elif buy_count > 0 or passed_count > 0:
+        headline = "검토할 후보는 있지만 아직 수동 확인이 필요합니다."
+        next_step = "자동 스크리너의 근거와 주의점을 먼저 읽으세요."
+    elif watch_count > 0:
+        headline = "적극 매수보다 관망이 우선입니다."
+        next_step = "관망 종목의 신뢰도와 거래대금이 개선되는지 지켜보세요."
+    elif blocked_count > 0:
+        headline = "리스크 관리가 우선이라 신규 매수 후보가 없습니다."
+        next_step = "차단 사유와 시장 변동성이 낮아지는지 확인하세요."
+    else:
+        headline = "뚜렷한 신규 매수 후보가 없습니다."
+        next_step = "다음 거래일 데이터가 쌓인 뒤 다시 실행하세요."
+
+    return [
+        "오늘 결론",
+        f"- {headline}",
+        f"- 상위 종목: {top_stock}",
+        (
+            f"- 스크리너 통과: {passed_count}개 | KIS 검토 후보: {review_count}개 | "
+            f"리스크 차단: {blocked_count}개"
+        ),
+        f"- 다음 확인: {next_step}",
+    ]
 
 
 def _format_screening_lines(result: Any | None, top_n: int) -> list[str]:
@@ -423,6 +477,24 @@ def _passed_mask(series: pd.Series) -> pd.Series:
     if pd.api.types.is_bool_dtype(series):
         return series.fillna(False)
     return series.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"})
+
+
+def _count_action(frame: pd.DataFrame, action: str) -> int:
+    if frame.empty or "latest_action" not in frame.columns:
+        return 0
+    return int((frame["latest_action"].astype(str) == action).sum())
+
+
+def _screening_passed_count(result: Any | None) -> int:
+    if result is None or result.empty or "passed" not in result.columns:
+        return 0
+    return int(_passed_mask(result["passed"]).sum())
+
+
+def _kis_review_candidate_count(candidates: Any | None) -> int:
+    if candidates is None or candidates.empty or "candidate_action" not in candidates.columns:
+        return 0
+    return int(candidates["candidate_action"].astype(str).isin(["review_buy", "review_add"]).sum())
 
 
 def _screen_status_summary(frame: pd.DataFrame) -> str:
