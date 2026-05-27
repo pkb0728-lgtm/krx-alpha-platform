@@ -326,6 +326,7 @@ def main() -> None:
             )
             candidate_cols[4].metric("실제 주문 수", order_count)
             st.caption(f"최근 KIS 후보 파일: {kis_candidate_path.name}")
+            _render_kis_account_note(kis_candidate_frame)
             if review_frame.empty:
                 st.info(
                     "KIS 매수/추가매수 검토 후보가 없습니다. 스크리너를 통과한 종목이 "
@@ -571,6 +572,8 @@ def main() -> None:
 
             st.caption(f"최근 페이퍼 포트폴리오 파일: {portfolio_path.name}")
             _warn_if_period_mismatch("페이퍼 포트폴리오", portfolio_path, active_period)
+            portfolio_trades = load_paper_portfolio_trades(portfolio_path)
+            _render_paper_portfolio_audit(portfolio_metric, portfolio_trades)
             st.dataframe(
                 _koreanize_columns(
                     portfolio_summary[_paper_portfolio_summary_display_columns(portfolio_summary)]
@@ -579,7 +582,6 @@ def main() -> None:
                 use_container_width=True,
             )
 
-            portfolio_trades = load_paper_portfolio_trades(portfolio_path)
             if not portfolio_trades.empty:
                 st.subheader("페이퍼 포트폴리오 거래장")
                 st.dataframe(
@@ -669,13 +671,14 @@ def main() -> None:
 
             st.caption(f"최근 페이퍼트레이딩 파일: {paper_path.name}")
             _warn_if_period_mismatch("단일 종목 페이퍼트레이딩", paper_path, active_period)
+            paper_trades = load_paper_trades(paper_path)
+            _render_single_paper_audit(paper_metric, paper_trades)
             st.dataframe(
                 _koreanize_columns(paper_summary),
                 hide_index=True,
                 use_container_width=True,
             )
 
-            paper_trades = load_paper_trades(paper_path)
             if not paper_trades.empty:
                 st.subheader("페이퍼트레이딩 거래장")
                 st.dataframe(
@@ -722,13 +725,14 @@ def main() -> None:
 
             st.caption(f"최근 워크포워드 파일: {walk_forward_path.name}")
             _warn_if_period_mismatch("워크포워드 검증", walk_forward_path, active_period)
+            folds_frame = load_walk_forward_folds(walk_forward_path)
+            _render_walk_forward_audit(walk_forward_metric, folds_frame)
             st.dataframe(
                 _koreanize_columns(walk_forward_summary),
                 hide_index=True,
                 use_container_width=True,
             )
 
-            folds_frame = load_walk_forward_folds(walk_forward_path)
             if not folds_frame.empty:
                 st.subheader("워크포워드 구간별 결과")
                 display_fold_columns = [
@@ -1247,6 +1251,176 @@ def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
         return "N/A"
     counts = frame[column].fillna("unknown").astype(str).value_counts()
     return ", ".join(f"{name} {count}" for name, count in counts.items())
+
+
+def _render_kis_account_note(frame: Any) -> None:
+    if frame.empty:
+        return
+
+    row = frame.iloc[0]
+    total_equity = _safe_number(row.get("total_equity"))
+    cash_amount = _safe_number(row.get("cash_amount"))
+    account = str(row.get("account", "N/A"))
+    order_count = (
+        int(pd.to_numeric(frame["orders_sent"], errors="coerce").fillna(0).sum())
+        if "orders_sent" in frame.columns
+        else 0
+    )
+    if total_equity <= 0 and cash_amount <= 0:
+        return
+
+    st.info(
+        f"KIS 모의계좌 {account}의 총평가금액 {_format_money(total_equity)}과 "
+        f"현금 {_format_money(cash_amount)}은 증권사 모의투자 계좌 조회값입니다. "
+        "페이퍼 포트폴리오의 가상 시작금액과 별개이며, 이 화면은 후보 수량 계산용입니다. "
+        f"실제 주문 전송 수는 {order_count}건입니다."
+    )
+
+
+def _render_paper_portfolio_audit(metric: Any, trades: Any) -> None:
+    if _safe_int(metric.get("trade_count")) == 0:
+        st.info(
+            "검산: 체결 거래가 0회라 현금이 그대로 남았습니다. "
+            "최종 평가금액은 현금과 보유 주식 평가금액을 더한 값입니다."
+        )
+    st.dataframe(
+        _paper_audit_frame(metric, trades),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+
+def _render_single_paper_audit(metric: Any, trades: Any) -> None:
+    if _safe_int(metric.get("trade_count")) == 0:
+        st.info(
+            "검산: 이 단일 종목에서도 매수 후보 신호가 없어 가상 체결이 없었습니다. "
+            "그래서 최종 평가금액은 시작 가상 현금과 같습니다."
+        )
+    st.dataframe(
+        _paper_audit_frame(metric, trades),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+
+def _render_walk_forward_audit(metric: Any, folds: Any) -> None:
+    if _safe_int(metric.get("total_trade_count")) == 0:
+        st.info(
+            "검산: 워크포워드는 테스트 구간별로 매수 후보 신호를 실제 거래로 바꿔 검증합니다. "
+            "이번 기간에는 매수 후보 신호가 없어 거래 수와 수익률이 0으로 표시됩니다."
+        )
+    st.dataframe(
+        _walk_forward_audit_frame(metric, folds),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+
+def _paper_audit_frame(metric: Any, trades: Any) -> pd.DataFrame:
+    initial_cash = _safe_number(metric.get("initial_cash"))
+    ending_cash = _safe_number(metric.get("ending_cash"))
+    ending_position_value = _safe_number(metric.get("ending_position_value"))
+    ending_equity = _safe_number(metric.get("ending_equity"))
+    calculated_equity = ending_cash + ending_position_value
+    calculated_return = calculated_equity / initial_cash - 1 if initial_cash else 0.0
+    filled_trade_count = _filled_trade_count(trades)
+
+    return pd.DataFrame(
+        [
+            {
+                "검산 항목": "시작 가상 현금",
+                "값": _format_money(initial_cash),
+                "확인 방법": "페이퍼트레이딩 설정값입니다.",
+            },
+            {
+                "검산 항목": "체결 거래 수",
+                "값": f"{filled_trade_count}회",
+                "확인 방법": "거래장(status=filled) 행 개수입니다.",
+            },
+            {
+                "검산 항목": "보유 주식 평가금액",
+                "값": _format_money(ending_position_value),
+                "확인 방법": "열린 포지션 수량 x 마지막 종가입니다.",
+            },
+            {
+                "검산 항목": "최종 평가금액",
+                "값": _format_money(ending_equity),
+                "확인 방법": (
+                    f"현금 {_format_money(ending_cash)} + "
+                    f"보유 평가 {_format_money(ending_position_value)} = "
+                    f"{_format_money(calculated_equity)}"
+                ),
+            },
+            {
+                "검산 항목": "가상 수익률",
+                "값": _format_percent(calculated_return),
+                "확인 방법": "최종 평가금액 / 시작 가상 현금 - 1",
+            },
+        ]
+    )
+
+
+def _walk_forward_audit_frame(metric: Any, folds: Any) -> pd.DataFrame:
+    fold_count = _safe_int(metric.get("fold_count"))
+    total_trade_count = _safe_int(metric.get("total_trade_count"))
+    total_exposure_count = _safe_int(metric.get("total_exposure_count"))
+    fold_trade_sum = _column_sum_int(folds, "trade_count")
+    fold_exposure_sum = _column_sum_int(folds, "exposure_count")
+
+    return pd.DataFrame(
+        [
+            {
+                "검산 항목": "검증 구간 수",
+                "값": f"{fold_count}개",
+                "확인 방법": "구간별 결과 표의 행 개수입니다.",
+            },
+            {
+                "검산 항목": "매수 후보 신호 수",
+                "값": f"{total_exposure_count}개",
+                "확인 방법": (
+                    "각 테스트 구간의 exposure_count 합계입니다. "
+                    f"구간별 합계: {fold_exposure_sum}개"
+                ),
+            },
+            {
+                "검산 항목": "거래 수",
+                "값": f"{total_trade_count}회",
+                "확인 방법": (
+                    f"각 테스트 구간의 trade_count 합계입니다. 구간별 합계: {fold_trade_sum}회"
+                ),
+            },
+            {
+                "검산 항목": "복리 수익률",
+                "값": _format_percent(metric.get("compounded_return")),
+                "확인 방법": "구간별 수익률을 순서대로 복리 누적한 값입니다.",
+            },
+        ]
+    )
+
+
+def _filled_trade_count(trades: Any) -> int:
+    if trades.empty or "status" not in trades.columns:
+        return 0
+    return int((trades["status"].astype(str) == "filled").sum())
+
+
+def _column_sum_int(frame: Any, column: str) -> int:
+    if frame.empty or column not in frame.columns:
+        return 0
+    return int(pd.to_numeric(frame[column], errors="coerce").fillna(0).sum())
+
+
+def _safe_number(value: Any) -> float:
+    try:
+        if pd.isna(value):
+            return 0.0
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _safe_int(value: Any) -> int:
+    return int(round(_safe_number(value)))
 
 
 def _period_from_artifact_name(path: Path | None) -> tuple[str, str] | None:

@@ -6,8 +6,10 @@ from krx_alpha.dashboard.app import (
     _artifact_matches_period,
     _find_matching_period_file,
     _koreanize_columns,
+    _paper_audit_frame,
     _period_from_artifact_name,
     _period_label,
+    _walk_forward_audit_frame,
 )
 from krx_alpha.dashboard.data_loader import (
     action_counts,
@@ -67,6 +69,44 @@ def test_dashboard_artifact_period_helpers(tmp_path: Path) -> None:
     assert _artifact_matches_period(artifact_path, active_period)
     assert not _artifact_matches_period(old_artifact_path, active_period)
     assert _find_matching_period_file(tmp_path, active_period) == artifact_path
+
+
+def test_dashboard_paper_audit_frame_explains_ending_equity() -> None:
+    metric = pd.Series(
+        {
+            "initial_cash": 10_000_000.0,
+            "ending_cash": 10_000_000.0,
+            "ending_position_value": 0.0,
+            "ending_equity": 10_000_000.0,
+            "trade_count": 0,
+        }
+    )
+    trades = pd.DataFrame({"status": []})
+
+    audit = _paper_audit_frame(metric, trades)
+
+    assert audit.loc[audit["검산 항목"] == "체결 거래 수", "값"].iloc[0] == "0회"
+    assert (
+        audit.loc[audit["검산 항목"] == "최종 평가금액", "확인 방법"].iloc[0].endswith("10,000,000")
+    )
+    assert audit.loc[audit["검산 항목"] == "가상 수익률", "값"].iloc[0] == "0.00%"
+
+
+def test_dashboard_walk_forward_audit_frame_reconciles_fold_sums() -> None:
+    metric = pd.Series(
+        {
+            "fold_count": 2,
+            "total_trade_count": 0,
+            "total_exposure_count": 0,
+            "compounded_return": 0.0,
+        }
+    )
+    folds = pd.DataFrame({"trade_count": [0, 0], "exposure_count": [0, 0]})
+
+    audit = _walk_forward_audit_frame(metric, folds)
+
+    assert audit.loc[audit["검산 항목"] == "검증 구간 수", "값"].iloc[0] == "2개"
+    assert audit.loc[audit["검산 항목"] == "거래 수", "확인 방법"].iloc[0].endswith("0회")
 
 
 def test_dashboard_data_loader_reads_latest_summary(tmp_path: Path) -> None:
