@@ -179,6 +179,8 @@ streamlit run src/krx_alpha/dashboard/app.py
 The dashboard displays:
 
 - universe ranking
+- beginner decision summary
+- decision journal outcome tracking
 - action distribution
 - auto screener result and review queue
 - KIS mock-investment review candidates

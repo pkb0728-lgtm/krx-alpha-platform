@@ -22,7 +22,7 @@
 | 핵심 명령어 | `python main.py run-daily-job ...` |
 | KIS 연동 | 모의투자 토큰/잔고 조회 및 검토 후보 생성까지만 지원 |
 | 실제 주문 | 구현하지 않음. 수동 검토용 주문 계획표만 생성 |
-| 대시보드 | Streamlit으로 유니버스, 스크리너, KIS 후보, 백테스트, 운영 상태 확인 |
+| 대시보드 | Streamlit으로 유니버스, 스크리너, KIS 후보, 판단 성과 추적, 백테스트, 운영 상태 확인 |
 | 알림 | Telegram dry-run 및 실제 전송 지원, 한국어 일일 요약 |
 | 테스트 | `pytest` 전체 통과 |
 | 품질 관리 | `ruff`, `mypy`, `pre-commit`, GitHub Actions CI |
@@ -78,12 +78,14 @@ http://localhost:8501
 
 대시보드에서 먼저 볼 곳:
 
-1. `유니버스 순위`
-2. `자동 스크리너`
-3. `KIS 모의투자 검토 후보`
-4. `페이퍼 포트폴리오`
-5. `워크포워드 검증`
-6. `운영 상태`
+1. `오늘 결론부터 보기`
+2. `판단 성과 추적`
+3. `유니버스 순위`
+4. `자동 스크리너`
+5. `KIS 모의투자 검토 후보`
+6. `페이퍼 포트폴리오`
+7. `워크포워드 검증`
+8. `운영 상태`
 
 스크리너 통과 종목이 0개여도 오류가 아닐 수 있습니다. 점수, 신뢰도,
 리스크 기준을 모두 만족한 종목이 없으면 프로그램은 보수적으로 후보를
@@ -117,10 +119,27 @@ http://localhost:8501
   매수 후보를 만들지 않는 것이 이 프로젝트의 핵심 설계입니다.
 - 대시보드에서 거래 0회, 최종 평가금액, 워크포워드 거래 수를 검산표로
   설명해 결과 신뢰성을 확인할 수 있습니다.
+- 판단 성과 추적에서 과거 판단을 실제 이후 수익률과 비교해 모델과
+  규칙의 품질을 기록합니다.
 - 모든 최종 판단은 사람이 직접 확인하는 Human-in-the-loop 구조입니다.
 
 더 자세한 제출용 설명은 [포트폴리오 제출 가이드](docs/portfolio-submission-ko.md)를 참고하세요.
 Codex 없이 혼자 실행하고 점검하려면 [최종 인수인계 가이드](docs/final-handover-ko.md)를 참고하세요.
+
+## 캡처 체크리스트
+
+GitHub README나 발표 자료에 이미지를 넣을 때는 아래 화면을 우선 캡처하면 좋습니다.
+
+| 캡처 화면 | 보여주는 역량 |
+| --- | --- |
+| 오늘 결론부터 보기 | 초보자도 이해 가능한 의사결정 요약 |
+| 판단 성과 추적 | 저장된 판단과 실제 이후 수익률 비교 |
+| 자동 스크리너 | 후보 선정 기준과 탈락 사유 |
+| KIS 모의투자 후보 | 실제 주문 없이 검토 후보만 만드는 안전 설계 |
+| 페이퍼 포트폴리오 검산표 | 가상 거래 수, 현금, 평가금액 산식 검증 |
+| 워크포워드 검증 | 특정 기간에만 맞는 전략인지 점검 |
+| API Health Check | 외부 API 연동 상태 확인 |
+| pytest 결과 | 테스트 기반 품질 관리 |
 
 ## 이 프로젝트가 보여주는 역량
 
@@ -247,6 +266,8 @@ python main.py check-apis --skip-pykrx --save
 | 자동 스크리너 | `data/signals/screening_daily/` |
 | KIS 모의투자 후보 | `data/signals/kis_paper_candidates/` |
 | 수동 주문 계획표 | `data/signals/manual_order_plans/` |
+| 판단 기록 | `data/signals/decision_journal/` |
+| 판단 성과 평가 | `data/signals/decision_journal_evaluation/` |
 | 페이퍼 포트폴리오 | `data/backtest/paper_portfolio_summary/` |
 | 백테스트 결과 | `data/backtest/metrics/` |
 | ML 결과 | `data/signals/ml_metrics/` |
