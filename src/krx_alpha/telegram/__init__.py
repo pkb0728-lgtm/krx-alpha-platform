@@ -2,10 +2,12 @@ from krx_alpha.telegram.notifier import (
     TelegramNotifier,
     TelegramSendResult,
     build_daily_telegram_message,
+    split_telegram_message,
 )
 
 __all__ = [
     "TelegramNotifier",
     "TelegramSendResult",
     "build_daily_telegram_message",
+    "split_telegram_message",
 ]

@@ -849,6 +849,52 @@ def _truncate_message(message: str) -> str:
     return message[: TELEGRAM_MESSAGE_LIMIT - len(suffix)] + suffix
 
 
+def split_telegram_message(message: str, limit: int = TELEGRAM_MESSAGE_LIMIT) -> list[str]:
+    """Split long text into Telegram-sized chunks without dropping content."""
+    if limit <= 0:
+        raise ValueError("limit must be positive.")
+    if len(message) <= limit:
+        return [message]
+
+    content_limit = max(limit - 32, 1)
+    chunks = _split_text_by_limit(message, content_limit)
+    if len(chunks) == 1:
+        return chunks
+
+    total = len(chunks)
+    return [f"[{index}/{total}]\n{chunk}" for index, chunk in enumerate(chunks, start=1)]
+
+
+def _split_text_by_limit(message: str, limit: int) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+
+    for line in message.splitlines(keepends=True):
+        if len(line) > limit:
+            if current:
+                chunks.append(current.rstrip("\n"))
+                current = ""
+            chunks.extend(_split_long_line(line.rstrip("\n"), limit))
+            continue
+
+        if current and len(current) + len(line) > limit:
+            chunks.append(current.rstrip("\n"))
+            current = line
+        else:
+            current += line
+
+    if current:
+        chunks.append(current.rstrip("\n"))
+
+    return chunks
+
+
+def _split_long_line(line: str, limit: int) -> list[str]:
+    if not line:
+        return [""]
+    return [line[start : start + limit] for start in range(0, len(line), limit)]
+
+
 def _truncate_line(value: str, limit: int) -> str:
     if len(value) <= limit:
         return value

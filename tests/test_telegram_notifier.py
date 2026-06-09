@@ -5,7 +5,11 @@ from urllib import request
 import pandas as pd
 import pytest
 
-from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
+from krx_alpha.telegram.notifier import (
+    TelegramNotifier,
+    build_daily_telegram_message,
+    split_telegram_message,
+)
 
 
 class FakeTelegramResponse:
@@ -166,6 +170,17 @@ def test_telegram_notifier_dry_run_does_not_require_credentials() -> None:
     assert result.sent is False
     assert result.dry_run is True
     assert result.message == "hello"
+
+
+def test_split_telegram_message_preserves_long_content() -> None:
+    message = "\n".join([f"line-{index}: " + ("x" * 30) for index in range(20)])
+
+    parts = split_telegram_message(message, limit=120)
+
+    assert len(parts) > 1
+    assert all(len(part) <= 120 for part in parts)
+    joined = "\n".join(part.split("\n", maxsplit=1)[1] for part in parts)
+    assert joined == message
 
 
 def test_telegram_notifier_uses_transport() -> None:

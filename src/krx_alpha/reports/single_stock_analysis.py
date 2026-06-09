@@ -120,6 +120,44 @@ class SingleStockAnalysis:
     beginner_notes: list[str]
 
 
+def format_single_stock_analysis_message(
+    analysis: SingleStockAnalysis,
+    *,
+    signal_path: Any,
+    report_path: Any,
+) -> str:
+    """Format the full single-stock analysis as Telegram-friendly plain text."""
+    lines = ["KRX Alpha 단일 종목 상세 분석", ""]
+    lines.extend(_format_message_section("1. 한눈에 보는 결론", analysis.summary))
+    lines.extend(_format_message_section("2. 점수 분해", analysis.score_breakdown))
+    lines.extend(_format_message_section("3. 가격/기술 지표", analysis.price_metrics))
+    lines.extend(_format_message_section("4. 판단 근거", analysis.evidence))
+    lines.extend(["초보자용 해석 메모"])
+    lines.extend([f"- {note}" for note in analysis.beginner_notes])
+    lines.extend(
+        [
+            "",
+            "생성 파일",
+            f"- 시그널 파일: {signal_path}",
+            f"- 리포트 파일: {report_path}",
+            "",
+            "모드",
+            "- 분석 전용입니다. 실제 주문은 보내지 않았습니다.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _format_message_section(title: str, items: list[AnalysisItem]) -> list[str]:
+    lines = [title]
+    for item in items:
+        lines.append(f"- {item.label}: {item.value}")
+        if item.interpretation:
+            lines.append(f"  해석: {item.interpretation}")
+    lines.append("")
+    return lines
+
+
 def build_single_stock_analysis(
     *,
     stock_label: str,

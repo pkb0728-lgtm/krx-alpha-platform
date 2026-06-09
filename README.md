@@ -63,12 +63,16 @@ python main.py evaluate-decision-journal --holding-days 5
 
 ```powershell
 python main.py analyze-stock 삼성전자 --lookback-days 180
+python main.py analyze-stock 삼성전자 --lookback-days 180 --telegram-dry-run
+python main.py analyze-stock 삼성전자 --lookback-days 180 --telegram-send
 ```
 
 이 명령은 회사명을 종목코드로 바꾼 뒤 단일 종목 분석을 실행하고,
 한눈에 보는 결론, 점수 분해, 가격/기술 지표, 판단 근거, 초보자용 해석
 메모를 한국어 표로 보여줍니다. 분석 전용 기능이며 실제 주문은 보내지
-않습니다.
+않습니다. `--telegram-dry-run`은 텔레그램 전송 전 미리보기이고,
+`--telegram-send`는 분석 결과 전체를 텔레그램으로 전송합니다. 텔레그램
+길이 제한을 넘으면 내용을 요약하지 않고 여러 메시지로 나누어 보냅니다.
 
 텔레그램 전송 없이 미리보기만 하려면:
 
@@ -219,6 +223,7 @@ data/backtest/
 python main.py analyze-stock 삼성전자 --lookback-days 180
 python main.py analyze-stock --name 현대차 --lookback-days 180
 python main.py analyze-stock --ticker 005930 --lookback-days 180
+python main.py analyze-stock 삼성전자 --lookback-days 180 --telegram-send
 ```
 
 출력에는 다음 항목이 포함됩니다.
@@ -230,6 +235,7 @@ python main.py analyze-stock --ticker 005930 --lookback-days 180
 - 초보자용 해석 메모: 바로 매수하면 안 되는 이유와 추가 확인 항목
 
 이 기능도 실제 주문을 보내지 않으며, 투자 판단 보조용 분석 결과만 제공합니다.
+텔레그램 옵션을 붙이면 같은 분석 결과 전체를 텔레그램으로 받을 수 있습니다.
 
 ### 4. KIS 모의투자 후보 생성
 

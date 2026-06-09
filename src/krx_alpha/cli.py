@@ -183,6 +183,7 @@ from krx_alpha.reports.single_stock_analysis import (
     SOURCE_KO,
     AnalysisItem,
     build_single_stock_analysis,
+    format_single_stock_analysis_message,
     label_with_raw,
 )
 from krx_alpha.reports.universe_report import UniverseReportGenerator
@@ -194,7 +195,11 @@ from krx_alpha.screening.auto_screener import (
     format_screening_report,
 )
 from krx_alpha.signals.signal_engine import SignalEngine
-from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
+from krx_alpha.telegram.notifier import (
+    TelegramNotifier,
+    build_daily_telegram_message,
+    split_telegram_message,
+)
 from krx_alpha.universe.static_universe import UniverseRegistry
 from krx_alpha.universe.stock_resolver import AmbiguousStockQuery, StockCandidate, StockResolver
 from krx_alpha.utils.logger import configure_logger
@@ -442,6 +447,49 @@ def _print_beginner_notes(notes: list[str]) -> None:
     for note in notes:
         table.add_row(note)
     console.print(table)
+
+
+def _send_telegram_message_parts(
+    message_parts: list[str],
+    *,
+    dry_run: bool,
+    success_message: str,
+    dry_run_message: str,
+) -> None:
+    notifier = TelegramNotifier(
+        bot_token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
+        timeout_seconds=settings.telegram_timeout_seconds,
+        max_retries=settings.telegram_max_retries,
+        retry_sleep_seconds=settings.telegram_retry_sleep_seconds,
+    )
+
+    try:
+        results = [notifier.send_message(part, dry_run=dry_run) for part in message_parts]
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    except RuntimeError as exc:
+        console.print("[bold red]Telegram send failed.[/bold red]")
+        console.print(str(exc))
+        if _contains_certificate_error(exc):
+            console.print(
+                "[yellow]SSL certificate verification failed. "
+                "Check antivirus HTTPS inspection, proxy certificates, or Windows/Python "
+                "certificate trust settings. The message was not sent.[/yellow]"
+            )
+        raise typer.Exit(code=1) from exc
+
+    if dry_run:
+        console.print(f"[bold yellow]{dry_run_message}[/bold yellow]")
+        for index, result in enumerate(results, start=1):
+            console.print(f"[bold]Telegram message part {index}/{len(results)}[/bold]")
+            console.print(result.message)
+        return
+
+    console.print(f"[bold green]{success_message}[/bold green]")
+    console.print(f"Messages sent: {len(results)}")
+    if results:
+        console.print(f"Last status code: {results[-1].status_code}")
 
 
 @app.command()
@@ -2238,9 +2286,26 @@ def analyze_stock(
             help="내장 별칭에 없는 종목명도 무료 상장 목록으로 찾아봅니다.",
         ),
     ] = True,
+    telegram_dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--telegram-dry-run",
+            help="텔레그램으로 보낼 전체 분석 결과를 미리보기만 합니다.",
+        ),
+    ] = False,
+    telegram_send: Annotated[
+        bool,
+        typer.Option(
+            "--telegram-send",
+            help="전체 분석 결과를 텔레그램으로 실제 전송합니다.",
+        ),
+    ] = False,
 ) -> None:
     """회사명이나 종목코드로 단일 종목 분석을 실행합니다."""
     configure_logger(settings.log_level)
+    if telegram_dry_run and telegram_send:
+        raise typer.BadParameter("--telegram-dry-run and --telegram-send cannot be used together.")
+
     selected_query = _select_single_stock_query(query, name, ticker)
     resolver = StockResolver(use_live_sources=live_names)
 
@@ -2293,6 +2358,19 @@ def analyze_stock(
     console.print(f"시그널 파일: {result.signal_path}")
     console.print(f"리포트 파일: {result.report_path}")
     console.print("모드: 분석 전용입니다. 실제 주문은 보내지 않았습니다.")
+
+    if telegram_dry_run or telegram_send:
+        telegram_message = format_single_stock_analysis_message(
+            analysis,
+            signal_path=result.signal_path,
+            report_path=result.report_path,
+        )
+        _send_telegram_message_parts(
+            split_telegram_message(telegram_message),
+            dry_run=telegram_dry_run,
+            success_message="텔레그램 단일 종목 분석 결과를 전송했습니다.",
+            dry_run_message="Telegram dry run. 단일 종목 분석 결과는 전송되지 않았습니다.",
+        )
 
 
 @app.command("run-pipeline")

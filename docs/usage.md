@@ -49,6 +49,21 @@ python main.py analyze-stock --ticker 005930 --lookback-days 180
 이 명령은 회사명을 6자리 종목코드로 바꾼 뒤 같은 단일 종목 파이프라인을
 실행합니다. 분석 전용 기능이며 실제 주문은 절대 보내지 않습니다.
 
+분석 결과 전체를 텔레그램으로 보내고 싶으면 먼저 미리보기로 확인합니다:
+
+```powershell
+python main.py analyze-stock 삼성전자 --lookback-days 180 --telegram-dry-run
+```
+
+내용이 괜찮으면 실제 전송합니다:
+
+```powershell
+python main.py analyze-stock 삼성전자 --lookback-days 180 --telegram-send
+```
+
+텔레그램 메시지 길이 제한을 넘으면 내용을 요약하지 않고 여러 메시지로
+나누어 전송합니다.
+
 This creates:
 
 ```text

@@ -2,7 +2,10 @@ from datetime import date
 
 import pandas as pd
 
-from krx_alpha.reports.single_stock_analysis import build_single_stock_analysis
+from krx_alpha.reports.single_stock_analysis import (
+    build_single_stock_analysis,
+    format_single_stock_analysis_message,
+)
 
 
 def test_build_single_stock_analysis_creates_beginner_friendly_sections() -> None:
@@ -74,3 +77,18 @@ def test_build_single_stock_analysis_creates_beginner_friendly_sections() -> Non
     assert any("거래대금" in item.label for item in analysis.price_metrics)
     assert "최근 5일 기준 거래대금이 증가했습니다." in analysis.evidence[0].value
     assert any("120~180일" in note for note in analysis.beginner_notes)
+
+    message = format_single_stock_analysis_message(
+        analysis,
+        signal_path="data/signals/final_signals_daily/005930.parquet",
+        report_path="reports/daily/005930.md",
+    )
+
+    assert "KRX Alpha 단일 종목 상세 분석" in message
+    assert "1. 한눈에 보는 결론" in message
+    assert "2. 점수 분해" in message
+    assert "3. 가격/기술 지표" in message
+    assert "4. 판단 근거" in message
+    assert "초보자용 해석 메모" in message
+    assert "시그널 파일" in message
+    assert "실제 주문은 보내지 않았습니다" in message
