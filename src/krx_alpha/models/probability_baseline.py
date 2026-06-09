@@ -22,6 +22,8 @@ class MLProbabilityBaselineConfig:
     probability_threshold: float = 0.55
     min_train_rows: int = 20
     score_scale: float = 2.0
+    target_column: str = "target_excess_forward_return"
+    top_k_fraction: float = 0.2
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,8 @@ class MLProbabilityBaselineTrainer:
             raise ValueError("probability_threshold must be between 0 and 1.")
         if self.config.min_train_rows <= 0:
             raise ValueError("min_train_rows must be positive.")
+        if not 0 < self.config.top_k_fraction <= 1:
+            raise ValueError("top_k_fraction must be between 0 and 1.")
 
     def train_evaluate(self, training_frame: Any) -> MLProbabilityBaselineResult:
         frame = _prepare_training_frame(training_frame)
@@ -66,7 +70,7 @@ class MLProbabilityBaselineTrainer:
             ],
             ignore_index=True,
         )
-        metrics = _build_metrics(predictions)
+        metrics = _build_metrics(predictions, self.config.top_k_fraction)
         feature_importance = _build_feature_importance(state)
         artifact = _build_artifact(state, self.config)
 
@@ -95,7 +99,7 @@ class MLProbabilityBaselineTrainer:
 
     def _fit(self, train_frame: pd.DataFrame) -> MLProbabilityBaselineState:
         features = _feature_matrix(train_frame)
-        target = train_frame["target_positive_forward_return"].astype(int)
+        target = _target_series(train_frame, self.config.target_column)
         medians = _series_to_float_dict(features.median())
         stds = _safe_std_dict(features)
         weights = _fit_feature_weights(features, target, medians, stds)
@@ -132,7 +136,13 @@ class MLProbabilityBaselineTrainer:
                 "target_positive_forward_return": frame["target_positive_forward_return"].astype(
                     int
                 ),
+                "target_excess_forward_return": _target_series(
+                    frame,
+                    "target_excess_forward_return",
+                ),
                 "forward_return": frame["forward_return"].astype(float),
+                "benchmark_forward_return": _numeric_column(frame, "benchmark_forward_return"),
+                "excess_forward_return": _numeric_column(frame, "excess_forward_return"),
                 "label_end_date": frame["label_end_date"],
                 "top_feature_reason": contributions.apply(_top_feature_reason, axis=1),
                 "model_name": ML_PROBABILITY_BASELINE_MODEL_NAME,
@@ -162,6 +172,16 @@ def _prepare_training_frame(frame: Any) -> pd.DataFrame:
     prepared["as_of_date"] = pd.to_datetime(prepared["as_of_date"]).dt.date
     prepared["label_end_date"] = pd.to_datetime(prepared["label_end_date"]).dt.date
     prepared["ticker"] = prepared["ticker"].astype(str).str.zfill(6)
+    if "benchmark_forward_return" not in prepared.columns:
+        prepared["benchmark_forward_return"] = 0.0
+    if "excess_forward_return" not in prepared.columns:
+        prepared["excess_forward_return"] = prepared["forward_return"].astype(float) - prepared[
+            "benchmark_forward_return"
+        ].astype(float)
+    if "target_excess_forward_return" not in prepared.columns:
+        prepared["target_excess_forward_return"] = (
+            prepared["excess_forward_return"].astype(float) > 0
+        ).astype(int)
     prepared = prepared.dropna(subset=["target_positive_forward_return", "forward_return"])
     prepared = prepared.sort_values(["ticker", "date"]).reset_index(drop=True)
     if prepared.empty:
@@ -238,17 +258,23 @@ def _top_feature_reason(row: pd.Series) -> str:
     return "baseline_probability_only"
 
 
-def _build_metrics(predictions: pd.DataFrame) -> pd.DataFrame:
+def _build_metrics(predictions: pd.DataFrame, top_k_fraction: float) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for split, split_frame in predictions.groupby("split", sort=False):
-        target = split_frame["target_positive_forward_return"].astype(int)
+        positive_target = split_frame["target_positive_forward_return"].astype(int)
+        excess_target = split_frame["target_excess_forward_return"].astype(int)
+        target = excess_target
         predicted = split_frame["predicted_label"].astype(int)
         probability = split_frame["probability_positive_forward_return"].astype(float)
+        selected_frame = split_frame[predicted == 1]
+        top_k_frame = _top_k_frame(split_frame, probability, top_k_fraction)
         rows.append(
             {
                 "split": split,
                 "row_count": int(len(split_frame)),
-                "positive_label_rate": float(target.mean()),
+                "positive_label_rate": float(positive_target.mean()),
+                "excess_label_rate": float(excess_target.mean()),
+                "model_target_label_rate": float(target.mean()),
                 "predicted_positive_rate": float(predicted.mean()),
                 "accuracy": _accuracy(target, predicted),
                 "precision": _precision(target, predicted),
@@ -257,9 +283,72 @@ def _build_metrics(predictions: pd.DataFrame) -> pd.DataFrame:
                 "roc_auc": _roc_auc(target, probability),
                 "brier_score": float(((probability - target) ** 2).mean()),
                 "average_probability": float(probability.mean()),
+                "selected_count": int(len(selected_frame)),
+                "selected_average_forward_return": _mean_or_zero(
+                    selected_frame,
+                    "forward_return",
+                ),
+                "selected_average_excess_return": _mean_or_zero(
+                    selected_frame,
+                    "excess_forward_return",
+                ),
+                "top_k_count": int(len(top_k_frame)),
+                "precision_at_top_k": _precision_at_top_k(top_k_frame),
+                "top_k_average_forward_return": _mean_or_zero(top_k_frame, "forward_return"),
+                "top_k_average_excess_return": _mean_or_zero(
+                    top_k_frame,
+                    "excess_forward_return",
+                ),
             }
         )
     return pd.DataFrame(rows)
+
+
+def _target_series(frame: pd.DataFrame, preferred_column: str) -> pd.Series:
+    if preferred_column in frame.columns:
+        return frame[preferred_column].astype(int)
+    return frame["target_positive_forward_return"].astype(int)
+
+
+def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:
+    if column not in frame.columns:
+        return pd.Series([0.0] * len(frame), index=frame.index)
+    return frame[column].astype(float)
+
+
+def _top_k_frame(
+    split_frame: pd.DataFrame,
+    probability: pd.Series,
+    top_k_fraction: float,
+) -> pd.DataFrame:
+    if split_frame.empty:
+        return split_frame
+    count = max(int(len(split_frame) * top_k_fraction), 1)
+    return (
+        split_frame.assign(_probability=probability)
+        .sort_values(
+            "_probability",
+            ascending=False,
+        )
+        .head(count)
+    )
+
+
+def _precision_at_top_k(top_k_frame: pd.DataFrame) -> float:
+    if top_k_frame.empty:
+        return 0.0
+    target_column = (
+        "target_excess_forward_return"
+        if "target_excess_forward_return" in top_k_frame.columns
+        else "target_positive_forward_return"
+    )
+    return float(top_k_frame[target_column].astype(int).mean())
+
+
+def _mean_or_zero(frame: pd.DataFrame, column: str) -> float:
+    if frame.empty or column not in frame.columns:
+        return 0.0
+    return float(frame[column].astype(float).mean())
 
 
 def _build_feature_importance(state: MLProbabilityBaselineState) -> pd.DataFrame:

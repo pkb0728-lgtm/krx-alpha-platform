@@ -27,7 +27,10 @@ ML_TRAINING_COLUMNS = [
     "label_end_date",
     "holding_days",
     "forward_return",
+    "benchmark_forward_return",
+    "excess_forward_return",
     "target_positive_forward_return",
+    "target_excess_forward_return",
     "label_created_at",
 ]
 
@@ -36,6 +39,7 @@ ML_TRAINING_COLUMNS = [
 class MLTrainingDatasetConfig:
     holding_days: int = 5
     minimum_forward_return: float = 0.0
+    minimum_excess_return: float = 0.0
     dropna_features: bool = False
 
 
@@ -47,14 +51,24 @@ class MLTrainingDatasetBuilder:
         if self.config.holding_days <= 0:
             raise ValueError("holding_days must be positive.")
 
-    def build(self, feature_frame: Any, processed_price_frame: Any) -> Any:
+    def build(
+        self,
+        feature_frame: Any,
+        processed_price_frame: Any,
+        benchmark_price_frame: Any | None = None,
+    ) -> Any:
         features = self._prepare_features(feature_frame)
         labels = self._build_forward_labels(processed_price_frame)
         frame = features.merge(labels, on=["date", "ticker"], how="inner")
+        frame = self._attach_benchmark_returns(frame, benchmark_price_frame)
         frame["holding_days"] = self.config.holding_days
         frame["forward_return"] = frame["future_close"] / frame["close"] - 1
+        frame["excess_forward_return"] = frame["forward_return"] - frame["benchmark_forward_return"]
         frame["target_positive_forward_return"] = (
             frame["forward_return"] > self.config.minimum_forward_return
+        ).astype(int)
+        frame["target_excess_forward_return"] = (
+            frame["excess_forward_return"] > self.config.minimum_excess_return
         ).astype(int)
         frame["label_created_at"] = pd.Timestamp.now(tz="UTC")
 
@@ -92,3 +106,31 @@ class MLTrainingDatasetBuilder:
         frame["future_close"] = groups["close"].shift(-self.config.holding_days)
         frame["label_end_date"] = groups["date"].shift(-self.config.holding_days)
         return frame[["date", "ticker", "future_close", "label_end_date"]]
+
+    def _attach_benchmark_returns(
+        self,
+        frame: pd.DataFrame,
+        benchmark_price_frame: Any | None,
+    ) -> pd.DataFrame:
+        result = frame.copy()
+        if benchmark_price_frame is None:
+            result["benchmark_forward_return"] = 0.0
+            return result
+
+        benchmark = self._build_benchmark_forward_returns(benchmark_price_frame)
+        result = result.merge(benchmark, on="date", how="left")
+        result["benchmark_forward_return"] = result["benchmark_forward_return"].fillna(0.0)
+        return result
+
+    def _build_benchmark_forward_returns(self, benchmark_price_frame: Any) -> pd.DataFrame:
+        frame = benchmark_price_frame.copy()
+        missing_columns = {"date", "close"} - set(frame.columns)
+        if missing_columns:
+            raise ValueError(f"Missing required benchmark columns: {sorted(missing_columns)}")
+
+        frame["date"] = pd.to_datetime(frame["date"]).dt.date
+        frame = frame.sort_values("date").reset_index(drop=True)
+        frame["future_benchmark_close"] = frame["close"].shift(-self.config.holding_days)
+        frame["benchmark_forward_return"] = frame["future_benchmark_close"] / frame["close"] - 1
+        benchmark = frame[["date", "benchmark_forward_return"]].dropna()
+        return benchmark.reset_index(drop=True)

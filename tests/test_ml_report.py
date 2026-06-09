@@ -9,6 +9,8 @@ def test_ml_probability_baseline_report_contains_metrics_and_feature_weights() -
             "split": ["test"],
             "row_count": [12],
             "positive_label_rate": [0.5],
+            "excess_label_rate": [0.45],
+            "model_target_label_rate": [0.45],
             "predicted_positive_rate": [0.4],
             "accuracy": [0.75],
             "precision": [0.8],
@@ -17,6 +19,13 @@ def test_ml_probability_baseline_report_contains_metrics_and_feature_weights() -
             "roc_auc": [0.77],
             "brier_score": [0.19],
             "average_probability": [0.52],
+            "selected_count": [4],
+            "selected_average_forward_return": [0.03],
+            "selected_average_excess_return": [0.02],
+            "top_k_count": [3],
+            "precision_at_top_k": [0.67],
+            "top_k_average_forward_return": [0.04],
+            "top_k_average_excess_return": [0.025],
         }
     )
     feature_importance = pd.DataFrame(
@@ -32,4 +41,6 @@ def test_ml_probability_baseline_report_contains_metrics_and_feature_weights() -
 
     assert "ML Probability Baseline Report" in report
     assert "ROC-AUC: 0.770" in report
+    assert "Precision@TopK: 67.00%" in report
+    assert "TopK average excess return: 2.50%" in report
     assert "| rsi_14 | positive | 0.2500 |" in report

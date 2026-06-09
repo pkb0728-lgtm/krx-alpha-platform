@@ -9,7 +9,10 @@ REQUIRED_ML_TRAINING_COLUMNS = {
     "label_end_date",
     "holding_days",
     "forward_return",
+    "benchmark_forward_return",
+    "excess_forward_return",
     "target_positive_forward_return",
+    "target_excess_forward_return",
     "label_created_at",
 }
 
@@ -37,6 +40,10 @@ def validate_ml_training_frame(frame: Any) -> None:
     label_values = set(frame["target_positive_forward_return"].dropna().astype(int).unique())
     if not label_values.issubset({0, 1}):
         raise ValueError("target_positive_forward_return must be binary.")
+
+    excess_label_values = set(frame["target_excess_forward_return"].dropna().astype(int).unique())
+    if not excess_label_values.issubset({0, 1}):
+        raise ValueError("target_excess_forward_return must be binary.")
 
     if (frame["label_end_date"] <= frame["as_of_date"]).any():
         raise ValueError("ML labels must end after each feature as_of_date.")

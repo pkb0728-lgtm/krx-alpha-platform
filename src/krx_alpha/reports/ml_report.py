@@ -22,6 +22,7 @@ class MLProbabilityBaselineReportGenerator:
                 "",
                 f"- Rows: {int(test_metric['row_count'])}",
                 f"- Positive label rate: {_format_percent(test_metric['positive_label_rate'])}",
+                f"- Excess-return label rate: {_format_percent(test_metric['excess_label_rate'])}",
                 (
                     "- Predicted positive rate: "
                     f"{_format_percent(test_metric['predicted_positive_rate'])}"
@@ -32,6 +33,15 @@ class MLProbabilityBaselineReportGenerator:
                 f"- F1-score: {_format_percent(test_metric['f1_score'])}",
                 f"- ROC-AUC: {float(test_metric['roc_auc']):.3f}",
                 f"- Brier score: {float(test_metric['brier_score']):.3f}",
+                f"- Precision@TopK: {_format_percent(test_metric['precision_at_top_k'])}",
+                (
+                    "- TopK average excess return: "
+                    f"{_format_percent(test_metric['top_k_average_excess_return'])}"
+                ),
+                (
+                    "- Selected average forward return: "
+                    f"{_format_percent(test_metric['selected_average_forward_return'])}"
+                ),
                 "",
                 "## Top Feature Weights",
                 "",
@@ -40,6 +50,7 @@ class MLProbabilityBaselineReportGenerator:
                 "## Method",
                 "",
                 "- Uses a time-based train/test split.",
+                "- Uses excess-forward-return labels when available.",
                 "- Learns simple directional feature weights from the training window only.",
                 "- Converts weighted feature z-scores into a positive-forward-return probability.",
                 "- Keeps future-return columns out of model inputs.",

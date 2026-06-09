@@ -19,7 +19,12 @@ def test_probability_baseline_trains_and_returns_out_of_sample_metrics() -> None
     assert set(result.predictions["split"]) == {"train", "test"}
     assert len(result.metrics) == 2
     assert result.metrics.loc[result.metrics["split"] == "test", "row_count"].iloc[0] == 12
+    assert "precision_at_top_k" in result.metrics.columns
+    assert "top_k_average_excess_return" in result.metrics.columns
+    assert result.metrics["precision_at_top_k"].between(0, 1).all()
     assert result.predictions["probability_positive_forward_return"].between(0, 1).all()
+    assert "target_excess_forward_return" in result.predictions.columns
+    assert "excess_forward_return" in result.predictions.columns
     assert result.feature_importance.iloc[0]["abs_weight"] >= 0
     assert result.artifact["model_name"] == ML_PROBABILITY_BASELINE_MODEL_NAME
 
@@ -40,8 +45,11 @@ def _training_frame(periods: int) -> pd.DataFrame:
             "as_of_date": dates,
             "ticker": ["005930"] * periods,
             "forward_return": [0.02 if value == 1 else -0.01 for value in target],
+            "benchmark_forward_return": [0.005] * periods,
+            "excess_forward_return": [0.015 if value == 1 else -0.015 for value in target],
             "label_end_date": dates + pd.Timedelta(days=5),
             "target_positive_forward_return": target,
+            "target_excess_forward_return": target,
         }
     )
     for column in MODEL_FEATURE_COLUMNS:

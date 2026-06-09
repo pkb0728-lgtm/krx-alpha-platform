@@ -8,7 +8,10 @@ REQUIRED_ML_PREDICTION_COLUMNS = {
     "probability_positive_forward_return",
     "predicted_label",
     "target_positive_forward_return",
+    "target_excess_forward_return",
     "forward_return",
+    "benchmark_forward_return",
+    "excess_forward_return",
     "label_end_date",
     "top_feature_reason",
     "model_name",
@@ -19,6 +22,8 @@ REQUIRED_ML_METRIC_COLUMNS = {
     "split",
     "row_count",
     "positive_label_rate",
+    "excess_label_rate",
+    "model_target_label_rate",
     "predicted_positive_rate",
     "accuracy",
     "precision",
@@ -27,6 +32,13 @@ REQUIRED_ML_METRIC_COLUMNS = {
     "roc_auc",
     "brier_score",
     "average_probability",
+    "selected_count",
+    "selected_average_forward_return",
+    "selected_average_excess_return",
+    "top_k_count",
+    "precision_at_top_k",
+    "top_k_average_forward_return",
+    "top_k_average_excess_return",
 }
 
 REQUIRED_ML_FEATURE_IMPORTANCE_COLUMNS = {
@@ -55,6 +67,9 @@ def validate_ml_prediction_frame(frame: Any) -> None:
     if not set(frame["predicted_label"].astype(int).unique()).issubset({0, 1}):
         raise ValueError("predicted_label must be binary.")
 
+    if not set(frame["target_excess_forward_return"].astype(int).unique()).issubset({0, 1}):
+        raise ValueError("target_excess_forward_return must be binary.")
+
 
 def validate_ml_metric_frame(frame: Any) -> None:
     missing_columns = REQUIRED_ML_METRIC_COLUMNS - set(frame.columns)
@@ -66,6 +81,8 @@ def validate_ml_metric_frame(frame: Any) -> None:
 
     bounded_columns = [
         "positive_label_rate",
+        "excess_label_rate",
+        "model_target_label_rate",
         "predicted_positive_rate",
         "accuracy",
         "precision",
@@ -74,6 +91,7 @@ def validate_ml_metric_frame(frame: Any) -> None:
         "roc_auc",
         "brier_score",
         "average_probability",
+        "precision_at_top_k",
     ]
     bounded_values = frame[bounded_columns].dropna()
     if ((bounded_values < 0) | (bounded_values > 1)).any().any():

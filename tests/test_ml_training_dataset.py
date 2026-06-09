@@ -20,9 +20,32 @@ def test_ml_training_dataset_builder_creates_forward_return_labels() -> None:
     assert training_frame.loc[0, "ticker"] == "005930"
     assert training_frame.loc[0, "label_end_date"] == pd.Timestamp("2024-01-03").date()
     assert training_frame.loc[0, "forward_return"] == pytest.approx(0.02)
+    assert training_frame.loc[0, "benchmark_forward_return"] == pytest.approx(0.0)
+    assert training_frame.loc[0, "excess_forward_return"] == pytest.approx(0.02)
     assert training_frame.loc[0, "target_positive_forward_return"] == 1
+    assert training_frame.loc[0, "target_excess_forward_return"] == 1
     assert training_frame["date"].max() == pd.Timestamp("2024-01-08").date()
     assert "future_close" in training_frame.columns
+
+
+def test_ml_training_dataset_builder_creates_excess_return_labels() -> None:
+    feature_frame = _feature_frame(periods=10)
+    price_frame = _processed_price_frame(periods=10)
+    benchmark_frame = _benchmark_price_frame(periods=10)
+
+    training_frame = MLTrainingDatasetBuilder(
+        MLTrainingDatasetConfig(
+            holding_days=2,
+            minimum_forward_return=0.0,
+            minimum_excess_return=0.005,
+        )
+    ).build(feature_frame, price_frame, benchmark_frame)
+
+    assert training_frame.loc[0, "forward_return"] == pytest.approx(0.02)
+    assert training_frame.loc[0, "benchmark_forward_return"] == pytest.approx(0.01)
+    assert training_frame.loc[0, "excess_forward_return"] == pytest.approx(0.01)
+    assert training_frame.loc[0, "target_positive_forward_return"] == 1
+    assert training_frame.loc[0, "target_excess_forward_return"] == 1
 
 
 def test_ml_training_dataset_builder_can_drop_missing_feature_rows() -> None:
@@ -73,5 +96,16 @@ def _processed_price_frame(periods: int) -> pd.DataFrame:
             "date": dates,
             "ticker": ["005930"] * periods,
             "close": [100.0 + index for index in range(periods)],
+        }
+    )
+
+
+def _benchmark_price_frame(periods: int) -> pd.DataFrame:
+    dates = pd.date_range("2024-01-01", periods=periods, freq="D")
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "ticker": ["KOSPI"] * periods,
+            "close": [200.0 + index for index in range(periods)],
         }
     )

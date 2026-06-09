@@ -761,7 +761,7 @@ def main() -> None:
     st.divider()
 
     st.subheader("ML 확률 베이스라인")
-    st.caption("미래 수익률이 양수일 확률을 단순 모델로 추정한 실험 결과입니다.")
+    st.caption("미래 초과수익 가능성을 단순 확률 모델로 추정한 실험 결과입니다.")
     ml_metrics_path = _find_matching_period_file(
         PROJECT_ROOT / "data" / "signals" / "ml_metrics",
         active_period,
@@ -784,6 +784,23 @@ def main() -> None:
             ml_cols[3].metric("F1-score", f"{float(ml_metric['f1_score']):.3f}")
             ml_cols[4].metric("정밀도", _format_percent(ml_metric["precision"]))
             ml_cols[5].metric("재현율", _format_percent(ml_metric["recall"]))
+            investment_cols = st.columns(4)
+            investment_cols[0].metric(
+                "초과수익 라벨 비율",
+                _format_percent(ml_metric.get("excess_label_rate", 0.0)),
+            )
+            investment_cols[1].metric(
+                "TopK 정밀도",
+                _format_percent(ml_metric.get("precision_at_top_k", 0.0)),
+            )
+            investment_cols[2].metric(
+                "TopK 평균 초과수익",
+                _format_percent(ml_metric.get("top_k_average_excess_return", 0.0)),
+            )
+            investment_cols[3].metric(
+                "선택 후보 평균수익",
+                _format_percent(ml_metric.get("selected_average_forward_return", 0.0)),
+            )
 
             st.caption(f"최근 ML 결과 파일: {ml_metrics_path.name}")
             _warn_if_period_mismatch("ML 확률 베이스라인", ml_metrics_path, active_period)
@@ -1062,7 +1079,19 @@ KOREAN_COLUMN_LABELS = {
     "probability_positive_forward_return": "상승 확률",
     "predicted_label": "예측 라벨",
     "target_positive_forward_return": "실제 라벨",
+    "target_excess_forward_return": "초과수익 라벨",
     "forward_return": "미래 수익률",
+    "benchmark_forward_return": "벤치마크 수익률",
+    "excess_forward_return": "초과수익률",
+    "excess_label_rate": "초과수익 라벨 비율",
+    "model_target_label_rate": "모델 목표 라벨 비율",
+    "selected_count": "선택 후보 수",
+    "selected_average_forward_return": "선택 후보 평균수익",
+    "selected_average_excess_return": "선택 후보 평균 초과수익",
+    "top_k_count": "TopK 수",
+    "precision_at_top_k": "TopK 정밀도",
+    "top_k_average_forward_return": "TopK 평균수익",
+    "top_k_average_excess_return": "TopK 평균 초과수익",
     "label_end_date": "라벨 종료일",
     "top_feature_reason": "주요 근거",
     "news_score": "뉴스 점수",
@@ -1513,7 +1542,9 @@ def _ml_prediction_display_columns(frame: Any) -> list[str]:
         "probability_positive_forward_return",
         "predicted_label",
         "target_positive_forward_return",
+        "target_excess_forward_return",
         "forward_return",
+        "excess_forward_return",
         "label_end_date",
         "top_feature_reason",
     ]

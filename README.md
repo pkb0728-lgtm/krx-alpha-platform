@@ -137,7 +137,7 @@ Codex 없이 혼자 실행하고 점검하려면 [최종 인수인계 가이드]
 - 자동 스크리너
 - 백테스트 및 Walk-forward 검증
 - 페이퍼트레이딩
-- ML 학습 데이터셋 및 확률형 baseline 모델
+- 초과수익 라벨 기반 ML 학습 데이터셋 및 확률형 baseline 모델
 - Drift Monitoring
 - Experiment Tracking
 - Telegram 알림

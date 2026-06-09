@@ -689,7 +689,10 @@ split
 probability_positive_forward_return
 predicted_label
 target_positive_forward_return
+target_excess_forward_return
 forward_return
+benchmark_forward_return
+excess_forward_return
 label_end_date
 top_feature_reason
 model_name
@@ -702,6 +705,8 @@ Important metric columns:
 split
 row_count
 positive_label_rate
+excess_label_rate
+model_target_label_rate
 predicted_positive_rate
 accuracy
 precision
@@ -710,4 +715,11 @@ f1_score
 roc_auc
 brier_score
 average_probability
+selected_count
+selected_average_forward_return
+selected_average_excess_return
+top_k_count
+precision_at_top_k
+top_k_average_forward_return
+top_k_average_excess_return
 ```
