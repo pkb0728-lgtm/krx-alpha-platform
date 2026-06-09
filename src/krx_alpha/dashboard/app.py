@@ -8,14 +8,17 @@ import streamlit as st
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     beginner_decision_brief,
+    beginner_decision_journal_brief,
     filter_screening_result,
     find_latest_api_health,
+    find_latest_decision_journal_evaluation,
     find_latest_drift_result,
     find_latest_operations_health,
     find_latest_universe_summary,
     load_api_health,
     load_backtest_metrics,
     load_backtest_trades,
+    load_decision_journal_evaluation,
     load_drift_result,
     load_kis_paper_candidates,
     load_macro_features,
@@ -34,6 +37,7 @@ from krx_alpha.dashboard.data_loader import (
     load_walk_forward_folds,
     load_walk_forward_summary,
     screening_review_queue,
+    summarize_decision_journal_evaluation,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -142,6 +146,75 @@ def main() -> None:
     brief_cols[1].metric("스크리너 통과", int(brief["screening_passed_count"]))
     brief_cols[2].metric("KIS 검토 후보", int(brief["review_candidate_count"]))
     brief_cols[3].metric("리스크 차단", int(brief["blocked_count"]))
+
+    st.subheader("판단 성과 추적")
+    st.caption(
+        "매일 저장된 판단을 며칠 뒤 실제 종가와 비교합니다. "
+        "이 영역은 예측이 얼마나 맞았는지 기록으로 확인하는 곳입니다."
+    )
+    journal_evaluation_path = find_latest_decision_journal_evaluation(PROJECT_ROOT)
+    if journal_evaluation_path is None:
+        st.info(
+            "아직 판단 평가 결과가 없습니다. 일일 작업을 실행한 뒤 며칠 지나서 "
+            "`python main.py evaluate-decision-journal --holding-days 5`를 실행하면 "
+            "이곳에 실제 결과 비교가 표시됩니다."
+        )
+    else:
+        journal_evaluation = load_decision_journal_evaluation(journal_evaluation_path)
+        journal_brief = beginner_decision_journal_brief(journal_evaluation)
+        st.info(
+            f"**{journal_brief['headline']}**\n\n"
+            f"{journal_brief['detail']}\n\n"
+            f"다음 확인: {journal_brief['next_step']}"
+        )
+        journal_cols = st.columns(5)
+        journal_cols[0].metric("전체 기록", len(journal_evaluation))
+        journal_cols[1].metric("평가 완료", int(journal_brief["evaluated_count"]))
+        journal_cols[2].metric("평가 대기", int(journal_brief["pending_count"]))
+        journal_cols[3].metric(
+            "평균 실제 수익률",
+            _format_percent(journal_brief["average_forward_return"]),
+        )
+        journal_cols[4].metric(
+            "유리한 결과 비율",
+            _format_percent(journal_brief["favorable_rate"]),
+        )
+        st.caption(f"최근 판단 평가 파일: {journal_evaluation_path.name}")
+
+        journal_summary = summarize_decision_journal_evaluation(journal_evaluation)
+        if not journal_summary.empty:
+            chart_frame = journal_summary.copy()
+            chart_frame["유리한 결과 비율(%)"] = chart_frame["favorable_rate"] * 100
+            fig = px.bar(
+                chart_frame,
+                x="latest_action_ko",
+                y="유리한 결과 비율(%)",
+                text="evaluated_count",
+                color="latest_action_ko",
+            )
+            fig.update_layout(
+                showlegend=False,
+                margin={"l": 12, "r": 12, "t": 12, "b": 12},
+                xaxis_title=None,
+                yaxis_title="유리한 결과 비율(%)",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(
+                _koreanize_columns(
+                    journal_summary[_decision_journal_summary_display_columns(journal_summary)]
+                ),
+                hide_index=True,
+                use_container_width=True,
+            )
+
+        st.caption("최근 판단별 실제 결과")
+        st.dataframe(
+            _koreanize_columns(
+                journal_evaluation[_decision_journal_evaluation_display_columns(journal_evaluation)]
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
 
     st.divider()
 
@@ -1060,6 +1133,23 @@ KOREAN_COLUMN_LABELS = {
     "gross_exposure_pct": "투자 노출(%)",
     "cash_pct": "현금 비중(%)",
     "generated_at": "생성 시각",
+    "decision_date": "판단일",
+    "holding_days": "평가 보유일",
+    "evaluation_date": "평가일",
+    "entry_close": "기준 종가",
+    "evaluation_close": "평가 종가",
+    "outcome_status": "평가 상태",
+    "outcome_status_ko": "평가 상태",
+    "outcome_ko": "평가 결과",
+    "outcome_summary_ko": "쉬운 해석",
+    "favorable_outcome": "유리한 결과",
+    "favorable_outcome_ko": "유리한 결과",
+    "decision_count": "판단 수",
+    "evaluated_count": "평가 완료",
+    "pending_count": "평가 대기",
+    "average_forward_return": "평균 실제 수익률",
+    "positive_return_rate": "상승 비율",
+    "favorable_rate": "유리한 결과 비율",
     "fold": "구간",
     "train_start": "학습 시작",
     "train_end": "학습 종료",
@@ -1272,6 +1362,40 @@ def _kis_candidate_display_columns(frame: Any) -> list[str]:
         "risk_flags_ko",
         "next_check_ko",
         "orders_sent",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _decision_journal_summary_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "latest_action_ko",
+        "decision_count",
+        "evaluated_count",
+        "pending_count",
+        "average_forward_return",
+        "positive_return_rate",
+        "favorable_rate",
+    ]
+    return [column for column in preferred_columns if column in frame.columns]
+
+
+def _decision_journal_evaluation_display_columns(frame: Any) -> list[str]:
+    preferred_columns = [
+        "decision_date",
+        "ticker",
+        "stock_name",
+        "latest_action_ko",
+        "latest_confidence_score",
+        "holding_days",
+        "entry_date",
+        "entry_close",
+        "evaluation_date",
+        "evaluation_close",
+        "forward_return",
+        "outcome_status_ko",
+        "outcome_summary_ko",
+        "favorable_outcome_ko",
+        "latest_market_regime_ko",
     ]
     return [column for column in preferred_columns if column in frame.columns]
 

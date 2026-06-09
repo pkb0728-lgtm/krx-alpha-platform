@@ -445,6 +445,9 @@ python main.py evaluate-decision-journal --holding-days 20
 Evaluation outputs are written to `data/signals/decision_journal_evaluation/`
 and `reports/decision_journal/`. Rows without enough future price data are
 marked as `pending`, so it is normal for today's decisions to wait until later.
+The Streamlit dashboard reads the latest evaluation artifact and shows it in
+the `판단 성과 추적` section with beginner-friendly summaries and per-action
+result rates.
 
 Windows Task Scheduler can run the same command after market close. Use the
 full Python path from your virtual environment:

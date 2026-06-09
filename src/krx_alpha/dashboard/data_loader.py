@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -94,6 +94,10 @@ STATUS_KO = {
     "skipped": "건너뜀",
     "pending": "대기",
     "blocked": "차단",
+    "evaluated": "평가 완료",
+    "no_price_data": "가격 데이터 없음",
+    "invalid_decision_date": "판단일 오류",
+    "no_entry_price": "진입 기준 가격 없음",
 }
 
 SIDE_KO = {
@@ -279,6 +283,15 @@ def find_latest_kis_paper_candidates(project_root: Path) -> Path | None:
         return None
 
     files = sorted(candidate_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
+    return files[-1] if files else None
+
+
+def find_latest_decision_journal_evaluation(project_root: Path) -> Path | None:
+    evaluation_dir = project_root / "data" / "signals" / "decision_journal_evaluation"
+    if not evaluation_dir.exists():
+        return None
+
+    files = sorted(evaluation_dir.glob("*.parquet"), key=lambda path: path.stat().st_mtime)
     return files[-1] if files else None
 
 
@@ -521,6 +534,129 @@ def load_kis_paper_candidates(path: Path) -> Any:
     return _with_readable_columns(result)
 
 
+def load_decision_journal_evaluation(path: Path) -> Any:
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return _with_readable_columns(frame)
+
+    result = frame.copy()
+    result["_decision_date"] = pd.to_datetime(result.get("decision_date"), errors="coerce")
+    result["_status_order"] = (
+        result.get("outcome_status", pd.Series(index=result.index, dtype=object))
+        .map({"evaluated": 0, "pending": 1})
+        .fillna(2)
+    )
+    result = (
+        result.sort_values(
+            ["_status_order", "_decision_date", "ticker"],
+            ascending=[True, False, True],
+        )
+        .drop(columns=["_status_order", "_decision_date"])
+        .reset_index(drop=True)
+    )
+    return _with_readable_columns(result)
+
+
+def summarize_decision_journal_evaluation(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return pd.DataFrame(
+            columns=[
+                "latest_action",
+                "decision_count",
+                "evaluated_count",
+                "pending_count",
+                "average_forward_return",
+                "positive_return_rate",
+                "favorable_rate",
+            ]
+        )
+
+    rows: list[dict[str, object]] = []
+    for action, group in frame.groupby("latest_action", dropna=False):
+        evaluated = group[group["outcome_status"].astype(str) == "evaluated"]
+        rows.append(
+            {
+                "latest_action": str(action),
+                "decision_count": len(group),
+                "evaluated_count": len(evaluated),
+                "pending_count": int((group["outcome_status"].astype(str) == "pending").sum()),
+                "average_forward_return": _mean_numeric(evaluated, "forward_return"),
+                "positive_return_rate": _positive_return_rate(evaluated),
+                "favorable_rate": _favorable_rate(evaluated),
+            }
+        )
+
+    summary = pd.DataFrame(rows).sort_values(
+        ["evaluated_count", "decision_count"],
+        ascending=[False, False],
+    )
+    return _with_readable_columns(summary.reset_index(drop=True))
+
+
+def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int | float]:
+    total_count = len(frame)
+    if total_count == 0:
+        return {
+            "headline": "아직 비교할 판단 기록이 없습니다.",
+            "detail": (
+                "일일 작업을 실행하면 판단 기록이 쌓이고, "
+                "며칠 뒤 평가 명령으로 실제 결과를 비교할 수 있습니다."
+            ),
+            "next_step": "먼저 run-daily-job을 실행한 뒤 evaluate-decision-journal을 실행하세요.",
+            "evaluated_count": 0,
+            "pending_count": 0,
+            "average_forward_return": 0.0,
+            "favorable_rate": 0.0,
+        }
+
+    evaluated = frame[frame["outcome_status"].astype(str) == "evaluated"]
+    pending_count = int((frame["outcome_status"].astype(str) == "pending").sum())
+    evaluated_count = len(evaluated)
+    average_return = _mean_numeric(evaluated, "forward_return")
+    favorable_rate = _favorable_rate(evaluated)
+
+    if evaluated_count == 0:
+        headline = "아직 평가가 끝난 판단은 없습니다."
+        detail = (
+            f"총 {total_count}개 판단이 저장되어 있고 "
+            f"{pending_count}개는 미래 가격 데이터가 더 필요합니다."
+        )
+        next_step = "며칠 뒤 가격 데이터를 다시 수집한 다음 evaluate-decision-journal을 실행하세요."
+    elif favorable_rate >= 0.6:
+        headline = "최근 저장된 판단은 대체로 실제 결과와 잘 맞았습니다."
+        detail = (
+            f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
+            f"{favorable_rate * 100:.2f}%이고, "
+            f"평균 {average_return * 100:.2f}% 수익률을 기록했습니다."
+        )
+        next_step = "좋았던 판단의 공통 근거를 확인하고 같은 조건이 반복되는지 추적하세요."
+    elif favorable_rate >= 0.4:
+        headline = "최근 판단 결과는 보통 수준이라 더 많은 기록이 필요합니다."
+        detail = (
+            f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
+            f"{favorable_rate * 100:.2f}%입니다. "
+            "표본이 적으면 하루 결과에 크게 흔들릴 수 있습니다."
+        )
+        next_step = "최소 수십 회 이상 기록을 쌓은 뒤 판단별 성과를 비교하세요."
+    else:
+        headline = "최근 판단 결과가 약해 기준 점검이 필요합니다."
+        detail = (
+            f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
+            f"{favorable_rate * 100:.2f}%입니다."
+        )
+        next_step = "매수 검토 기준, 리스크 차단 기준, 시장 국면 필터를 먼저 재점검하세요."
+
+    return {
+        "headline": headline,
+        "detail": detail,
+        "next_step": next_step,
+        "evaluated_count": evaluated_count,
+        "pending_count": pending_count,
+        "average_forward_return": average_return,
+        "favorable_rate": favorable_rate,
+    }
+
+
 def filter_screening_result(
     frame: Any,
     priorities: list[str] | None = None,
@@ -742,6 +878,14 @@ def _with_readable_columns(frame: pd.DataFrame) -> pd.DataFrame:
         result["stock_name"] = result["ticker"].map(_stock_name)
     if "status" in result.columns and "status_ko" not in result.columns:
         result["status_ko"] = result["status"].map(_map_status)
+    if "outcome_status" in result.columns and "outcome_status_ko" not in result.columns:
+        result["outcome_status_ko"] = result["outcome_status"].map(_map_status)
+    if "favorable_outcome" in result.columns and "favorable_outcome_ko" not in result.columns:
+        result["favorable_outcome_ko"] = result["favorable_outcome"].map(_map_favorable)
+    if "outcome_summary_ko" not in result.columns and {"latest_action", "forward_return"}.issubset(
+        result.columns
+    ):
+        result["outcome_summary_ko"] = result.apply(_decision_outcome_summary, axis=1)
     if "side" in result.columns and "side_ko" not in result.columns:
         result["side_ko"] = result["side"].map(_map_side)
     if "split" in result.columns and "split_ko" not in result.columns:
@@ -815,6 +959,36 @@ def _is_truthy(value: object) -> bool:
     return text in {"true", "1", "yes", "y"}
 
 
+def _mean_numeric(frame: pd.DataFrame, column: str) -> float:
+    if frame.empty or column not in frame.columns:
+        return 0.0
+    values = pd.to_numeric(frame[column], errors="coerce").dropna()
+    return float(values.mean()) if not values.empty else 0.0
+
+
+def _positive_return_rate(frame: pd.DataFrame) -> float:
+    if frame.empty or "forward_return" not in frame.columns:
+        return 0.0
+    values = pd.to_numeric(frame["forward_return"], errors="coerce").dropna()
+    return float((values > 0).mean()) if not values.empty else 0.0
+
+
+def _favorable_rate(frame: pd.DataFrame) -> float:
+    if frame.empty or "favorable_outcome" not in frame.columns:
+        return 0.0
+    values = frame["favorable_outcome"].map(_is_truthy)
+    return float(values.mean()) if len(values) else 0.0
+
+
+def _safe_float(value: object) -> float:
+    if value is None or pd.isna(value):
+        return 0.0
+    try:
+        return float(cast(Any, value))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _map_final_action(value: object) -> str:
     text = str(value)
     return FINAL_ACTION_KO.get(text, text)
@@ -843,6 +1017,10 @@ def _map_regime(value: object) -> str:
 def _map_status(value: object) -> str:
     text = str(value)
     return STATUS_KO.get(text, text)
+
+
+def _map_favorable(value: object) -> str:
+    return "유리한 결과" if _is_truthy(value) else "불리/미확정"
 
 
 def _map_side(value: object) -> str:
@@ -926,6 +1104,22 @@ def _next_check(row: pd.Series) -> str:
     if action == "watch":
         return "신뢰도와 거래대금이 추가로 개선되는지 지켜보세요."
     return "무리하게 매수하지 말고 다음 분석 결과를 기다리세요."
+
+
+def _decision_outcome_summary(row: pd.Series) -> str:
+    status = str(row.get("outcome_status", ""))
+    if status != "evaluated":
+        return _map_status(status)
+
+    action = str(row.get("latest_action", ""))
+    forward_return = _safe_float(row.get("forward_return"))
+    if action == "buy_candidate":
+        return "매수 검토 후 상승" if forward_return > 0 else "매수 검토 후 하락"
+    if action in {"blocked", "avoid"}:
+        return "회피 후 하락" if forward_return <= 0 else "회피 후 상승"
+    if action in {"watch", "hold"}:
+        return "관망 후 큰 변동 없음" if abs(forward_return) <= 0.03 else "관망 후 큰 변동"
+    return "평가 완료"
 
 
 def _split_flags(value: object) -> list[str]:

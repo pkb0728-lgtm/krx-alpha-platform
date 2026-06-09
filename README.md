@@ -55,6 +55,9 @@ python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-pape
 python main.py evaluate-decision-journal --holding-days 5
 ```
 
+평가가 생성되면 대시보드의 `판단 성과 추적` 섹션에서 전체 기록,
+평가 완료/대기 건수, 평균 실제 수익률, 유리한 결과 비율을 확인할 수 있습니다.
+
 텔레그램 전송 없이 미리보기만 하려면:
 
 ```powershell

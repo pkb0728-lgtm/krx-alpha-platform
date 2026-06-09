@@ -14,9 +14,11 @@ from krx_alpha.dashboard.app import (
 from krx_alpha.dashboard.data_loader import (
     action_counts,
     beginner_decision_brief,
+    beginner_decision_journal_brief,
     filter_screening_result,
     find_latest_api_health,
     find_latest_backtest_metrics,
+    find_latest_decision_journal_evaluation,
     find_latest_drift_result,
     find_latest_kis_paper_candidates,
     find_latest_macro_features,
@@ -31,6 +33,7 @@ from krx_alpha.dashboard.data_loader import (
     load_api_health,
     load_backtest_metrics,
     load_backtest_trades,
+    load_decision_journal_evaluation,
     load_drift_result,
     load_kis_paper_candidates,
     load_macro_features,
@@ -49,6 +52,7 @@ from krx_alpha.dashboard.data_loader import (
     load_walk_forward_folds,
     load_walk_forward_summary,
     screening_review_queue,
+    summarize_decision_journal_evaluation,
 )
 
 
@@ -171,6 +175,47 @@ def test_dashboard_beginner_decision_brief_explains_watch_only_result() -> None:
     assert brief["screening_passed_count"] == 0
     assert brief["review_candidate_count"] == 0
     assert brief["blocked_count"] == 1
+
+
+def test_dashboard_loads_decision_journal_evaluation_summary(tmp_path: Path) -> None:
+    evaluation_dir = tmp_path / "data" / "signals" / "decision_journal_evaluation"
+    evaluation_dir.mkdir(parents=True)
+    evaluation_path = evaluation_dir / "decision_journal_h5.parquet"
+    pd.DataFrame(
+        {
+            "journal_id": ["a", "b", "c"],
+            "universe": ["demo", "demo", "demo"],
+            "ticker": ["005930", "005380", "000660"],
+            "decision_date": ["2024-01-05", "2024-01-06", "2024-01-07"],
+            "latest_action": ["buy_candidate", "watch", "blocked"],
+            "latest_confidence_score": [72.0, 61.0, 40.0],
+            "latest_market_regime": ["bull", "neutral", "bear"],
+            "holding_days": [5, 5, 5],
+            "entry_date": ["2024-01-05", "2024-01-06", "2024-01-07"],
+            "entry_close": [100.0, 100.0, 100.0],
+            "evaluation_date": ["2024-01-12", "2024-01-13", ""],
+            "evaluation_close": [105.0, 101.0, 0.0],
+            "forward_return": [0.05, 0.01, 0.0],
+            "outcome_status": ["evaluated", "evaluated", "pending"],
+            "outcome_ko": ["상승 적중", "관망 적절", "평가 대기"],
+            "favorable_outcome": [True, True, False],
+        }
+    ).to_parquet(evaluation_path, index=False)
+
+    latest_path = find_latest_decision_journal_evaluation(tmp_path)
+    assert latest_path == evaluation_path
+
+    evaluation = load_decision_journal_evaluation(evaluation_path)
+    summary = summarize_decision_journal_evaluation(evaluation)
+    brief = beginner_decision_journal_brief(evaluation)
+
+    assert evaluation.loc[0, "ticker"] == "005380"
+    assert evaluation.loc[0, "outcome_status_ko"] == "평가 완료"
+    assert evaluation.loc[0, "outcome_summary_ko"] == "관망 후 큰 변동 없음"
+    assert set(summary["latest_action_ko"]) == {"매수 검토", "관망", "리스크 차단"}
+    assert brief["evaluated_count"] == 2
+    assert brief["pending_count"] == 1
+    assert "잘 맞았습니다" in str(brief["headline"])
 
 
 def test_dashboard_load_markdown(tmp_path: Path) -> None:
