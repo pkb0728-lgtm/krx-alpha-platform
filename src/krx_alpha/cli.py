@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Annotated, Any, cast
 
@@ -178,6 +179,12 @@ from krx_alpha.reports.daily_report import DailyReportGenerator
 from krx_alpha.reports.ml_report import MLProbabilityBaselineReportGenerator
 from krx_alpha.reports.paper_trading_report import PaperTradingReportGenerator
 from krx_alpha.reports.regime_report import MarketRegimeReportGenerator
+from krx_alpha.reports.single_stock_analysis import (
+    SOURCE_KO,
+    AnalysisItem,
+    build_single_stock_analysis,
+    label_with_raw,
+)
 from krx_alpha.reports.universe_report import UniverseReportGenerator
 from krx_alpha.scheduler.daily_job import DailyJobConfig, DailyJobRunner
 from krx_alpha.scoring.price_scorer import PriceScorer
@@ -189,6 +196,7 @@ from krx_alpha.screening.auto_screener import (
 from krx_alpha.signals.signal_engine import SignalEngine
 from krx_alpha.telegram.notifier import TelegramNotifier, build_daily_telegram_message
 from krx_alpha.universe.static_universe import UniverseRegistry
+from krx_alpha.universe.stock_resolver import AmbiguousStockQuery, StockCandidate, StockResolver
 from krx_alpha.utils.logger import configure_logger
 
 app = typer.Typer(help="KRX Alpha Platform command line interface")
@@ -359,6 +367,81 @@ def _load_macro_feature_frame(
             f"Macro feature file does not exist. Run build-macro-features first: {macro_path}"
         )
     return read_parquet(macro_path)
+
+
+def _resolve_cli_date_range(
+    start: str | None,
+    end: str | None,
+    lookback_days: int,
+) -> tuple[str, str]:
+    if lookback_days <= 0:
+        raise typer.BadParameter("lookback_days must be positive.")
+
+    try:
+        resolved_end = date.fromisoformat(end) if end is not None else date.today()
+        resolved_start = (
+            date.fromisoformat(start)
+            if start is not None
+            else resolved_end - timedelta(days=lookback_days)
+        )
+    except ValueError as exc:
+        raise typer.BadParameter("Date must be in YYYY-MM-DD format.") from exc
+
+    if resolved_start > resolved_end:
+        raise typer.BadParameter("start date must be earlier than or equal to end date.")
+
+    return resolved_start.isoformat(), resolved_end.isoformat()
+
+
+def _select_single_stock_query(
+    query: str | None,
+    name: str | None,
+    ticker: str | None,
+) -> str:
+    provided_queries = [
+        value.strip() for value in (query, name, ticker) if value is not None and value.strip()
+    ]
+    if not provided_queries:
+        raise typer.BadParameter(
+            "분석할 종목명이나 종목코드가 필요합니다. 예: python main.py analyze-stock 삼성전자"
+        )
+    if len(provided_queries) > 1:
+        raise typer.BadParameter(
+            "종목은 한 번에 하나만 입력하세요. 일반 입력, --name, --ticker 중 하나만 사용합니다."
+        )
+    return provided_queries[0]
+
+
+def _print_stock_candidate_table(candidates: list[StockCandidate]) -> None:
+    table = Table(title="검색된 종목 후보")
+    table.add_column("종목코드")
+    table.add_column("종목명")
+    table.add_column("출처")
+    for candidate in candidates:
+        table.add_row(
+            candidate.ticker,
+            candidate.name,
+            label_with_raw(candidate.source, SOURCE_KO),
+        )
+    console.print(table)
+
+
+def _print_analysis_items(title: str, items: list[AnalysisItem]) -> None:
+    table = Table(title=title)
+    table.add_column("항목", style="bold")
+    table.add_column("값")
+    table.add_column("해석")
+    for item in items:
+        table.add_row(item.label, item.value, item.interpretation)
+    console.print(table)
+
+
+def _print_beginner_notes(notes: list[str]) -> None:
+    table = Table(title="초보자용 해석 메모")
+    table.add_column("확인할 내용")
+    for note in notes:
+        table.add_row(note)
+    console.print(table)
 
 
 @app.command()
@@ -2117,6 +2200,99 @@ def generate_signal(
     console.print(f"Risk blocked: {latest['risk_blocked']}")
     console.print(f"Suggested position: {latest['suggested_position_pct']:.2f}%")
     console.print(f"Output: {output_path}")
+
+
+@app.command("analyze-stock")
+def analyze_stock(
+    query: Annotated[
+        str | None,
+        typer.Argument(help="분석할 회사명, 영문명, 또는 종목코드입니다. 예: 삼성전자"),
+    ] = None,
+    name: Annotated[
+        str | None,
+        typer.Option("--name", "-n", help="분석할 회사명입니다. 예: 삼성전자"),
+    ] = None,
+    ticker: Annotated[
+        str | None,
+        typer.Option("--ticker", "-t", help="6자리 한국 주식 종목코드입니다. 예: 005930"),
+    ] = None,
+    start: Annotated[
+        str | None,
+        typer.Option(
+            "--start",
+            help="시작일입니다. YYYY-MM-DD 형식이며 없으면 lookback 기준입니다.",
+        ),
+    ] = None,
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="종료일입니다. YYYY-MM-DD 형식이며 없으면 오늘입니다."),
+    ] = None,
+    lookback_days: Annotated[
+        int,
+        typer.Option("--lookback-days", help="--start가 없을 때 과거 며칠을 볼지 정합니다."),
+    ] = 180,
+    live_names: Annotated[
+        bool,
+        typer.Option(
+            "--live-names/--offline-names",
+            help="내장 별칭에 없는 종목명도 무료 상장 목록으로 찾아봅니다.",
+        ),
+    ] = True,
+) -> None:
+    """회사명이나 종목코드로 단일 종목 분석을 실행합니다."""
+    configure_logger(settings.log_level)
+    selected_query = _select_single_stock_query(query, name, ticker)
+    resolver = StockResolver(use_live_sources=live_names)
+
+    try:
+        resolution = resolver.resolve(selected_query)
+    except AmbiguousStockQuery as exc:
+        console.print("[yellow]입력한 이름과 맞는 종목이 여러 개입니다.[/yellow]")
+        console.print("회사명을 더 정확히 입력하거나 --ticker로 종목코드를 직접 넣어주세요.")
+        _print_stock_candidate_table(exc.candidates)
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        suggestions = resolver.candidates(selected_query)
+        console.print(f"[red]종목을 찾지 못했습니다: {selected_query}[/red]")
+        if suggestions:
+            console.print("비슷한 후보:")
+            _print_stock_candidate_table(suggestions)
+        else:
+            console.print("6자리 종목코드로 다시 시도해보세요. 예: --ticker 005930")
+        raise typer.Exit(code=1) from exc
+
+    start_date, end_date = _resolve_cli_date_range(start, end, lookback_days)
+    request = PriceRequest.from_strings(
+        ticker=resolution.ticker,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    result = DailyPipeline(settings.project_root).run(request)
+
+    stock_label = f"{resolution.ticker} {resolution.name}".strip()
+    analysis = build_single_stock_analysis(
+        stock_label=stock_label,
+        query=selected_query,
+        matched_by=resolution.matched_by,
+        source=resolution.source,
+        start_date=start_date,
+        end_date=end_date,
+        score_frame=read_parquet(result.score_path),
+        feature_frame=read_parquet(result.feature_path),
+        signal_frame=read_parquet(result.signal_path),
+        data_quality_warning_count=result.data_quality_warning_count,
+        data_quality_fail_count=result.data_quality_fail_count,
+    )
+
+    console.print("[bold green]단일 종목 분석이 완료되었습니다.[/bold green]")
+    _print_analysis_items("1. 한눈에 보는 결론", analysis.summary)
+    _print_analysis_items("2. 점수 분해", analysis.score_breakdown)
+    _print_analysis_items("3. 가격/기술 지표", analysis.price_metrics)
+    _print_analysis_items("4. 판단 근거", analysis.evidence)
+    _print_beginner_notes(analysis.beginner_notes)
+    console.print(f"시그널 파일: {result.signal_path}")
+    console.print(f"리포트 파일: {result.report_path}")
+    console.print("모드: 분석 전용입니다. 실제 주문은 보내지 않았습니다.")
 
 
 @app.command("run-pipeline")

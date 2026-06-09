@@ -38,6 +38,17 @@ pytest: all tests passed
 python main.py run-pipeline --ticker 005930 --start 2024-01-01 --end 2024-01-31
 ```
 
+종목코드를 모를 때는 `analyze-stock`에 회사명을 넣어도 됩니다:
+
+```powershell
+python main.py analyze-stock 삼성전자 --lookback-days 180
+python main.py analyze-stock --name 현대차 --lookback-days 180
+python main.py analyze-stock --ticker 005930 --lookback-days 180
+```
+
+이 명령은 회사명을 6자리 종목코드로 바꾼 뒤 같은 단일 종목 파이프라인을
+실행합니다. 분석 전용 기능이며 실제 주문은 절대 보내지 않습니다.
+
 This creates:
 
 ```text
