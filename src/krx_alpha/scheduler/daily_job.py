@@ -588,12 +588,20 @@ class DailyJobRunner:
             end_date,
             errors,
         )
+        benchmark_price_frame = _build_universe_benchmark_price_frame(
+            self.project_root,
+            summary_frame,
+            start_date,
+            end_date,
+            errors,
+        )
         ml_metrics_path = self._refresh_ml_artifact(
             config,
             ticker,
             start_date,
             end_date,
             errors,
+            benchmark_price_frame,
         )
         return DailyJobDashboardArtifactResult(
             ticker,
@@ -925,6 +933,7 @@ class DailyJobRunner:
         start_date: str,
         end_date: str,
         errors: list[str],
+        benchmark_price_frame: Any | None = None,
     ) -> Path | None:
         try:
             request = PriceRequest.from_strings(
@@ -952,6 +961,7 @@ class DailyJobRunner:
             ).build(
                 feature_frame=read_parquet(feature_path),
                 processed_price_frame=read_parquet(price_path),
+                benchmark_price_frame=benchmark_price_frame,
             )
             dataset_path = ml_training_dataset_file_path(
                 self.project_root,
@@ -1147,6 +1157,68 @@ def _select_dashboard_artifact_ticker(
             return request.ticker
 
     return str(frame.iloc[0]["ticker"]).zfill(6)
+
+
+def _build_universe_benchmark_price_frame(
+    project_root: Path,
+    summary_frame: Any,
+    start_date: str,
+    end_date: str,
+    errors: list[str],
+) -> pd.DataFrame | None:
+    """Create a simple equal-weight universe benchmark from already processed prices."""
+
+    if summary_frame.empty or "ticker" not in summary_frame.columns:
+        return None
+
+    start_compact = start_date.replace("-", "")
+    end_compact = end_date.replace("-", "")
+    benchmark_parts: list[pd.DataFrame] = []
+
+    tickers = summary_frame["ticker"].dropna().astype(str).str.zfill(6).unique().tolist()
+    for ticker in tickers:
+        price_path = processed_price_file_path(project_root, ticker, start_compact, end_compact)
+        if not price_path.exists():
+            continue
+
+        try:
+            price_frame = read_parquet(price_path)
+        except Exception as exc:
+            errors.append(f"ml_benchmark_price_read_failed:{ticker}: {exc}")
+            continue
+
+        if price_frame.empty or not {"date", "close"}.issubset(price_frame.columns):
+            continue
+
+        frame = price_frame[["date", "close"]].copy()
+        frame["date"] = pd.to_datetime(frame["date"]).dt.date
+        frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
+        frame = frame.dropna(subset=["date", "close"]).sort_values("date")
+        if frame.empty:
+            continue
+
+        first_close = float(frame["close"].iloc[0])
+        if first_close <= 0:
+            continue
+
+        benchmark_parts.append(
+            frame.assign(normalized_close=frame["close"] / first_close)[
+                ["date", "normalized_close"]
+            ]
+        )
+
+    if len(benchmark_parts) < 2:
+        errors.append("ml_benchmark_skipped: fewer than 2 usable universe price series")
+        return None
+
+    benchmark = (
+        pd.concat(benchmark_parts, ignore_index=True)
+        .groupby("date", as_index=False)["normalized_close"]
+        .mean()
+    )
+    benchmark["ticker"] = "UNIVERSE"
+    benchmark["close"] = benchmark["normalized_close"] * 100.0
+    return benchmark[["date", "ticker", "close"]].sort_values("date").reset_index(drop=True)
 
 
 def _load_validation_inputs(project_root: Path, request: PriceRequest) -> tuple[Any, Any]:

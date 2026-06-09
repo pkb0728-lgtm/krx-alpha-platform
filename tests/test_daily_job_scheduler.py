@@ -8,6 +8,7 @@ import pytest
 from krx_alpha.database.storage import (
     drift_result_file_path,
     final_signal_file_path,
+    ml_training_dataset_file_path,
     price_feature_file_path,
     processed_price_file_path,
     universe_summary_csv_path,
@@ -212,6 +213,15 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.walk_forward_summary_path.exists()
     assert result.ml_metrics_path is not None
     assert result.ml_metrics_path.exists()
+    ml_dataset_path = ml_training_dataset_file_path(
+        tmp_path,
+        "005380",
+        "20240101",
+        "20240131",
+        5,
+    )
+    ml_dataset = pd.read_parquet(ml_dataset_path)
+    assert ml_dataset["benchmark_forward_return"].abs().sum() > 0
     assert result.dashboard_artifact_errors == ()
     assert result.screening_result_path is not None
     assert result.screening_result_path.exists()

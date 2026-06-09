@@ -1437,6 +1437,20 @@ def build_ml_dataset(
             help="Minimum forward return required for a positive label.",
         ),
     ] = 0.0,
+    minimum_excess_return: Annotated[
+        float,
+        typer.Option(
+            "--minimum-excess-return",
+            help="Minimum excess return required for an excess-return label.",
+        ),
+    ] = 0.0,
+    benchmark_price_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--benchmark-price-path",
+            help="Optional processed benchmark price parquet path for excess-return labels.",
+        ),
+    ] = None,
     dropna_features: Annotated[
         bool,
         typer.Option(
@@ -1465,16 +1479,25 @@ def build_ml_dataset(
         raise typer.BadParameter(f"Price feature file does not exist: {feature_path}")
     if not price_path.exists():
         raise typer.BadParameter(f"Processed price file does not exist: {price_path}")
+    benchmark_price_frame = None
+    if benchmark_price_path is not None:
+        if not benchmark_price_path.exists():
+            raise typer.BadParameter(
+                f"Benchmark processed price file does not exist: {benchmark_price_path}"
+            )
+        benchmark_price_frame = read_parquet(benchmark_price_path)
 
     training_frame = MLTrainingDatasetBuilder(
         MLTrainingDatasetConfig(
             holding_days=holding_days,
             minimum_forward_return=minimum_forward_return,
+            minimum_excess_return=minimum_excess_return,
             dropna_features=dropna_features,
         )
     ).build(
         feature_frame=read_parquet(feature_path),
         processed_price_frame=read_parquet(price_path),
+        benchmark_price_frame=benchmark_price_frame,
     )
     output_path = ml_training_dataset_file_path(
         settings.project_root,
@@ -1486,13 +1509,19 @@ def build_ml_dataset(
     write_parquet(training_frame, output_path)
 
     positive_rate = float(training_frame["target_positive_forward_return"].mean())
+    excess_rate = float(training_frame["target_excess_forward_return"].mean())
     console.print("[bold green]Built ML training dataset.[/bold green]")
     console.print(f"Ticker: {request.ticker}")
     console.print(f"Rows: {len(training_frame)}")
     console.print(f"Holding days: {holding_days}")
     console.print(f"Positive label rate: {positive_rate * 100:.2f}%")
+    console.print(f"Excess-return label rate: {excess_rate * 100:.2f}%")
     console.print(f"Feature input: {feature_path}")
     console.print(f"Price input: {price_path}")
+    console.print(
+        "Benchmark input: "
+        f"{benchmark_price_path if benchmark_price_path is not None else 'none, using 0% fallback'}"
+    )
     console.print(f"Output: {output_path}")
 
 

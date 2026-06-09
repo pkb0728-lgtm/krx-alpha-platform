@@ -22,6 +22,7 @@ def test_probability_baseline_trains_and_returns_out_of_sample_metrics() -> None
     assert "precision_at_top_k" in result.metrics.columns
     assert "top_k_average_excess_return" in result.metrics.columns
     assert result.metrics["precision_at_top_k"].between(0, 1).all()
+    assert result.predictions["probability_target_return"].between(0, 1).all()
     assert result.predictions["probability_positive_forward_return"].between(0, 1).all()
     assert "target_excess_forward_return" in result.predictions.columns
     assert "excess_forward_return" in result.predictions.columns

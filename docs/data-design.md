@@ -686,6 +686,7 @@ date
 as_of_date
 ticker
 split
+probability_target_return
 probability_positive_forward_return
 predicted_label
 target_positive_forward_return
@@ -698,6 +699,11 @@ top_feature_reason
 model_name
 model_version
 ```
+
+`probability_target_return` is the preferred probability column. It represents
+the configured model target, which is currently `target_excess_forward_return`
+when benchmark returns are available. `probability_positive_forward_return` is
+kept as a backward-compatible alias for older dashboard artifacts.
 
 Important metric columns:
 

@@ -26,14 +26,15 @@ target label columns as input features.
 - Preferentially trains on excess-forward-return labels
 - Learns simple directional feature weights from the training window
 - Imputes missing features with training medians
-- Converts weighted feature z-scores into a positive-return probability
+- Converts weighted feature z-scores into a target-return probability
 
 This scorecard is intentionally simple so reviewers can inspect every step
 before heavier models such as RandomForest, LightGBM, or XGBoost are added.
 
 ## Outputs
 
-- probability of positive forward return
+- probability of the configured target return as `probability_target_return`
+- backward-compatible positive-return probability alias
 - predicted binary label
 - train/test metrics
 - feature weights and top feature reason
@@ -61,7 +62,8 @@ before heavier models such as RandomForest, LightGBM, or XGBoost are added.
 - It does not tune hyperparameters
 - It does not yet use cross-sectional universe ranking
 - It does not yet run walk-forward ML validation
-- It uses a simple benchmark-return fallback unless a benchmark frame is provided
+- CLI dataset builds use a 0% benchmark fallback unless a benchmark frame is provided
+- Daily job ML artifacts use a simple equal-weight universe benchmark when possible
 - Feature weights are linear and simplified for explainability
 
 ## Prohibited Use

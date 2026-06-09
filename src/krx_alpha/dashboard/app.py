@@ -1076,7 +1076,8 @@ KOREAN_COLUMN_LABELS = {
     "f1_score": "F1-score",
     "precision": "정밀도",
     "recall": "재현율",
-    "probability_positive_forward_return": "상승 확률",
+    "probability_target_return": "모델 확률",
+    "probability_positive_forward_return": "상승 확률(호환)",
     "predicted_label": "예측 라벨",
     "target_positive_forward_return": "실제 라벨",
     "target_excess_forward_return": "초과수익 라벨",
@@ -1534,12 +1535,17 @@ def _select_ml_metric(frame: Any) -> Any:
 
 
 def _ml_prediction_display_columns(frame: Any) -> list[str]:
+    probability_column = (
+        "probability_target_return"
+        if "probability_target_return" in frame.columns
+        else "probability_positive_forward_return"
+    )
     preferred_columns = [
         "date",
         "ticker",
         "stock_name",
         "split_ko",
-        "probability_positive_forward_return",
+        probability_column,
         "predicted_label",
         "target_positive_forward_return",
         "target_excess_forward_return",

@@ -230,6 +230,12 @@ python main.py build-ml-dataset --ticker 005380 --start 2024-01-01 --end 2024-03
 python main.py train-ml-baseline --ticker 005380 --start 2024-01-01 --end 2024-03-31 --holding-days 5
 ```
 
+For manual experiments, pass `--benchmark-price-path` to calculate
+market-relative excess-return labels from an existing processed benchmark price
+file. Without it, the CLI uses a 0% benchmark fallback. The daily job builds a
+simple equal-weight universe benchmark from already processed universe prices
+when at least two usable price series are available.
+
 Output example:
 
 ```text

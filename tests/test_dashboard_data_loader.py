@@ -682,6 +682,7 @@ def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) 
             "date": ["2024-03-20", "2024-03-21"],
             "ticker": ["005380", "005380"],
             "split": ["test", "test"],
+            "probability_target_return": [0.62, 0.78],
             "probability_positive_forward_return": [0.62, 0.78],
             "predicted_label": [1, 1],
             "target_positive_forward_return": [0, 1],
@@ -700,6 +701,7 @@ def test_dashboard_data_loader_reads_latest_ml_baseline_outputs(tmp_path: Path) 
     assert metrics.loc[0, "split"] == "test"
     assert metrics.loc[0, "split_ko"] == "검증"
     assert metrics.loc[0, "roc_auc"] == 0.652
+    assert predictions.loc[0, "probability_target_return"] == 0.78
     assert predictions.loc[0, "probability_positive_forward_return"] == 0.78
     assert predictions.loc[0, "stock_name"] == "현대차"
     assert predictions.loc[0, "split_ko"] == "검증"

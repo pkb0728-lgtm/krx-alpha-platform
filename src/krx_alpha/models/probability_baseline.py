@@ -131,6 +131,7 @@ class MLProbabilityBaselineTrainer:
                 "as_of_date": frame["as_of_date"],
                 "ticker": frame["ticker"],
                 "split": split,
+                "probability_target_return": probabilities,
                 "probability_positive_forward_return": probabilities,
                 "predicted_label": predicted_labels,
                 "target_positive_forward_return": frame["target_positive_forward_return"].astype(
@@ -265,7 +266,7 @@ def _build_metrics(predictions: pd.DataFrame, top_k_fraction: float) -> pd.DataF
         excess_target = split_frame["target_excess_forward_return"].astype(int)
         target = excess_target
         predicted = split_frame["predicted_label"].astype(int)
-        probability = split_frame["probability_positive_forward_return"].astype(float)
+        probability = _target_probability(split_frame)
         selected_frame = split_frame[predicted == 1]
         top_k_frame = _top_k_frame(split_frame, probability, top_k_fraction)
         rows.append(
@@ -314,6 +315,12 @@ def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:
     if column not in frame.columns:
         return pd.Series([0.0] * len(frame), index=frame.index)
     return frame[column].astype(float)
+
+
+def _target_probability(frame: pd.DataFrame) -> pd.Series:
+    if "probability_target_return" in frame.columns:
+        return frame["probability_target_return"].astype(float)
+    return frame["probability_positive_forward_return"].astype(float)
 
 
 def _top_k_frame(

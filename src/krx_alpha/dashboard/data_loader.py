@@ -588,7 +588,8 @@ def load_ml_predictions(metrics_path: Path) -> Any:
         return pd.DataFrame()
 
     frame = pd.read_parquet(predictions_path)
-    if frame.empty or "probability_positive_forward_return" not in frame.columns:
+    probability_column = _ml_probability_column(frame)
+    if frame.empty or probability_column is None:
         return _with_readable_columns(frame)
 
     split_order = {"test": 0, "train": 1}
@@ -596,13 +597,21 @@ def load_ml_predictions(metrics_path: Path) -> Any:
     frame["_split_order"] = frame["split"].map(split_order).fillna(2)
     result = (
         frame.sort_values(
-            ["_split_order", "probability_positive_forward_return"],
+            ["_split_order", probability_column],
             ascending=[True, False],
         )
         .drop(columns=["_split_order"])
         .reset_index(drop=True)
     )
     return _with_readable_columns(result)
+
+
+def _ml_probability_column(frame: pd.DataFrame) -> str | None:
+    if "probability_target_return" in frame.columns:
+        return "probability_target_return"
+    if "probability_positive_forward_return" in frame.columns:
+        return "probability_positive_forward_return"
+    return None
 
 
 def load_news_sentiment(path: Path) -> Any:

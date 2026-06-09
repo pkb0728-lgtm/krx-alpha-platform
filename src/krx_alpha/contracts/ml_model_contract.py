@@ -5,6 +5,7 @@ REQUIRED_ML_PREDICTION_COLUMNS = {
     "as_of_date",
     "ticker",
     "split",
+    "probability_target_return",
     "probability_positive_forward_return",
     "predicted_label",
     "target_positive_forward_return",
@@ -60,7 +61,12 @@ def validate_ml_prediction_frame(frame: Any) -> None:
     if frame[["date", "as_of_date", "label_end_date"]].isna().any().any():
         raise ValueError("ML prediction frame contains null dates.")
 
-    probability = frame["probability_positive_forward_return"]
+    probability_column = (
+        "probability_target_return"
+        if "probability_target_return" in frame.columns
+        else "probability_positive_forward_return"
+    )
+    probability = frame[probability_column]
     if probability.dropna().between(0, 1).all() is False:
         raise ValueError("ML probabilities must be between 0 and 1.")
 
