@@ -16,6 +16,10 @@ from krx_alpha.broker.kis_candidates import (
     format_kis_paper_candidate_report,
 )
 from krx_alpha.broker.kis_paper import KISPaperClient, KISPaperCredentials
+from krx_alpha.broker.manual_order_plan import (
+    build_manual_order_plan,
+    format_manual_order_plan_report,
+)
 from krx_alpha.collectors.dart_collector import (
     DartCompanyRequest,
     DartDisclosureSearchRequest,
@@ -68,6 +72,9 @@ from krx_alpha.database.storage import (
     kis_paper_candidate_file_path,
     kis_paper_candidate_report_file_path,
     macro_feature_file_path,
+    manual_order_plan_csv_path,
+    manual_order_plan_file_path,
+    manual_order_plan_report_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
     ml_metrics_file_path,
@@ -741,9 +748,26 @@ def build_kis_paper_candidates(
     write_parquet(result_frame, result_path)
     write_csv(result_frame, csv_path)
     write_text(format_kis_paper_candidate_report(result_frame), report_path)
+    manual_plan_frame = build_manual_order_plan(result_frame)
+    manual_plan_name = _safe_report_name(f"manual_order_plan_{report_name}")
+    manual_plan_path = manual_order_plan_file_path(settings.project_root, manual_plan_name)
+    manual_plan_csv = manual_order_plan_csv_path(settings.project_root, manual_plan_name)
+    manual_plan_report = manual_order_plan_report_file_path(settings.project_root, manual_plan_name)
+    write_parquet(manual_plan_frame, manual_plan_path)
+    write_csv(manual_plan_frame, manual_plan_csv)
+    write_text(format_manual_order_plan_report(manual_plan_frame), manual_plan_report)
 
     review_count = int(result_frame["candidate_action"].isin(["review_buy", "review_add"]).sum())
     manual_count = int((result_frame["candidate_action"] == "manual_price_required").sum())
+    manual_plan_review_count = (
+        int(
+            manual_plan_frame["manual_plan_action"]
+            .isin(["manual_buy_review", "manual_add_review"])
+            .sum()
+        )
+        if not manual_plan_frame.empty
+        else 0
+    )
     console.print("[bold green]KIS paper review candidates generated.[/bold green]")
     console.print(f"Screening: {resolved_screening_path}")
     console.print(f"Account: {balance.account}")
@@ -754,6 +778,10 @@ def build_kis_paper_candidates(
     console.print(f"Result: {result_path}")
     console.print(f"CSV: {csv_path}")
     console.print(f"Report: {report_path}")
+    console.print(f"Manual order plan: {manual_plan_path}")
+    console.print(f"Manual order plan CSV: {manual_plan_csv}")
+    console.print(f"Manual order plan report: {manual_plan_report}")
+    console.print(f"Manual buy/add review rows: {manual_plan_review_count}")
     console.print("Mode: paper trading review only. No order was sent.")
     if not result_frame.empty:
         display_columns = [
@@ -766,6 +794,65 @@ def build_kis_paper_candidates(
             "reason",
         ]
         console.print(result_frame[display_columns].to_string(index=False))
+
+
+@app.command("build-manual-order-plan")
+def build_manual_order_plan_command(
+    kis_candidate_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--kis-candidate-path",
+            help="KIS candidate parquet path. Uses the latest result when omitted.",
+        ),
+    ] = None,
+    output_name: Annotated[
+        str | None,
+        typer.Option("--output-name", help="Output artifact name without extension."),
+    ] = None,
+) -> None:
+    """Build a human-only manual order checklist without sending any order."""
+    configure_logger(settings.log_level)
+    resolved_path = kis_candidate_path or find_latest_kis_paper_candidates(settings.project_root)
+    if resolved_path is None or not resolved_path.exists():
+        raise typer.BadParameter(
+            "KIS candidate file does not exist. "
+            "Run build-kis-paper-candidates or run-daily-job with --kis-paper-candidates first."
+        )
+
+    candidate_frame = load_kis_paper_candidates(resolved_path)
+    plan_frame = build_manual_order_plan(candidate_frame)
+    report_name = _safe_report_name(output_name or f"manual_order_plan_{resolved_path.stem}")
+    plan_path = manual_order_plan_file_path(settings.project_root, report_name)
+    csv_path = manual_order_plan_csv_path(settings.project_root, report_name)
+    report_path = manual_order_plan_report_file_path(settings.project_root, report_name)
+    write_parquet(plan_frame, plan_path)
+    write_csv(plan_frame, csv_path)
+    write_text(format_manual_order_plan_report(plan_frame), report_path)
+
+    review_count = (
+        int(plan_frame["manual_plan_action"].isin(["manual_buy_review", "manual_add_review"]).sum())
+        if not plan_frame.empty
+        else 0
+    )
+    console.print("[bold green]Manual order plan generated.[/bold green]")
+    console.print(f"Source KIS candidates: {resolved_path}")
+    console.print(f"Rows: {len(plan_frame)}")
+    console.print(f"Manual buy/add review rows: {review_count}")
+    console.print(f"Result: {plan_path}")
+    console.print(f"CSV: {csv_path}")
+    console.print(f"Report: {report_path}")
+    console.print("Mode: manual review only. No broker API or order endpoint was called.")
+    if not plan_frame.empty:
+        display_columns = [
+            "ticker",
+            "manual_plan_action",
+            "estimated_quantity",
+            "estimated_amount",
+            "reference_price",
+            "manual_status",
+            "orders_sent",
+        ]
+        console.print(plan_frame[display_columns].to_string(index=False))
 
 
 @app.command("init-dirs")
@@ -3147,6 +3234,11 @@ def run_daily_job(
             f"{result.kis_candidate_review_count}/{result.kis_candidate_count}"
         )
         console.print(f"KIS manual price checks: {result.kis_candidate_manual_price_count}")
+        if result.manual_order_plan_path:
+            console.print(f"Manual order plan: {result.manual_order_plan_path}")
+            console.print(f"Manual order plan CSV: {result.manual_order_plan_csv_path}")
+            console.print(f"Manual order plan report: {result.manual_order_plan_report_path}")
+            console.print(f"Manual buy/add review rows: {result.manual_order_plan_review_count}")
         console.print("KIS mode: paper candidate review only. No order was sent.")
     console.print(f"Decision journal: {result.decision_journal_path}")
     console.print(f"Decision journal CSV: {result.decision_journal_csv_path}")

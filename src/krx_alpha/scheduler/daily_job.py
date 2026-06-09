@@ -9,6 +9,10 @@ import pandas as pd
 from krx_alpha.backtest.simple_backtester import BacktestConfig, SimpleBacktester
 from krx_alpha.backtest.walk_forward import WalkForwardBacktester, WalkForwardConfig
 from krx_alpha.broker.kis_candidates import format_kis_paper_candidate_report
+from krx_alpha.broker.manual_order_plan import (
+    build_manual_order_plan,
+    format_manual_order_plan_report,
+)
 from krx_alpha.collectors.macro_collector import FredMacroCollector, MacroRequest
 from krx_alpha.collectors.news_collector import NaverNewsCollector, NewsSearchRequest
 from krx_alpha.collectors.price_collector import PriceRequest
@@ -26,6 +30,9 @@ from krx_alpha.database.storage import (
     kis_paper_candidate_file_path,
     kis_paper_candidate_report_file_path,
     macro_feature_file_path,
+    manual_order_plan_csv_path,
+    manual_order_plan_file_path,
+    manual_order_plan_report_file_path,
     ml_metrics_file_path,
     ml_model_artifact_file_path,
     ml_model_report_file_path,
@@ -185,6 +192,10 @@ class DailyJobResult:
     kis_candidate_count: int
     kis_candidate_review_count: int
     kis_candidate_manual_price_count: int
+    manual_order_plan_path: Path | None
+    manual_order_plan_csv_path: Path | None
+    manual_order_plan_report_path: Path | None
+    manual_order_plan_review_count: int
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
@@ -225,6 +236,10 @@ class DailyJobKISCandidateResult:
     candidate_count: int
     review_count: int
     manual_price_count: int
+    manual_order_plan_path: Path
+    manual_order_plan_csv_path: Path
+    manual_order_plan_report_path: Path
+    manual_order_plan_review_count: int
 
 
 @dataclass(frozen=True)
@@ -464,6 +479,13 @@ class DailyJobRunner:
         result_path = kis_paper_candidate_file_path(self.project_root, report_name)
         csv_path = kis_paper_candidate_csv_path(self.project_root, report_name)
         report_path = kis_paper_candidate_report_file_path(self.project_root, report_name)
+        manual_plan_name = f"manual_order_plan_{config.universe}_{start_compact}_{end_compact}"
+        manual_plan_path = manual_order_plan_file_path(self.project_root, manual_plan_name)
+        manual_plan_csv = manual_order_plan_csv_path(self.project_root, manual_plan_name)
+        manual_plan_report = manual_order_plan_report_file_path(
+            self.project_root,
+            manual_plan_name,
+        )
 
         result_frame = self.kis_candidate_source.build_candidates(
             screening_result.frame,
@@ -473,10 +495,23 @@ class DailyJobRunner:
         write_parquet(result_frame, result_path)
         write_csv(result_frame, csv_path)
         write_text(format_kis_paper_candidate_report(result_frame), report_path)
+        manual_plan_frame = build_manual_order_plan(result_frame)
+        write_parquet(manual_plan_frame, manual_plan_path)
+        write_csv(manual_plan_frame, manual_plan_csv)
+        write_text(format_manual_order_plan_report(manual_plan_frame), manual_plan_report)
 
         review_count = (
             int(result_frame["candidate_action"].isin(["review_buy", "review_add"]).sum())
             if not result_frame.empty
+            else 0
+        )
+        manual_plan_review_count = (
+            int(
+                manual_plan_frame["manual_plan_action"]
+                .isin(["manual_buy_review", "manual_add_review"])
+                .sum()
+            )
+            if not manual_plan_frame.empty
             else 0
         )
         manual_price_count = (
@@ -492,6 +527,10 @@ class DailyJobRunner:
             candidate_count=len(result_frame),
             review_count=review_count,
             manual_price_count=manual_price_count,
+            manual_order_plan_path=manual_plan_path,
+            manual_order_plan_csv_path=manual_plan_csv,
+            manual_order_plan_report_path=manual_plan_report,
+            manual_order_plan_review_count=manual_plan_review_count,
         )
 
     def _refresh_dashboard_artifacts(
@@ -1193,6 +1232,18 @@ def _build_result(
         ),
         kis_candidate_manual_price_count=(
             kis_candidate_result.manual_price_count if kis_candidate_result else 0
+        ),
+        manual_order_plan_path=(
+            kis_candidate_result.manual_order_plan_path if kis_candidate_result else None
+        ),
+        manual_order_plan_csv_path=(
+            kis_candidate_result.manual_order_plan_csv_path if kis_candidate_result else None
+        ),
+        manual_order_plan_report_path=(
+            kis_candidate_result.manual_order_plan_report_path if kis_candidate_result else None
+        ),
+        manual_order_plan_review_count=(
+            kis_candidate_result.manual_order_plan_review_count if kis_candidate_result else 0
         ),
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,

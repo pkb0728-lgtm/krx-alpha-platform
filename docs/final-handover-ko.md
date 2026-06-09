@@ -15,7 +15,7 @@ MVP** 상태입니다. 실제 주문은 보내지 않고, 장 마감 후 데이�
 | 포트폴리오 제출 | 가능 |
 | 로컬 실행 | 가능 |
 | 매일 1회 분석 | 가능 |
-| 실제 주문 | 구현하지 않음 |
+| 실제 주문 | 구현하지 않음. 수동 검토용 계획표만 생성 |
 | 상용 서비스 | 추가 운영 고도화 필요 |
 
 ## 매일 사용하는 순서
@@ -50,7 +50,14 @@ python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-pape
 python main.py run-daily-job --universe large_cap --lookback-days 180 --kis-paper-candidates --telegram-send
 ```
 
-6. 대시보드를 켭니다.
+6. 필요하면 수동 주문 계획표를 다시 생성합니다. 이 명령도 실제 주문을
+보내지 않습니다.
+
+```powershell
+python main.py build-manual-order-plan
+```
+
+7. 대시보드를 켭니다.
 
 ```powershell
 streamlit run src/krx_alpha/dashboard/app.py
@@ -69,6 +76,7 @@ http://localhost:8501
 | 유니버스 순위 | 어떤 종목이 상위 점수인지 확인 |
 | 자동 스크리너 | 통과/탈락 사유 확인 |
 | KIS 모의투자 검토 후보 | 실제 주문 없이 후보 수량만 확인 |
+| 수동 주문 계획표 | 증권앱에서 직접 검토할 체크리스트 확인 |
 | 페이퍼 포트폴리오 | 가상 거래 수, 수익률, 최종 평가금액 확인 |
 | 워크포워드 검증 | 기간을 나눠도 전략이 무너지지 않는지 확인 |
 | ML 확률 베이스라인 | 단순 규칙 외 확률 모델의 참고 성능 확인 |
@@ -108,6 +116,8 @@ pytest
 - 뉴스, 거시환경, 수급, 재무, 공시, 가격 피처를 점수화합니다.
 - 최종 판단은 사람이 하는 Human-in-the-loop 구조입니다.
 - 실제 주문은 보내지 않고 KIS 모의투자 후보까지만 만듭니다.
+- 주문이 필요하다고 판단해도 프로그램은 계획표만 만들고, 최종 입력은
+  사용자가 증권앱에서 직접 해야 합니다.
 - 백테스트, 워크포워드, 페이퍼 포트폴리오로 결과를 검증합니다.
 - pytest, ruff, mypy, GitHub Actions로 품질을 관리합니다.
 

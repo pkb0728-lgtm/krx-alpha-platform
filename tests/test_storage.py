@@ -21,6 +21,9 @@ from krx_alpha.database.storage import (
     kis_paper_candidate_csv_path,
     kis_paper_candidate_file_path,
     kis_paper_candidate_report_file_path,
+    manual_order_plan_csv_path,
+    manual_order_plan_file_path,
+    manual_order_plan_report_file_path,
     market_regime_file_path,
     market_regime_report_file_path,
     ml_metrics_file_path,
@@ -242,6 +245,21 @@ def test_monitoring_paths(tmp_path: Path) -> None:
         kis_paper_candidate_report_file_path(tmp_path, "kis_candidates_demo")
         .as_posix()
         .endswith("reports/kis_paper_candidates/kis_candidates_demo.md")
+    )
+    assert (
+        manual_order_plan_file_path(tmp_path, "manual_plan_demo")
+        .as_posix()
+        .endswith("data/signals/manual_order_plans/manual_plan_demo.parquet")
+    )
+    assert (
+        manual_order_plan_csv_path(tmp_path, "manual_plan_demo")
+        .as_posix()
+        .endswith("data/signals/manual_order_plans/manual_plan_demo.csv")
+    )
+    assert (
+        manual_order_plan_report_file_path(tmp_path, "manual_plan_demo")
+        .as_posix()
+        .endswith("reports/manual_order_plans/manual_plan_demo.md")
     )
     assert (
         monitoring_report_file_path(tmp_path, "data_drift_demo")

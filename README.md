@@ -21,7 +21,7 @@
 | MVP 상태 | 로컬 PC에서 end-to-end 실행 가능한 1차 운영형 MVP 완성 |
 | 핵심 명령어 | `python main.py run-daily-job ...` |
 | KIS 연동 | 모의투자 토큰/잔고 조회 및 검토 후보 생성까지만 지원 |
-| 실제 주문 | 현재 구현하지 않음. 실제 주문 API 호출 없음 |
+| 실제 주문 | 구현하지 않음. 수동 검토용 주문 계획표만 생성 |
 | 대시보드 | Streamlit으로 유니버스, 스크리너, KIS 후보, 백테스트, 운영 상태 확인 |
 | 알림 | Telegram dry-run 및 실제 전송 지원, 한국어 일일 요약 |
 | 테스트 | `pytest` 전체 통과 |
@@ -193,7 +193,21 @@ python main.py build-kis-paper-candidates
   안내합니다.
 - 결과는 `data/signals/kis_paper_candidates/`와 `reports/kis_paper_candidates/`에 저장됩니다.
 
-### 4. 백테스트와 페이퍼트레이딩
+### 4. 수동 주문 계획표
+
+실제 주문 기능 대신, 증권앱에서 사람이 직접 확인할 체크리스트형 계획표를
+생성합니다.
+
+```powershell
+python main.py build-manual-order-plan
+```
+
+- KIS 후보 결과를 기반으로 예상 수량, 예상 금액, 기준 가격을 정리합니다.
+- 공시, 뉴스, 유동성, 시장 국면, 포지션 비중 확인 항목을 포함합니다.
+- 실제 주문 API나 주문 엔드포인트는 호출하지 않습니다.
+- 결과는 `data/signals/manual_order_plans/`와 `reports/manual_order_plans/`에 저장됩니다.
+
+### 5. 백테스트와 페이퍼트레이딩
 
 ```powershell
 python main.py backtest-stock --ticker 005380 --start 2024-01-01 --end 2024-03-31
@@ -213,7 +227,7 @@ python main.py paper-trade-universe --universe demo --start 2024-01-01 --end 202
 따라서 거래가 0회라면 수익률 0%는 “전략 실패”라기보다, 해당 기간에
 검증할 매수 후보 신호가 없었다는 뜻입니다.
 
-### 5. 운영 상태 점검
+### 6. 운영 상태 점검
 
 ```powershell
 python main.py check-operations --skip-apis
@@ -229,6 +243,7 @@ python main.py check-apis --skip-pykrx --save
 | 유니버스 요약 | `data/signals/universe_summary_daily/` |
 | 자동 스크리너 | `data/signals/screening_daily/` |
 | KIS 모의투자 후보 | `data/signals/kis_paper_candidates/` |
+| 수동 주문 계획표 | `data/signals/manual_order_plans/` |
 | 페이퍼 포트폴리오 | `data/backtest/paper_portfolio_summary/` |
 | 백테스트 결과 | `data/backtest/metrics/` |
 | ML 결과 | `data/signals/ml_metrics/` |

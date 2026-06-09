@@ -154,6 +154,7 @@ class FakeKISPaperCandidateSource:
                 "candidate_type": ["new_buy_candidate", "screen_blocked_or_rejected"],
                 "estimated_quantity": [3, 0],
                 "estimated_amount": [300_000.0, 0.0],
+                "reference_price": [100_000.0, 70_000.0],
                 "target_position_pct": [10.0, 0.0],
                 "confidence_score": [72.0, 58.0],
                 "screen_score": [75.0, 50.0],
@@ -270,6 +271,13 @@ def test_daily_job_runner_can_create_kis_paper_candidate_outputs(tmp_path: Path)
     assert result.kis_candidate_count == 2
     assert result.kis_candidate_review_count == 1
     assert result.kis_candidate_manual_price_count == 0
+    assert result.manual_order_plan_path is not None
+    assert result.manual_order_plan_path.exists()
+    assert result.manual_order_plan_csv_path is not None
+    assert result.manual_order_plan_csv_path.exists()
+    assert result.manual_order_plan_report_path is not None
+    assert result.manual_order_plan_report_path.exists()
+    assert result.manual_order_plan_review_count == 1
     assert "KIS 모의투자 후보" in result.telegram_message
     assert "매수·추가매수 검토: 1개" in result.telegram_message
 
