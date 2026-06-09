@@ -171,13 +171,18 @@ def main() -> None:
         journal_cols[0].metric("전체 기록", len(journal_evaluation))
         journal_cols[1].metric("평가 완료", int(journal_brief["evaluated_count"]))
         journal_cols[2].metric("평가 대기", int(journal_brief["pending_count"]))
+        has_evaluated_journal_rows = int(journal_brief["evaluated_count"]) > 0
         journal_cols[3].metric(
             "평균 실제 수익률",
-            _format_percent(journal_brief["average_forward_return"]),
+            _format_percent(journal_brief["average_forward_return"])
+            if has_evaluated_journal_rows
+            else "N/A",
         )
         journal_cols[4].metric(
             "유리한 결과 비율",
-            _format_percent(journal_brief["favorable_rate"]),
+            _format_percent(journal_brief["favorable_rate"])
+            if has_evaluated_journal_rows
+            else "N/A",
         )
         st.caption(f"최근 판단 평가 파일: {journal_evaluation_path.name}")
 
@@ -198,13 +203,13 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="유리한 결과 비율(%)",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             st.dataframe(
                 _koreanize_columns(
                     journal_summary[_decision_journal_summary_display_columns(journal_summary)]
                 ),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
         st.caption("최근 판단별 실제 결과")
@@ -213,7 +218,7 @@ def main() -> None:
                 journal_evaluation[_decision_journal_evaluation_display_columns(journal_evaluation)]
             ),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     st.divider()
@@ -239,7 +244,7 @@ def main() -> None:
         st.dataframe(
             _koreanize_columns(summary_frame[display_columns]),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     with right_col:
@@ -263,7 +268,7 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title=None,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     st.divider()
 
@@ -359,7 +364,7 @@ def main() -> None:
                         display_screening_frame[_screening_display_columns(display_screening_frame)]
                     ),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -451,7 +456,7 @@ def main() -> None:
                         ]
                     ),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -495,12 +500,12 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="뉴스 점수",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.dataframe(
                 _koreanize_columns(news_frame[_news_sentiment_display_columns(news_frame)]),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     st.divider()
@@ -544,12 +549,12 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="거시 점수",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.dataframe(
                 _koreanize_columns(macro_frame[_macro_feature_display_columns(macro_frame)]),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     st.divider()
@@ -584,7 +589,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(metrics_frame),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
             trades_frame = load_backtest_trades(metrics_path)
@@ -603,7 +608,7 @@ def main() -> None:
                 st.dataframe(
                     _koreanize_columns(trades_frame[display_trade_columns]),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -652,7 +657,7 @@ def main() -> None:
                     portfolio_summary[_paper_portfolio_summary_display_columns(portfolio_summary)]
                 ),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
             if not portfolio_trades.empty:
@@ -662,7 +667,7 @@ def main() -> None:
                         portfolio_trades[_paper_trade_display_columns(portfolio_trades)]
                     ),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     portfolio_history = load_paper_portfolio_history(PROJECT_ROOT)
@@ -703,14 +708,14 @@ def main() -> None:
             xaxis_title=None,
             yaxis_title="최종 평가금액",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         st.dataframe(
             _koreanize_columns(
                 portfolio_history[_paper_portfolio_history_display_columns(portfolio_history)]
             ),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     st.divider()
@@ -749,7 +754,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(paper_summary),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
             if not paper_trades.empty:
@@ -757,7 +762,7 @@ def main() -> None:
                 st.dataframe(
                     _koreanize_columns(paper_trades[_paper_trade_display_columns(paper_trades)]),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -803,7 +808,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(walk_forward_summary),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
             if not folds_frame.empty:
@@ -828,7 +833,7 @@ def main() -> None:
                 st.dataframe(
                     _koreanize_columns(folds_frame[display_fold_columns]),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -880,7 +885,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(ml_metrics_frame),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
             ml_predictions_frame = load_ml_predictions(ml_metrics_path)
@@ -891,7 +896,7 @@ def main() -> None:
                         ml_predictions_frame[_ml_prediction_display_columns(ml_predictions_frame)]
                     ),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     st.divider()
@@ -916,7 +921,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(drift_frame[_drift_display_columns(drift_frame)]),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     st.divider()
@@ -941,7 +946,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(api_health_frame[_api_health_display_columns(api_health_frame)]),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     st.divider()
@@ -969,7 +974,7 @@ def main() -> None:
             st.dataframe(
                 _koreanize_columns(health_frame[_operations_health_display_columns(health_frame)]),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
 
     st.divider()
@@ -1440,7 +1445,7 @@ def _render_paper_portfolio_audit(metric: Any, trades: Any) -> None:
     st.dataframe(
         _paper_audit_frame(metric, trades),
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -1453,7 +1458,7 @@ def _render_single_paper_audit(metric: Any, trades: Any) -> None:
     st.dataframe(
         _paper_audit_frame(metric, trades),
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -1466,7 +1471,7 @@ def _render_walk_forward_audit(metric: Any, folds: Any) -> None:
     st.dataframe(
         _walk_forward_audit_frame(metric, folds),
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
