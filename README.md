@@ -117,6 +117,7 @@ http://localhost:8501
 - 모든 최종 판단은 사람이 직접 확인하는 Human-in-the-loop 구조입니다.
 
 더 자세한 제출용 설명은 [포트폴리오 제출 가이드](docs/portfolio-submission-ko.md)를 참고하세요.
+Codex 없이 혼자 실행하고 점검하려면 [최종 인수인계 가이드](docs/final-handover-ko.md)를 참고하세요.
 
 ## 이 프로젝트가 보여주는 역량
 
