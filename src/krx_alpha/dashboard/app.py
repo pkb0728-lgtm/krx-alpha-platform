@@ -43,12 +43,129 @@ from krx_alpha.dashboard.data_loader import (
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
+def _render_dashboard_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }
+        div[data-testid="stMetric"] {
+            background: #ffffff;
+            border: 1px solid #e6e8eb;
+            border-radius: 8px;
+            padding: 0.75rem 0.85rem;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        div[data-testid="stMetricLabel"] {
+            color: #475569;
+            font-size: 0.82rem;
+        }
+        div[data-testid="stMetricValue"] {
+            color: #111827;
+            font-size: 1.2rem;
+        }
+        .krx-snapshot {
+            border: 1px solid #d9e2ec;
+            border-radius: 8px;
+            padding: 1rem 1.1rem;
+            background: #f8fafc;
+            margin: 0.75rem 0 1rem 0;
+        }
+        .krx-snapshot-title {
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.35rem;
+        }
+        .krx-snapshot-body {
+            color: #334155;
+            line-height: 1.55;
+        }
+        .krx-section-anchor {
+            height: 0.1rem;
+            margin-top: 0.25rem;
+        }
+        h2, h3 {
+            letter-spacing: 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_sidebar(summary_path: Path, active_period: tuple[str, str] | None) -> None:
+    with st.sidebar:
+        st.title("KRX Alpha")
+        st.caption("장 마감 후 분석 결과 확인용")
+        st.markdown("**현재 실행 기준**")
+        st.write(f"기간: {_period_label(active_period)}")
+        st.write(f"파일: `{summary_path.name}`")
+        st.markdown("**화면 이동**")
+        st.markdown(
+            """
+            - [오늘 결론](#overview)
+            - [판단 성과](#performance)
+            - [유니버스 순위](#universe)
+            - [자동 스크리너](#screening)
+            - [KIS 검토 후보](#kis)
+            - [뉴스/거시](#market-data)
+            - [검증 결과](#validation)
+            - [운영 상태](#operations)
+            - [리포트](#reports)
+            """
+        )
+
+
+def _render_operating_snapshot(
+    *,
+    summary_path: Path,
+    active_period: tuple[str, str] | None,
+    summary_frame: pd.DataFrame,
+    screening_frame: pd.DataFrame,
+    kis_candidate_frame: pd.DataFrame,
+    brief: dict[str, Any],
+) -> None:
+    success_count = int((summary_frame["status"] == "success").sum())
+    failed_count = int((summary_frame["status"] == "failed").sum())
+    screening_passed = (
+        _truthy_count(screening_frame["passed"]) if "passed" in screening_frame.columns else 0
+    )
+    review_count = (
+        int(kis_candidate_frame["candidate_action"].isin(["review_buy", "review_add"]).sum())
+        if "candidate_action" in kis_candidate_frame.columns
+        else 0
+    )
+    top_stock = str(brief.get("top_stock", "N/A"))
+    snapshot_text = (
+        f"분석 기간은 {_period_label(active_period)}이고, "
+        f"{len(summary_frame)}개 종목 중 {success_count}개가 정상 처리됐습니다. "
+        f"스크리너 통과는 {screening_passed}개, KIS 검토 후보는 {review_count}개입니다. "
+        f"현재 상위 종목은 {top_stock}입니다."
+    )
+    status_text = "정상" if failed_count == 0 else f"실패 {failed_count}개 확인 필요"
+    st.markdown(
+        f"""
+        <div class="krx-snapshot">
+            <div class="krx-snapshot-title">오늘의 운영 스냅샷 · {status_text}</div>
+            <div class="krx-snapshot-body">
+                {snapshot_text}<br/>
+                기준 파일: <code>{summary_path.name}</code>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="KRX Alpha Platform",
-        page_icon="",
+        page_icon="📈",
         layout="wide",
     )
+    _render_dashboard_styles()
 
     st.title("KRX Alpha Platform")
     st.caption("한국 주식 데이터 기반 설명 가능한 투자 의사결정 보조 대시보드")
@@ -82,6 +199,7 @@ def main() -> None:
 
     summary_frame = load_universe_summary(summary_path)
     active_period = _period_from_artifact_name(summary_path)
+    _render_sidebar(summary_path, active_period)
     screening_path = _find_matching_period_file(
         PROJECT_ROOT / "data" / "signals" / "screening_daily",
         active_period,
@@ -102,6 +220,7 @@ def main() -> None:
     failed_count = int((summary_frame["status"] == "failed").sum())
     top_row = summary_frame.iloc[0] if not summary_frame.empty else None
 
+    st.markdown('<div class="krx-section-anchor" id="overview"></div>', unsafe_allow_html=True)
     metric_cols = st.columns(6)
     metric_cols[0].metric("분석 종목 수", len(summary_frame))
     metric_cols[1].metric("성공", success_count)
@@ -139,6 +258,14 @@ def main() -> None:
     metric_cols[5].metric("뉴스 점수", top_news)
 
     brief = beginner_decision_brief(summary_frame, screening_frame, kis_candidate_frame)
+    _render_operating_snapshot(
+        summary_path=summary_path,
+        active_period=active_period,
+        summary_frame=summary_frame,
+        screening_frame=screening_frame,
+        kis_candidate_frame=kis_candidate_frame,
+        brief=brief,
+    )
     st.subheader("오늘 결론부터 보기")
     st.info(f"**{brief['headline']}**\n\n{brief['detail']}\n\n다음 확인: {brief['next_step']}")
     brief_cols = st.columns(4)
@@ -147,6 +274,7 @@ def main() -> None:
     brief_cols[2].metric("KIS 검토 후보", int(brief["review_candidate_count"]))
     brief_cols[3].metric("리스크 차단", int(brief["blocked_count"]))
 
+    st.markdown('<div class="krx-section-anchor" id="performance"></div>', unsafe_allow_html=True)
     st.subheader("판단 성과 추적")
     st.caption(
         "매일 저장된 판단을 며칠 뒤 실제 종가와 비교합니다. "
@@ -225,6 +353,7 @@ def main() -> None:
 
     left_col, right_col = st.columns([2, 1])
     with left_col:
+        st.markdown('<div class="krx-section-anchor" id="universe"></div>', unsafe_allow_html=True)
         st.subheader("유니버스 순위")
         st.caption(
             "여러 종목을 한 번에 돌렸을 때 어떤 종목이 상대적으로 좋아 보이는지 보는 표입니다."
@@ -272,6 +401,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="screening"></div>', unsafe_allow_html=True)
     st.subheader("자동 스크리너")
     st.caption("전체 종목 중 사람이 다시 검토할 만한 후보를 걸러내는 단계입니다.")
     if screening_path is None:
@@ -369,6 +499,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="kis"></div>', unsafe_allow_html=True)
     st.subheader("KIS 모의투자 검토 후보")
     st.caption(
         "모의투자 계좌 잔고를 기준으로 매수/추가매수 검토 후보를 계산합니다. "
@@ -461,6 +592,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="market-data"></div>', unsafe_allow_html=True)
     st.subheader("뉴스 감성 분석")
     st.caption("뉴스 제목과 요약을 바탕으로 긍정/부정 분위기를 점수화한 결과입니다.")
     news_path = _find_matching_period_file(
@@ -559,6 +691,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="validation"></div>', unsafe_allow_html=True)
     st.subheader("백테스트 요약")
     st.caption("과거 데이터에서 이 신호가 어떻게 작동했는지 비용과 슬리피지를 반영해 확인합니다.")
     metrics_path = _find_matching_period_file(
@@ -926,6 +1059,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="operations"></div>', unsafe_allow_html=True)
     st.subheader("API 상태")
     api_health_path = find_latest_api_health(PROJECT_ROOT)
     if api_health_path is None:
@@ -979,6 +1113,7 @@ def main() -> None:
 
     st.divider()
 
+    st.markdown('<div class="krx-section-anchor" id="reports"></div>', unsafe_allow_html=True)
     st.subheader("리포트 보기")
     successful = summary_frame[summary_frame["status"] == "success"]
     if successful.empty:
@@ -997,6 +1132,12 @@ def _format_percent(value: Any) -> str:
     if pd.isna(value):
         return "N/A"
     return f"{float(value) * 100:.2f}%"
+
+
+def _truthy_count(series: pd.Series) -> int:
+    if pd.api.types.is_bool_dtype(series):
+        return int(series.fillna(False).sum())
+    return int(series.fillna(False).astype(str).str.lower().isin({"true", "1", "yes"}).sum())
 
 
 def _format_score(value: Any) -> str:
