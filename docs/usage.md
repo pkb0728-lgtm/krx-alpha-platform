@@ -372,7 +372,7 @@ retryable Telegram API responses such as `429` and `5xx`.
 The daily job combines the operational steps into one command:
 
 ```text
-run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> refresh dashboard validation artifacts -> append decision journal -> refresh operations health -> build Telegram brief
+run universe pipeline -> generate universe report -> build auto screener -> optional KIS paper candidates -> run paper portfolio -> refresh dashboard validation artifacts -> append decision journal -> refresh decision journal evaluation -> refresh operations health -> build Telegram brief
 ```
 
 Run it safely in preview mode:
@@ -460,8 +460,13 @@ data/signals/decision_journal/decision_journal.parquet
 data/signals/decision_journal/decision_journal.csv
 ```
 
-To compare saved decisions with later realized prices, run this after enough
-future trading days have passed:
+By default, the same daily job also refreshes the 5-trading-day outcome
+comparison artifact used by the dashboard. Today's decisions usually remain
+`pending` until enough future price data exists. To skip this refresh in a
+quick smoke test, add `--no-evaluate-journal`.
+
+To compare saved decisions with another horizon, run this after enough future
+trading days have passed:
 
 ```powershell
 python main.py evaluate-decision-journal --holding-days 5
@@ -472,7 +477,7 @@ Evaluation outputs are written to `data/signals/decision_journal_evaluation/`
 and `reports/decision_journal/`. Rows without enough future price data are
 marked as `pending`, so it is normal for today's decisions to wait until later.
 The Streamlit dashboard reads the latest evaluation artifact and shows it in
-the `판단 성과 추적` section with beginner-friendly summaries and per-action
+the `과거 판단 성과 평가` section with beginner-friendly summaries and per-action
 result rates.
 
 Windows Task Scheduler can run the same command after market close. Use the

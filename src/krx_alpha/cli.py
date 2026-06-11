@@ -3425,6 +3425,20 @@ def run_daily_job(
         int,
         typer.Option("--news-display", help="Number of Naver news search items per ticker."),
     ] = 5,
+    evaluate_journal: Annotated[
+        bool,
+        typer.Option(
+            "--evaluate-journal/--no-evaluate-journal",
+            help="Refresh the decision journal outcome comparison after writing today's records.",
+        ),
+    ] = True,
+    journal_holding_days: Annotated[
+        int,
+        typer.Option(
+            "--journal-holding-days",
+            help="Trading-day horizon for decision journal outcome comparison.",
+        ),
+    ] = 5,
 ) -> None:
     """Run the after-market daily job: universe, screener, paper portfolio, and Telegram."""
     configure_logger(settings.log_level)
@@ -3482,6 +3496,8 @@ def run_daily_job(
                 naver_client_id=settings.naver_client_id,
                 naver_client_secret=settings.naver_client_secret,
                 gemini_api_key=settings.gemini_api_key,
+                evaluate_decision_journal=evaluate_journal,
+                decision_journal_holding_days=journal_holding_days,
             )
         )
     except (KeyError, ValueError) as exc:
@@ -3529,6 +3545,19 @@ def run_daily_job(
         "Decision journal rows: "
         f"+{result.decision_journal_appended_count} / total {result.decision_journal_total_count}"
     )
+    if result.decision_journal_evaluation_path:
+        console.print(f"Decision journal evaluation: {result.decision_journal_evaluation_path}")
+        console.print(
+            f"Decision journal evaluation CSV: {result.decision_journal_evaluation_csv_path}"
+        )
+        console.print(
+            f"Decision journal evaluation report: {result.decision_journal_evaluation_report_path}"
+        )
+        console.print(
+            "Decision journal evaluation rows: "
+            f"evaluated {result.decision_journal_evaluated_count} / "
+            f"pending {result.decision_journal_pending_count}"
+        )
     if result.scoring_macro_feature_path:
         console.print(f"Scoring macro features: {result.scoring_macro_feature_path}")
     if result.scoring_news_feature_paths:

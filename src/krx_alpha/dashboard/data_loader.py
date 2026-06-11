@@ -602,7 +602,7 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
                 "일일 작업을 실행하면 판단 기록이 쌓이고, "
                 "며칠 뒤 평가 명령으로 실제 결과를 비교할 수 있습니다."
             ),
-            "next_step": "먼저 run-daily-job을 실행한 뒤 evaluate-decision-journal을 실행하세요.",
+            "next_step": "먼저 run-daily-job을 실행해 판단 기록과 기본 사후검증 파일을 생성하세요.",
             "evaluated_count": 0,
             "pending_count": 0,
             "average_forward_return": 0.0,
@@ -622,7 +622,7 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
             f"{pending_count}개는 비교 기준일이 아직 지나지 않았거나 "
             "미래 가격 데이터가 더 필요합니다."
         )
-        next_step = "며칠 뒤 가격 데이터를 다시 수집한 다음 evaluate-decision-journal을 실행하세요."
+        next_step = "며칠 뒤 가격 데이터를 다시 수집한 다음 run-daily-job을 다시 실행하세요."
     elif favorable_rate >= 0.6:
         headline = "평가가 끝난 과거 판단은 대체로 실제 결과와 잘 맞았습니다."
         detail = (

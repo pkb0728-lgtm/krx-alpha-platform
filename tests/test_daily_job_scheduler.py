@@ -237,6 +237,17 @@ def test_daily_job_runner_creates_summary_report_and_telegram_preview(tmp_path: 
     assert result.screening_checked_count == 2
     assert result.operations_health_path.exists()
     assert result.operations_health_report_path.exists()
+    assert result.decision_journal_path.exists()
+    assert result.decision_journal_csv_path.exists()
+    assert result.decision_journal_appended_count == 2
+    assert result.decision_journal_total_count == 2
+    assert result.decision_journal_evaluation_path is not None
+    assert result.decision_journal_evaluation_path.exists()
+    assert result.decision_journal_evaluation_csv_path is not None
+    assert result.decision_journal_evaluation_csv_path.exists()
+    assert result.decision_journal_evaluation_report_path is not None
+    assert result.decision_journal_evaluation_report_path.exists()
+    assert result.decision_journal_evaluated_count + result.decision_journal_pending_count == 2
     assert result.telegram_sent is False
     assert result.telegram_dry_run is True
     assert "005380 현대차 | 판단: 매수 검토" in result.telegram_message
@@ -295,6 +306,29 @@ def test_daily_job_runner_can_create_kis_paper_candidate_outputs(tmp_path: Path)
     assert result.manual_order_plan_review_count == 1
     assert "KIS 모의투자 후보" in result.telegram_message
     assert "매수·추가매수 검토: 1개" in result.telegram_message
+
+
+def test_daily_job_runner_can_skip_decision_journal_evaluation(tmp_path: Path) -> None:
+    runner = DailyJobRunner(
+        project_root=tmp_path,
+        universe_pipeline=FakeUniversePipeline(tmp_path),  # type: ignore[arg-type]
+        telegram_sender=FakeTelegramSender(),
+    )
+
+    result = runner.run(
+        DailyJobConfig(
+            universe="demo",
+            start_date="2024-01-01",
+            end_date="2024-01-31",
+            telegram_dry_run=True,
+            evaluate_decision_journal=False,
+        )
+    )
+
+    assert result.decision_journal_path.exists()
+    assert result.decision_journal_evaluation_path is None
+    assert result.decision_journal_evaluated_count == 0
+    assert result.decision_journal_pending_count == 0
 
 
 def test_daily_job_runner_keeps_outputs_when_telegram_send_fails(tmp_path: Path) -> None:

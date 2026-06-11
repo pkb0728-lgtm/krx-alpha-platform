@@ -71,9 +71,11 @@ from krx_alpha.experiments.tracker import (
 from krx_alpha.features.macro_features import MacroFeatureBuilder
 from krx_alpha.features.news_sentiment import NewsSentimentConfig, NewsSentimentFeatureBuilder
 from krx_alpha.journal.decision_journal import (
+    DecisionJournalEvaluationResult,
     DecisionJournalWriteResult,
     append_decision_journal,
     build_decision_journal_frame,
+    evaluate_decision_journal,
 )
 from krx_alpha.models.probability_baseline import (
     MLProbabilityBaselineConfig,
@@ -163,6 +165,8 @@ class DailyJobConfig:
     naver_client_id: str | None = None
     naver_client_secret: str | None = None
     gemini_api_key: str | None = None
+    evaluate_decision_journal: bool = True
+    decision_journal_holding_days: int = 5
 
 
 @dataclass(frozen=True)
@@ -206,6 +210,11 @@ class DailyJobResult:
     decision_journal_csv_path: Path
     decision_journal_appended_count: int
     decision_journal_total_count: int
+    decision_journal_evaluation_path: Path | None
+    decision_journal_evaluation_csv_path: Path | None
+    decision_journal_evaluation_report_path: Path | None
+    decision_journal_evaluated_count: int
+    decision_journal_pending_count: int
     scoring_macro_feature_path: Path | None
     scoring_news_feature_paths: tuple[Path, ...]
     scoring_feature_errors: tuple[str, ...]
@@ -341,6 +350,10 @@ class DailyJobRunner:
             screening_frame=screening_result.frame if screening_result else None,
             kis_candidate_frame=kis_candidate_result.frame if kis_candidate_result else None,
         )
+        journal_evaluation_result = self._evaluate_decision_journal(
+            config=config,
+            journal_result=journal_result,
+        )
         paper_summary = paper_result.summary if paper_result is not None else None
         operations_health, operations_health_path, operations_health_report_path = (
             self._write_operations_health()
@@ -389,6 +402,7 @@ class DailyJobRunner:
             operations_health_path=operations_health_path,
             operations_health_report_path=operations_health_report_path,
             journal_result=journal_result,
+            journal_evaluation_result=journal_evaluation_result,
             dashboard_artifact_result=dashboard_artifact_result,
             scoring_feature_result=scoring_feature_result,
         )
@@ -1099,6 +1113,19 @@ class DailyJobRunner:
         )
         return append_decision_journal(self.project_root, journal_rows)
 
+    def _evaluate_decision_journal(
+        self,
+        config: DailyJobConfig,
+        journal_result: DecisionJournalWriteResult,
+    ) -> DecisionJournalEvaluationResult | None:
+        if not config.evaluate_decision_journal:
+            return None
+        return evaluate_decision_journal(
+            self.project_root,
+            holding_days=config.decision_journal_holding_days,
+            journal_frame=journal_result.frame,
+        )
+
 
 def resolve_daily_job_date_range(config: DailyJobConfig, today: date) -> tuple[str, str]:
     if config.start_date and config.end_date:
@@ -1279,6 +1306,7 @@ def _build_result(
     operations_health_path: Path,
     operations_health_report_path: Path,
     journal_result: DecisionJournalWriteResult,
+    journal_evaluation_result: DecisionJournalEvaluationResult | None,
     dashboard_artifact_result: DailyJobDashboardArtifactResult,
     scoring_feature_result: DailyJobScoringFeatureResult,
 ) -> DailyJobResult:
@@ -1339,6 +1367,21 @@ def _build_result(
         decision_journal_csv_path=journal_result.csv_path,
         decision_journal_appended_count=journal_result.appended_count,
         decision_journal_total_count=journal_result.total_count,
+        decision_journal_evaluation_path=(
+            journal_evaluation_result.parquet_path if journal_evaluation_result else None
+        ),
+        decision_journal_evaluation_csv_path=(
+            journal_evaluation_result.csv_path if journal_evaluation_result else None
+        ),
+        decision_journal_evaluation_report_path=(
+            journal_evaluation_result.report_path if journal_evaluation_result else None
+        ),
+        decision_journal_evaluated_count=(
+            journal_evaluation_result.evaluated_count if journal_evaluation_result else 0
+        ),
+        decision_journal_pending_count=(
+            journal_evaluation_result.pending_count if journal_evaluation_result else 0
+        ),
         scoring_macro_feature_path=scoring_feature_result.macro_feature_path,
         scoring_news_feature_paths=scoring_feature_result.news_feature_paths,
         scoring_feature_errors=scoring_feature_result.errors,

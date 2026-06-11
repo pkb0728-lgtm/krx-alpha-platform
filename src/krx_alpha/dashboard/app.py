@@ -450,9 +450,10 @@ def main() -> None:
     journal_evaluation_path = find_latest_decision_journal_evaluation(PROJECT_ROOT)
     if journal_evaluation_path is None:
         st.info(
-            "아직 사후검증 결과가 없습니다. 일일 작업을 실행한 뒤 며칠 지나서 "
-            "`python main.py evaluate-decision-journal --holding-days 5`를 실행하면 "
-            "이곳에 과거 판단의 실제 결과 비교가 표시됩니다."
+            "아직 사후검증 결과가 없습니다. 최신 `run-daily-job`은 기본적으로 "
+            "5거래일 기준 사후검증 파일도 함께 갱신합니다. 다른 보유일 기준으로 "
+            "비교하고 싶으면 `python main.py evaluate-decision-journal --holding-days 20`처럼 "
+            "별도 실행할 수 있습니다."
         )
     else:
         journal_evaluation = load_decision_journal_evaluation(journal_evaluation_path)
