@@ -597,7 +597,7 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
     total_count = len(frame)
     if total_count == 0:
         return {
-            "headline": "아직 비교할 판단 기록이 없습니다.",
+            "headline": "아직 사후검증할 판단 기록이 없습니다.",
             "detail": (
                 "일일 작업을 실행하면 판단 기록이 쌓이고, "
                 "며칠 뒤 평가 명령으로 실제 결과를 비교할 수 있습니다."
@@ -616,14 +616,15 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
     favorable_rate = _favorable_rate(evaluated)
 
     if evaluated_count == 0:
-        headline = "아직 평가가 끝난 판단은 없습니다."
+        headline = "아직 실제 결과 비교가 끝난 과거 판단은 없습니다."
         detail = (
             f"총 {total_count}개 판단이 저장되어 있고 "
-            f"{pending_count}개는 미래 가격 데이터가 더 필요합니다."
+            f"{pending_count}개는 비교 기준일이 아직 지나지 않았거나 "
+            "미래 가격 데이터가 더 필요합니다."
         )
         next_step = "며칠 뒤 가격 데이터를 다시 수집한 다음 evaluate-decision-journal을 실행하세요."
     elif favorable_rate >= 0.6:
-        headline = "최근 저장된 판단은 대체로 실제 결과와 잘 맞았습니다."
+        headline = "평가가 끝난 과거 판단은 대체로 실제 결과와 잘 맞았습니다."
         detail = (
             f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
             f"{favorable_rate * 100:.2f}%이고, "
@@ -631,7 +632,7 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
         )
         next_step = "좋았던 판단의 공통 근거를 확인하고 같은 조건이 반복되는지 추적하세요."
     elif favorable_rate >= 0.4:
-        headline = "최근 판단 결과는 보통 수준이라 더 많은 기록이 필요합니다."
+        headline = "과거 판단의 실제 결과는 보통 수준이라 더 많은 기록이 필요합니다."
         detail = (
             f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
             f"{favorable_rate * 100:.2f}%입니다. "
@@ -639,7 +640,7 @@ def beginner_decision_journal_brief(frame: pd.DataFrame) -> dict[str, str | int 
         )
         next_step = "최소 수십 회 이상 기록을 쌓은 뒤 판단별 성과를 비교하세요."
     else:
-        headline = "최근 판단 결과가 약해 기준 점검이 필요합니다."
+        headline = "평가가 끝난 과거 판단 결과가 약해 기준 점검이 필요합니다."
         detail = (
             f"평가 완료 {evaluated_count}개 기준 유리한 결과 비율은 "
             f"{favorable_rate * 100:.2f}%입니다."

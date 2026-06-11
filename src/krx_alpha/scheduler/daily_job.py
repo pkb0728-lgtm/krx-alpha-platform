@@ -199,6 +199,7 @@ class DailyJobResult:
     telegram_sent: bool
     telegram_dry_run: bool
     telegram_message: str
+    telegram_response_text: str
     operations_health_path: Path
     operations_health_report_path: Path
     decision_journal_path: Path
@@ -1057,7 +1058,18 @@ class DailyJobRunner:
             )
 
         sender = self.telegram_sender or TelegramNotifier(bot_token=None, chat_id=None)
-        return sender.send_message(message, dry_run=config.telegram_dry_run)
+        try:
+            return sender.send_message(message, dry_run=config.telegram_dry_run)
+        except RuntimeError as exc:
+            if config.telegram_dry_run:
+                raise
+            return TelegramSendResult(
+                sent=False,
+                dry_run=False,
+                status_code=None,
+                message=message,
+                response_text=f"Telegram send failed: {exc}",
+            )
 
     def _write_operations_health(self) -> tuple[Any, Path, Path]:
         result_frame = OperationsHealthChecker(self.project_root).run()
@@ -1320,6 +1332,7 @@ def _build_result(
         telegram_sent=telegram_result.sent,
         telegram_dry_run=telegram_result.dry_run,
         telegram_message=telegram_result.message,
+        telegram_response_text=telegram_result.response_text,
         operations_health_path=operations_health_path,
         operations_health_report_path=operations_health_report_path,
         decision_journal_path=journal_result.parquet_path,

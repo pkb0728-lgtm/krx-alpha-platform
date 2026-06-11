@@ -3557,8 +3557,12 @@ def run_daily_job(
     console.print(f"Operations report: {result.operations_health_report_path}")
     console.print(f"Experiment log: {result.experiment_log_path}")
     if notify:
-        status = "sent" if result.telegram_sent else "dry-run"
+        status = (
+            "sent" if result.telegram_sent else "dry-run" if result.telegram_dry_run else "failed"
+        )
         console.print(f"Telegram: {status}")
+        if result.telegram_response_text and not result.telegram_sent:
+            console.print(f"[yellow]{result.telegram_response_text}[/yellow]")
         if result.telegram_dry_run:
             console.print(result.telegram_message)
 

@@ -130,6 +130,11 @@ class FakeTelegramSender:
         )
 
 
+class FailingTelegramSender:
+    def send_message(self, message: str, dry_run: bool = False) -> TelegramSendResult:
+        raise RuntimeError("Telegram message send failed after 3 attempt(s).")
+
+
 class FakeKISPaperCandidateSource:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
@@ -290,6 +295,30 @@ def test_daily_job_runner_can_create_kis_paper_candidate_outputs(tmp_path: Path)
     assert result.manual_order_plan_review_count == 1
     assert "KIS 모의투자 후보" in result.telegram_message
     assert "매수·추가매수 검토: 1개" in result.telegram_message
+
+
+def test_daily_job_runner_keeps_outputs_when_telegram_send_fails(tmp_path: Path) -> None:
+    pipeline = FakeUniversePipeline(tmp_path)
+    runner = DailyJobRunner(
+        project_root=tmp_path,
+        universe_pipeline=pipeline,  # type: ignore[arg-type]
+        telegram_sender=FailingTelegramSender(),
+    )
+
+    result = runner.run(
+        DailyJobConfig(
+            universe="demo",
+            start_date="2024-01-01",
+            end_date="2024-01-31",
+            telegram_dry_run=False,
+        )
+    )
+
+    assert result.summary_path.exists()
+    assert result.report_path.exists()
+    assert result.telegram_sent is False
+    assert result.telegram_dry_run is False
+    assert "Telegram message send failed after 3 attempt(s)." in result.telegram_response_text
 
 
 def _write_paper_inputs(

@@ -47,47 +47,188 @@ def _render_dashboard_styles() -> None:
     st.markdown(
         """
         <style>
+        html, body, .stApp {
+            font-size: 17px;
+        }
+        .stApp {
+            background:
+                radial-gradient(circle at 0% 0%, rgba(33, 201, 139, 0.16) 0, transparent 32rem),
+                radial-gradient(circle at 92% 0%, rgba(216, 164, 65, 0.12) 0, transparent 28rem),
+                linear-gradient(135deg, #0c0f14 0%, #11141a 45%, #151312 100%);
+            color: #e7edf4;
+        }
         .block-container {
-            padding-top: 2rem;
+            max-width: 1440px;
+            padding-top: 1.55rem;
             padding-bottom: 3rem;
         }
-        div[data-testid="stMetric"] {
-            background: #ffffff;
-            border: 1px solid #e6e8eb;
-            border-radius: 8px;
-            padding: 0.75rem 0.85rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        h1 {
+            color: #f5f8fb;
+            font-size: 2.4rem !important;
+            font-weight: 800 !important;
+            line-height: 1.2 !important;
+            margin-bottom: 0.25rem !important;
         }
-        div[data-testid="stMetricLabel"] {
-            color: #475569;
-            font-size: 0.82rem;
+        h2, h3 {
+            color: #f2f6fa;
+            letter-spacing: 0;
+        }
+        h2 {
+            font-size: 1.65rem !important;
+            margin-top: 1.1rem !important;
+            padding-top: 0.2rem;
+        }
+        h3 {
+            font-size: 1.25rem !important;
+        }
+        p, li, div[data-testid="stMarkdownContainer"] {
+            line-height: 1.65;
+        }
+        div[data-testid="stMetric"] {
+            background: linear-gradient(145deg, #171d24 0%, #10161d 100%);
+            border: 1px solid #2a3440;
+            border-top: 4px solid #21c98b;
+            border-radius: 8px;
+            min-height: 6.8rem;
+            padding: 1.05rem 1.08rem;
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+        }
+        div[data-testid="stMetricLabel"] p {
+            color: #9fb0c2;
+            font-size: 0.98rem !important;
+            font-weight: 700;
         }
         div[data-testid="stMetricValue"] {
-            color: #111827;
-            font-size: 1.2rem;
+            color: #f6f9fc;
+            font-size: 1.58rem !important;
+            font-weight: 800;
+            line-height: 1.22;
+        }
+        div[data-testid="stMetricDelta"] {
+            font-size: 0.96rem !important;
+            font-weight: 650;
+        }
+        div[data-testid="stCaptionContainer"] {
+            color: #b4c3d2;
+            font-size: 0.98rem;
+        }
+        div[data-testid="stAlert"] {
+            background: rgba(17, 25, 33, 0.92);
+            border: 1px solid #2f4152;
+            border-radius: 8px;
+            color: #e7edf4;
+            font-size: 1rem;
+        }
+        div[data-testid="stAlert"] p {
+            color: #e7edf4;
+        }
+        div[data-testid="stExpander"] {
+            background: rgba(18, 24, 31, 0.92);
+            border: 1px solid #2a3440;
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        }
+        div[data-testid="stExpander"] summary {
+            font-size: 1rem;
+            font-weight: 750;
+            color: #e7edf4;
+        }
+        div[data-testid="stDataFrame"] {
+            background: #121820;
+            border: 1px solid #2b3642;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        }
+        section[data-testid="stSidebar"] {
+            background: #090d12;
+            border-right: 1px solid #1f2933;
+        }
+        section[data-testid="stSidebar"] h1 {
+            color: #f5f8fb;
+            font-size: 1.55rem !important;
+        }
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] div {
+            color: #b9c6d3;
+        }
+        section[data-testid="stSidebar"] ul {
+            padding-left: 0;
+        }
+        section[data-testid="stSidebar"] li {
+            list-style: none;
+            margin: 0.38rem 0;
+        }
+        section[data-testid="stSidebar"] a {
+            display: block;
+            border: 1px solid #26313d;
+            border-radius: 8px;
+            background: #121922;
+            color: #dce7f1 !important;
+            font-weight: 700;
+            padding: 0.62rem 0.78rem;
+            text-decoration: none;
+        }
+        section[data-testid="stSidebar"] a:hover {
+            background: #18242f;
+            border-color: #21c98b;
+            color: #ffffff !important;
+        }
+        .stButton > button,
+        div[data-testid="stDownloadButton"] > button {
+            background: #1b8a68;
+            color: #ffffff;
+            border: 1px solid #25b184;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 750;
+            padding: 0.55rem 0.95rem;
+        }
+        .stButton > button:hover,
+        div[data-testid="stDownloadButton"] > button:hover {
+            background: #21a47c;
+            border-color: #2ed199;
+            color: #ffffff;
+        }
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div {
+            background: #111820;
+            border-color: #2a3440;
+            color: #e7edf4;
         }
         .krx-snapshot {
-            border: 1px solid #d9e2ec;
+            border: 1px solid #2d4a42;
+            border-left: 5px solid #21c98b;
             border-radius: 8px;
-            padding: 1rem 1.1rem;
-            background: #f8fafc;
-            margin: 0.75rem 0 1rem 0;
+            padding: 1.2rem 1.35rem;
+            background: linear-gradient(135deg, #15241f 0%, #111820 100%);
+            margin: 0.85rem 0 1.1rem 0;
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
         }
         .krx-snapshot-title {
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 0.35rem;
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #7ee7bd;
+            margin-bottom: 0.45rem;
         }
         .krx-snapshot-body {
-            color: #334155;
-            line-height: 1.55;
+            color: #d7e4ee;
+            line-height: 1.7;
+            font-size: 1.02rem;
+        }
+        code {
+            background: #0c1117;
+            color: #ffd166;
+            border: 1px solid #28323d;
+            border-radius: 6px;
+            padding: 0.1rem 0.28rem;
+        }
+        hr {
+            border-color: #26313d;
         }
         .krx-section-anchor {
             height: 0.1rem;
             margin-top: 0.25rem;
-        }
-        h2, h3 {
-            letter-spacing: 0;
         }
         </style>
         """,
@@ -106,7 +247,7 @@ def _render_sidebar(summary_path: Path, active_period: tuple[str, str] | None) -
         st.markdown(
             """
             - [오늘 결론](#overview)
-            - [판단 성과](#performance)
+            - [과거 성과 평가](#performance)
             - [유니버스 순위](#universe)
             - [자동 스크리너](#screening)
             - [KIS 검토 후보](#kis)
@@ -159,6 +300,32 @@ def _render_operating_snapshot(
     )
 
 
+def _style_chart(fig: Any) -> Any:
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#101820",
+        font={"color": "#d7e4ee", "size": 13},
+        colorway=["#21c98b", "#d8a441", "#4ea1d3", "#d45d79", "#a78bfa"],
+        legend={"font": {"color": "#d7e4ee"}},
+    )
+    fig.update_xaxes(
+        gridcolor="#27313d",
+        linecolor="#3a4654",
+        tickfont={"color": "#b9c6d3"},
+        title_font={"color": "#c7d3df"},
+        zerolinecolor="#3a4654",
+    )
+    fig.update_yaxes(
+        gridcolor="#27313d",
+        linecolor="#3a4654",
+        tickfont={"color": "#b9c6d3"},
+        title_font={"color": "#c7d3df"},
+        zerolinecolor="#3a4654",
+    )
+    return fig
+
+
 def main() -> None:
     st.set_page_config(
         page_title="KRX Alpha Platform",
@@ -167,7 +334,7 @@ def main() -> None:
     )
     _render_dashboard_styles()
 
-    st.title("KRX Alpha Platform")
+    st.title("KRX Alpha 대시보드")
     st.caption("한국 주식 데이터 기반 설명 가능한 투자 의사결정 보조 대시보드")
     with st.expander("초보자용: 이 화면은 어떻게 보면 되나요?", expanded=False):
         st.markdown(
@@ -275,21 +442,22 @@ def main() -> None:
     brief_cols[3].metric("리스크 차단", int(brief["blocked_count"]))
 
     st.markdown('<div class="krx-section-anchor" id="performance"></div>', unsafe_allow_html=True)
-    st.subheader("판단 성과 추적")
+    st.subheader("과거 판단 성과 평가")
     st.caption(
-        "매일 저장된 판단을 며칠 뒤 실제 종가와 비교합니다. "
-        "이 영역은 예측이 얼마나 맞았는지 기록으로 확인하는 곳입니다."
+        "오늘 새로 나온 판단이 아니라, 과거에 저장한 판단을 며칠 뒤 실제 종가와 "
+        "비교하는 사후검증 영역입니다."
     )
     journal_evaluation_path = find_latest_decision_journal_evaluation(PROJECT_ROOT)
     if journal_evaluation_path is None:
         st.info(
-            "아직 판단 평가 결과가 없습니다. 일일 작업을 실행한 뒤 며칠 지나서 "
+            "아직 사후검증 결과가 없습니다. 일일 작업을 실행한 뒤 며칠 지나서 "
             "`python main.py evaluate-decision-journal --holding-days 5`를 실행하면 "
-            "이곳에 실제 결과 비교가 표시됩니다."
+            "이곳에 과거 판단의 실제 결과 비교가 표시됩니다."
         )
     else:
         journal_evaluation = load_decision_journal_evaluation(journal_evaluation_path)
         journal_brief = beginner_decision_journal_brief(journal_evaluation)
+        st.caption(_decision_evaluation_note(journal_evaluation))
         st.info(
             f"**{journal_brief['headline']}**\n\n"
             f"{journal_brief['detail']}\n\n"
@@ -331,7 +499,9 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="유리한 결과 비율(%)",
             )
+            _style_chart(fig)
             st.plotly_chart(fig, width="stretch")
+            st.caption("판단 유형별 사후검증 요약")
             st.dataframe(
                 _koreanize_columns(
                     journal_summary[_decision_journal_summary_display_columns(journal_summary)]
@@ -340,7 +510,7 @@ def main() -> None:
                 width="stretch",
             )
 
-        st.caption("최근 판단별 실제 결과")
+        st.caption("며칠 뒤 실제 결과 비교(과거 판단 기준)")
         st.dataframe(
             _koreanize_columns(
                 journal_evaluation[_decision_journal_evaluation_display_columns(journal_evaluation)]
@@ -397,6 +567,7 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title=None,
             )
+            _style_chart(fig)
             st.plotly_chart(fig, width="stretch")
 
     st.divider()
@@ -632,6 +803,7 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="뉴스 점수",
             )
+            _style_chart(fig)
             st.plotly_chart(fig, width="stretch")
 
             st.dataframe(
@@ -681,6 +853,7 @@ def main() -> None:
                 xaxis_title=None,
                 yaxis_title="거시 점수",
             )
+            _style_chart(fig)
             st.plotly_chart(fig, width="stretch")
 
             st.dataframe(
@@ -841,6 +1014,7 @@ def main() -> None:
             xaxis_title=None,
             yaxis_title="최종 평가금액",
         )
+        _style_chart(fig)
         st.plotly_chart(fig, width="stretch")
 
         st.dataframe(
@@ -1279,11 +1453,11 @@ KOREAN_COLUMN_LABELS = {
     "gross_exposure_pct": "투자 노출(%)",
     "cash_pct": "현금 비중(%)",
     "generated_at": "생성 시각",
-    "decision_date": "판단일",
-    "holding_days": "평가 보유일",
-    "evaluation_date": "평가일",
-    "entry_close": "기준 종가",
-    "evaluation_close": "평가 종가",
+    "decision_date": "판단 저장일",
+    "holding_days": "비교 보유일",
+    "evaluation_date": "실제 비교일",
+    "entry_close": "판단 저장일 종가",
+    "evaluation_close": "비교일 종가",
     "outcome_status": "평가 상태",
     "outcome_status_ko": "평가 상태",
     "outcome_ko": "평가 결과",
@@ -1544,6 +1718,38 @@ def _decision_journal_evaluation_display_columns(frame: Any) -> list[str]:
         "latest_market_regime_ko",
     ]
     return [column for column in preferred_columns if column in frame.columns]
+
+
+def _decision_evaluation_note(frame: Any) -> str:
+    if frame.empty or "decision_date" not in frame.columns:
+        return (
+            "이 영역은 오늘의 신규 판단이 아니라, 저장된 과거 판단을 나중의 실제 가격과 "
+            "비교하는 사후검증입니다."
+        )
+
+    decision_dates = pd.to_datetime(frame["decision_date"], errors="coerce").dropna()
+    date_range = "판단 저장일을 확인할 수 없습니다."
+    if not decision_dates.empty:
+        start_date = decision_dates.min().date().isoformat()
+        end_date = decision_dates.max().date().isoformat()
+        date_range = f"표에 포함된 판단 저장일: {start_date} ~ {end_date}."
+
+    holding_days = "N"
+    if "holding_days" in frame.columns:
+        values = pd.to_numeric(frame["holding_days"], errors="coerce").dropna().unique()
+        if len(values) > 0:
+            holding_days = str(int(values[0]))
+
+    pending_count = 0
+    if "outcome_status" in frame.columns:
+        pending_count = int((frame["outcome_status"].astype(str) == "pending").sum())
+
+    return (
+        f"이 영역은 오늘의 신규 판단이 아니라, 저장된 과거 판단을 {holding_days}거래일 뒤 "
+        f"가격과 비교하는 사후검증입니다. {date_range} "
+        f"아직 {holding_days}거래일이 지나지 않은 판단은 평가 대기로 표시됩니다"
+        f"{f'({pending_count}개)' if pending_count else ''}."
+    )
 
 
 def _format_count_summary(frame: pd.DataFrame, column: str) -> str:
